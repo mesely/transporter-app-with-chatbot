@@ -1,0 +1,6 @@
+-klasör oluştur masaüstünde
+-vs code'a (uygulamaya) sürükle bırak
+-node.js kur
+-terminal sekmesinden new termina(yeni termanl) de açılsın.
+-nest js kur ve yeni proje oluştur
+-next js prjesi de oluştur aynı klasöre
