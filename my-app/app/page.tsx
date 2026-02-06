@@ -18,6 +18,7 @@ import ReportModal from '../components/ReportModal';
 import CustomerGuide from '../components/CustomerGuide';
 import AuthModal from '../components/AuthModal';
 
+// Harita Bileşeni (SSR devre dışı)
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => (
@@ -33,6 +34,7 @@ const FALLBACK_LAT = 38.4382;
 const FALLBACK_LNG = 27.1418;
 
 export default function Home() {
+  // --- STATE YÖNETİMİ ---
   const [userRole, setUserRole] = useState<'guest' | 'customer' | 'provider' | null>(null);
   const [currentProviderId, setCurrentProviderId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null); 
@@ -45,9 +47,8 @@ export default function Home() {
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [actionType, setActionType] = useState<string>('');     
 
-  // --- 🚀 SENKRONİZASYON STATE'İ ---
+  // --- 🚀 SENKRONİZASYON & SENARYO STATE'LERİ ---
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
-
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [deviceId, setDeviceId] = useState<string>(''); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -58,6 +59,7 @@ export default function Home() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportOrderId, setReportOrderId] = useState<string | null>(null);
 
+  // 1. Cihaz Kimliği ve Kullanıcı Rolü Yükleme
   useEffect(() => {
     let storedId = localStorage.getItem('transporter_device_id');
     if (!storedId) {
@@ -77,6 +79,7 @@ export default function Home() {
     }
   }, []);
 
+  // 2. Filtreleme Mantığı
   const applyFilter = useCallback((type: string, data: any[]) => {
     if (!type) {
       setMapDrivers(data);
@@ -93,12 +96,23 @@ export default function Home() {
     setPanelDrivers(filtered);
   }, []);
 
+  /**
+   * 📡 VERİ ÇEKME MANTIĞI (GÜVENLİ VERSİYON)
+   * Siyah ekranı önlemek için AbortController ve Timeout eklendi.
+   */
   const fetchAllData = useCallback((lat: number, lng: number) => {
     setLoadingDrivers(true);
     setSearchCoords([lat, lng]);
     
-    fetch(`${API_URL}/users/nearby?lat=${lat}&lng=${lng}`)
-      .then(res => res.json())
+    // 10 saniye sonra isteği iptal et (Sonsuz yüklenmeyi ve çökmeyi önler)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    fetch(`${API_URL}/users/nearby?lat=${lat}&lng=${lng}`, { signal: controller.signal })
+      .then(res => {
+        if (!res.ok) throw new Error("Sunucu yanıt vermedi");
+        return res.json();
+      })
       .then(data => {
         if (Array.isArray(data)) {
           const cleanData = data.map((d: any) => ({
@@ -107,28 +121,39 @@ export default function Home() {
           }));
           setAllDrivers(cleanData);
           applyFilter(actionType, cleanData);
-        } else {
-          setAllDrivers([]);
         }
       })
       .catch(err => {
-        console.error("❌ API Bağlantı Hatası:", err);
-        setAllDrivers([]);
+        console.error("❌ API Bağlantı Hatası:", err.name === 'AbortError' ? 'Zaman Aşımı' : err.message);
+        setAllDrivers([]); // Hata durumunda listeyi temizle
       })
-      .finally(() => setLoadingDrivers(false));
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoadingDrivers(false); // NE OLURSA OLSUN loading'i kapat
+      });
   }, [actionType, applyFilter]);
 
+  // 3. Konum Bulma (Zaman Aşımlı Güvenli Yapı)
   useEffect(() => {
-    if (navigator.geolocation) {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => fetchAllData(pos.coords.latitude, pos.coords.longitude),
-        () => fetchAllData(FALLBACK_LAT, FALLBACK_LNG),
-        { enableHighAccuracy: true, timeout: 8000 }
+        (err) => {
+          console.warn("⚠️ Konum alınamadı, Alsancak yükleniyor.");
+          fetchAllData(FALLBACK_LAT, FALLBACK_LNG);
+        },
+        { 
+          enableHighAccuracy: false, // Mobil hızı için false kalsın
+          timeout: 6000,             // 6 saniyede konum bulamazsa vazgeç
+          maximumAge: 10000 
+        }
       );
     } else {
       fetchAllData(FALLBACK_LAT, FALLBACK_LNG);
     }
   }, [fetchAllData]);
+
+  // --- HANDLER'LAR ---
 
   const handleFilterChange = (type: string) => {
     setActionType(type);
@@ -225,13 +250,15 @@ export default function Home() {
     handleFilterChange(type);
   };
 
+  // --- RENDERING ---
+
   if (!userRole) {
     return <AuthModal onRoleSelect={handleRoleSelect} />;
   }
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-white">
-      {/* 🛠️ HARİTA BİLEŞENİ GÜNCELLENDİ */}
+      {/* 1. HARİTA (Senkronizasyon Propları Eklendi) */}
       <MapComponent 
         searchCoords={searchCoords} 
         drivers={mapDrivers} 
@@ -240,6 +267,7 @@ export default function Home() {
         onSelectDriver={setActiveDriverId}
       />
       
+      {/* 2. CHATBOT */}
       <ChatWidget 
         isOpen={isChatOpen} 
         onToggle={handleChatToggle} 
@@ -253,23 +281,26 @@ export default function Home() {
       
       {showCustomerGuide && <CustomerGuide onClose={() => setShowCustomerGuide(false)} />}
       
+      {/* 3. ÜST ARAÇ ÇUBUĞU */}
       <TopBar 
         onMenuClick={handleMenuClick} 
         onProfileClick={() => setShowProfileModal(true)} 
         sidebarOpen={sidebarOpen} 
       />
       
+      {/* 4. SİPARİŞ TAKİBİ */}
       <ActiveOrderPanel 
         activeOrder={activeOrder} 
         onComplete={handleCompleteOrder} 
         onCancel={() => { setActiveOrder(null); handleResetMap(); }} 
       />
 
+      {/* 5. MODALLAR */}
       <RatingModal isOpen={showRatingModal} onRate={() => { setShowRatingModal(false); handleResetMap(); }} onClose={() => { setShowRatingModal(false); handleResetMap(); }} />
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} orderId={reportOrderId} />
       
-      {/* 🛠️ ACTION PANEL BİLEŞENİ GÜNCELLENDİ */}
+      {/* 6. MÜŞTERİ PANELİ (Senkronizasyon Propları Eklendi) */}
       {!activeOrder && userRole === 'customer' && (
         <ActionPanel 
           onSearchLocation={fetchAllData} 
@@ -285,6 +316,7 @@ export default function Home() {
         />
       )}
 
+      {/* 7. KURUMSAL PANEL */}
       {userRole === 'provider' && currentProviderId && (
         <ProviderPanel 
           providerId={currentProviderId} 
@@ -294,6 +326,7 @@ export default function Home() {
         /> 
       )}
 
+      {/* 8. YAN MENÜ */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 

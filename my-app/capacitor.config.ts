@@ -1,5 +1,3 @@
-// capacitor.config.ts
-
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -9,7 +7,13 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'capacitor',
-    cleartext: true
+    cleartext: true,
+    allowNavigation: [
+      'transporter-app-with-chatbot.onrender.com',
+      'router.project-osrm.org',
+      '*.basemaps.cartocdn.com',
+      '*.openstreetmap.org'
+    ]
   },
   plugins: {
     Geolocation: {
@@ -19,9 +23,14 @@ const config: CapacitorConfig = {
       style: 'dark',
       backgroundColor: '#ffffff',
       overlaysWebView: true
+    },
+    Keyboard: {
+      resize: 'body',
+      style: 'dark',
+      resizeOnFullScreen: true
     }
   },
-  // iOS için sadece geçerli olan ayarlar
+  // 🛠️ Hatalı 'displayName' kaldırıldı, sadece geçerli özellikler kaldı.
   ios: {
     contentInset: 'always',
     scrollEnabled: true
