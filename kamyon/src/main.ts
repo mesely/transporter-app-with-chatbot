@@ -1,34 +1,29 @@
-// src/main.ts
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  // 🔥 CORS Ayarları - Frontend'in bağlanabilmesi için
+  // 🔥 2026 STANDARTLARINDA FULL CORS
+  // Her yerden gelen isteğe izin veriyoruz (Mobil + Web + Chatbot)
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'capacitor://localhost',      // iOS Capacitor
-      'ionic://localhost',           // iOS alternatif
-      'http://localhost',            // Android
-      'https://transporter-app-with-chatbot.onrender.com',
-    ],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    origin: true, 
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   });
 
-  // Port ayarı
+  // Render portu otomatik verir, biz 3005'i fallback yapıyoruz
   const port = process.env.PORT || 3005;
   
-  await app.listen(port, '0.0.0.0'); // 0.0.0.0 - harici erişim için
+  // 0.0.0.0 Render için zorunludur
+  await app.listen(port, '0.0.0.0'); 
   
-  console.log(`🚀 Backend çalışıyor: http://localhost:${port}`);
-  console.log(`📱 API URL: https://transporter-app-with-chatbot.onrender.com`);
-  console.log(`✅ CORS aktif - Mobil uygulama bağlanabilir`);
+  logger.log(`🚀 Kamyon Yola Çıktı: Port ${port}`);
+  logger.log(`📱 Canlı API URL: https://transporter-app-with-chatbot.onrender.com`);
+  logger.log(`✅ CORS: Tüm cihazlar (iOS/Android/Web) için tam erişim aktif.`);
 }
 
 bootstrap();
