@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, AlertTriangle, Send } from 'lucide-react';
+import { X, AlertTriangle, Send, ShieldAlert, MessageCircle } from 'lucide-react';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -12,9 +12,20 @@ interface ReportModalProps {
 export default function ReportModal({ isOpen, onClose, orderId }: ReportModalProps) {
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+90');
-  const [reason, setReason] = useState('');
-  const [otherReason, setOtherReason] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [details, setDetails] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // --- HAZIR ŞİKAYET ETİKETLERİ ---
+  const reportTags = [
+    "Sürücü Gelmedi 🚫",
+    "Fazla Ücret İstedi 💸",
+    "Kaba Davranış 😠",
+    "Güvenli Değil ⚠️",
+    "Araç Yanlış/Bozuk 🛠️",
+    "Konum Hatalı 📍",
+    "Çok Geç Geldi ⏳"
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -22,130 +33,145 @@ export default function ReportModal({ isOpen, onClose, orderId }: ReportModalPro
       const storedCC = localStorage.getItem('transporter_user_cc');
       if (storedPhone) setPhone(storedPhone);
       if (storedCC) setCountryCode(storedCC);
-      setReason(''); setOtherReason(''); setDetails('');
+      setSelectedTags([]); setDetails('');
     }
   }, [isOpen]);
 
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
   const handleSubmit = async () => {
-    if (!reason) { alert("Lütfen bir sebep seçin."); return; }
-    const finalReason = reason === 'other' ? otherReason : reason;
+    if (selectedTags.length === 0 && !details) {
+      alert("Lütfen bir sebep seçin veya detay yazın.");
+      return;
+    }
+
+    setLoading(true);
     const fullPhone = `${countryCode} ${phone}`;
+    const finalReason = selectedTags.join(', ');
     
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, contact: fullPhone, reason: finalReason, details })
+        body: JSON.stringify({ 
+          orderId, 
+          contact: fullPhone, 
+          reason: finalReason, 
+          details: details 
+        })
       });
-      alert("Şikayetiniz işleme alındı.");
-    } catch (error) { console.error(error); alert("Hata oluştu."); }
-    onClose();
+      alert("Şikayetiniz merkezimize iletildi. İncelenip size dönülecektir.");
+      onClose();
+    } catch (error) {
+      console.error(error);
+      alert("Gönderilemedi, lütfen tekrar deneyin.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    // Overlay: Hafif Koyu Gri
-    <div className="fixed inset-0 z-[20000] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[20000] bg-black/30 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
       
-      {/* KART: Light Glass */}
-      <div className="bg-white/80 backdrop-blur-xl w-full max-w-sm rounded-[2rem] p-6 relative shadow-2xl animate-in zoom-in-95 border border-white/60">
+      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-md rounded-[2.5rem] p-8 relative shadow-[0_30px_100px_rgba(220,38,38,0.2)] border border-red-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
         
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/50 hover:bg-white rounded-full text-gray-600 transition-all shadow-sm">
+        {/* Kapatma Butonu */}
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-full text-gray-400 transition-all">
           <X size={20} strokeWidth={2.5} />
         </button>
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="bg-red-100/80 p-3 rounded-full border border-red-200">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
+        {/* Header */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="bg-red-50 p-4 rounded-full mb-4 border border-red-100">
+            <ShieldAlert className="w-8 h-8 text-red-600" />
           </div>
-          <div>
-            <h3 className="text-xl font-black text-gray-900 tracking-tight">Sorun Bildir</h3>
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Ref: #{orderId?.substring(0,6)}</p>
-          </div>
+          <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase leading-none">Sorun Bildir</h3>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">İşlem No: #{orderId?.substring(orderId.length - 6)}</p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           
-          {/* İletişim */}
+          {/* İletişim Bilgisi */}
           <div>
-            <label className="block text-xs font-black text-gray-400 uppercase mb-1 ml-1 tracking-widest">İletişim</label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">İletişim Numaranız</label>
             <div className="flex gap-2">
               <select 
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
-                className="bg-white/50 border border-white/60 rounded-xl px-2 py-3 text-sm font-bold text-gray-800 outline-none focus:bg-white transition-all shadow-sm"
+                className="bg-gray-50 border border-gray-100 rounded-2xl px-3 py-4 text-xs font-black text-gray-800 outline-none focus:bg-white transition-all shadow-sm"
               >
-                <option value="+90">🇹🇷 +90</option>
-                <option value="+49">🇩🇪 +49</option>
-                <option value="+1">🇺🇸 +1</option>
+                <option value="+90">TR</option>
+                <option value="+49">DE</option>
+                <option value="+1">US</option>
               </select>
 
               <input 
                 type="tel" 
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="555 123 45 67"
-                className="flex-1 bg-white/50 border border-white/60 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:bg-white placeholder:text-gray-400 transition-all shadow-sm"
+                placeholder="5XX XXX XX XX"
+                className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-xs font-black text-gray-900 outline-none focus:bg-white placeholder:text-gray-300 transition-all shadow-sm"
               />
             </div>
           </div>
 
-          {/* Sebep */}
+          {/* Hazır Şikayet Etiketleri */}
           <div>
-            <label className="block text-xs font-black text-gray-400 uppercase mb-1 ml-1 tracking-widest">Sebep</label>
-            <div className="relative">
-              <select 
-                value={reason} 
-                onChange={(e) => setReason(e.target.value)}
-                className="w-full bg-white/50 border border-white/60 rounded-xl px-4 py-3.5 text-sm font-bold text-gray-800 outline-none focus:bg-white appearance-none shadow-sm transition-all"
-              >
-                <option value="">Bir sebep seçin...</option>
-                <option value="Sürücü gelmedi">Sürücü gelmedi</option>
-                <option value="Fazla ücret talep edildi">Fazla ücret talep edildi</option>
-                <option value="Kaba davranış">Kaba davranış / Hakaret</option>
-                <option value="Araç uygun değildi">Araç uygun değildi</option>
-                <option value="other">Diğer</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">▼</div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3 block">Sorun Nedir? (Hızlı Seçim)</label>
+            <div className="flex flex-wrap gap-2">
+              {reportTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                    selectedTags.includes(tag)
+                      ? 'bg-red-600 text-white border-red-600 shadow-lg scale-105'
+                      : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Diğer */}
-          {reason === 'other' && (
-            <div className="animate-in slide-in-from-top-2">
-              <input 
-                type="text" 
-                placeholder="Kısaca sebebi yazın..."
-                value={otherReason}
-                onChange={(e) => setOtherReason(e.target.value)}
-                className="w-full bg-white border border-red-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 focus:ring-2 ring-red-100 outline-none shadow-sm"
+          {/* Detay Alanı */}
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Ek Notlar (Opsiyonel)</label>
+            <div className="relative group">
+              <div className="absolute top-4 left-4 text-gray-300 group-focus-within:text-red-500 transition-colors">
+                <MessageCircle size={16} />
+              </div>
+              <textarea 
+                rows={3}
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                placeholder="OLAYI KISACA ANLATIN..."
+                className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 pl-12 pr-4 text-[10px] font-bold uppercase focus:outline-none focus:ring-2 focus:ring-red-100 focus:bg-white transition-all resize-none shadow-sm"
               />
             </div>
-          )}
-
-          {/* Detay */}
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase mb-1 ml-1 tracking-widest">Detaylar</label>
-            <textarea 
-              rows={3}
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="Eklemek istedikleriniz..."
-              className="w-full bg-white/50 border border-white/60 rounded-xl px-4 py-3 text-sm font-medium text-gray-900 resize-none outline-none focus:bg-white shadow-sm transition-all"
-            />
           </div>
 
         </div>
 
-        {/* BUTON: Katı Kırmızı */}
+        {/* Gönder Butonu */}
         <button 
           onClick={handleSubmit}
-          className="w-full bg-red-600 text-white font-black py-4 rounded-xl mt-6 flex items-center justify-center gap-2 shadow-xl shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+          disabled={loading}
+          className={`w-full bg-red-600 text-white font-black py-5 rounded-2xl mt-8 flex items-center justify-center gap-2 shadow-xl shadow-red-100 hover:bg-red-700 active:scale-95 transition-all text-xs tracking-widest uppercase ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
-          <Send size={18} />
-          GÖNDER
+          {loading ? 'GÖNDERİLİYOR...' : <><Send size={16} /> ŞİKAYETİ İLET</>}
         </button>
+
+        <p className="text-[9px] text-gray-400 font-bold text-center mt-6 uppercase leading-relaxed px-4">
+          Şikayetiniz ekibimiz tarafından incelenecek ve gerekirse sürücü sistemden uzaklaştırılacaktır.
+        </p>
 
       </div>
     </div>

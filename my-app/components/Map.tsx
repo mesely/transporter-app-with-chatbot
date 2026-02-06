@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { 
@@ -12,7 +12,7 @@ import {
   Construction, Home, Star, CalendarCheck
 } from 'lucide-react';
 
-// --- 1. TİPLER (TypeScript Hatalarını Çözen Kısım) ---
+// --- 1. TİPLER ---
 interface Driver {
   _id: string;
   firstName: string;
@@ -31,6 +31,9 @@ interface MapProps {
   searchCoords: [number, number] | null;
   drivers: Driver[];
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
+  // --- SENKRONİZASYON PROPLARI ---
+  activeDriverId: string | null;
+  onSelectDriver: (id: string | null) => void;
 }
 
 // --- 2. RENK VE İKON YAPILANDIRMASI ---
@@ -46,9 +49,10 @@ const SERVICE_CONFIG: any = {
 };
 
 // --- 3. DİNAMİK İKON VE KÜME TASARIMLARI ---
-const createCustomIcon = (type: string | undefined, zoom: number) => {
+const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || { color: '#6b7280', Icon: Truck };
-  const baseSize = Math.max(14, Math.min(36, zoom * 1.8)); 
+  // Aktifse biraz daha büyük göster
+  const baseSize = Math.max(14, Math.min(40, isActive ? zoom * 2.2 : zoom * 1.8)); 
   const innerSize = baseSize * 0.55;
 
   const iconHtml = renderToStaticMarkup(
@@ -56,19 +60,20 @@ const createCustomIcon = (type: string | undefined, zoom: number) => {
   );
 
   return L.divIcon({
-    className: 'custom-pin-marker',
+    className: `custom-pin-marker ${isActive ? 'active-pin' : ''}`,
     html: `
       <div style="
-        background-color: ${config.color}; 
+        background-color: ${isActive ? '#22c55e' : config.color}; 
         width: ${baseSize}px; 
         height: ${baseSize}px; 
         border-radius: 50% 50% 50% 0; 
         transform: rotate(-45deg); 
-        border: ${zoom > 12 ? '2px' : '1px'} solid white; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+        border: ${zoom > 12 ? '3px' : '1px'} solid white; 
+        box-shadow: ${isActive ? '0 0 20px rgba(34, 197, 94, 0.6)' : '0 4px 12px rgba(0,0,0,0.3)'}; 
         display: flex; 
         align-items: center; 
-        justify-content: center;">
+        justify-content: center;
+        transition: all 0.3s ease;">
         <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
           ${iconHtml}
         </div>
@@ -115,21 +120,28 @@ function MapEvents({ onZoomChange }: { onZoomChange: (z: number) => void }) {
   return null;
 }
 
-function MapController({ coords }: { coords: [number, number] | null }) {
+function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
   const map = useMap();
+  
   useEffect(() => {
-    if (coords) map.flyTo(coords, 14, { duration: 2, animate: true });
-  }, [coords, map]);
+    if (activeDriverCoords) {
+      // Bir sürücü seçildiğinde oraya odaklan
+      map.flyTo(activeDriverCoords, 15, { duration: 1.5 });
+    } else if (coords) {
+      map.flyTo(coords, 14, { duration: 2, animate: true });
+    }
+  }, [coords, activeDriverCoords, map]);
+  
   return null;
 }
 
 // --- 5. ANA BİLEŞEN ---
-export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
+export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver }: MapProps) {
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
   const [isRouting, setIsRouting] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(13);
+  const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
-  // Sürücüleri türlerine göre ayır (Sadece aynı türdekiler kümelensin diye)
   const groupedDrivers = useMemo(() => {
     return drivers.reduce((acc: any, driver: any) => {
       const type = driver.serviceType || 'other';
@@ -138,6 +150,20 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
       return acc;
     }, {});
   }, [drivers]);
+
+  // Aktif sürücünün koordinatlarını bul
+  const activeDriverCoords = useMemo(() => {
+    const active = drivers.find(d => d._id === activeDriverId);
+    if (active) return [active.location.coordinates[1], active.location.coordinates[0]] as [number, number];
+    return null;
+  }, [activeDriverId, drivers]);
+
+  // Aktif sürücü değiştiğinde popup'ı otomatik aç
+  useEffect(() => {
+    if (activeDriverId && markerRefs.current[activeDriverId]) {
+      markerRefs.current[activeDriverId]?.openPopup();
+    }
+  }, [activeDriverId]);
 
   const handleDrawRoute = async (destLat: number, destLng: number) => {
     if (!searchCoords) return;
@@ -176,7 +202,7 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
         />
         
         <MapEvents onZoomChange={setCurrentZoom} />
-        <MapController coords={searchCoords} />
+        <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
         {searchCoords && (
           <Marker position={searchCoords} icon={userIcon}>
@@ -188,7 +214,6 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
           <Polyline positions={routePath} color="#3b82f6" weight={6} opacity={0.6} dashArray="1, 12" lineCap="round" />
         )}
 
-        {/* 🚀 GRUPLANDIRILMIŞ KÜMELER: Her türün kendi Cluster'ı var */}
         {Object.keys(groupedDrivers).map((type) => (
           <MarkerClusterGroup 
             key={type}
@@ -200,17 +225,21 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
             {groupedDrivers[type].map((driver: Driver) => {
               const [lng, lat] = driver.location.coordinates;
               const isCharge = driver.serviceType?.includes('sarj');
+              const isActive = activeDriverId === driver._id;
 
               return (
                 <Marker 
                   key={driver._id} 
                   position={[lat, lng]}
-                  icon={createCustomIcon(driver.serviceType, currentZoom)}
+                  ref={(el) => { markerRefs.current[driver._id] = el; }}
+                  icon={createCustomIcon(driver.serviceType, currentZoom, isActive)}
+                  eventHandlers={{
+                    click: () => onSelectDriver(driver._id) // Pine tıklandığında paneli güncelle
+                  }}
                 >
                   <Popup className="custom-popup" minWidth={240}>
                     <div className="p-1 font-sans">
                       
-                      {/* Üst Bilgi */}
                       <div className="mb-3">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-tighter">
@@ -232,7 +261,6 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
                         </div>
                       </div>
 
-                      {/* Navigasyon */}
                       <div className="flex gap-1.5 mb-3">
                         <button onClick={() => handleDrawRoute(lat, lng)} className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all">
                           {isRouting ? '...' : <><Navigation size={12} /> ROTA</>}
@@ -242,7 +270,6 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
                         </button>
                       </div>
 
-                      {/* Aksiyon Butonları */}
                       <div className="flex gap-2 pt-3 border-t border-gray-100">
                         {isCharge ? (
                           <button onClick={() => driver.reservationUrl && window.open(driver.reservationUrl, '_blank')} className={`w-full py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 transition-all ${driver.reservationUrl ? 'bg-blue-600 text-white shadow-lg active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
@@ -251,7 +278,8 @@ export default function Map({ searchCoords, drivers, onStartOrder }: MapProps) {
                         ) : (
                           <>
                             <button onClick={() => { onStartOrder(driver, 'call'); window.location.href = `tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg">ARA</button>
-                            <button onClick={() => { onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`, '_blank'); }} className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg">WP</button>
+                            {/* WP -> WHATSAPP GÜNCELLEMESİ */}
+                            <button onClick={() => { onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`, '_blank'); }} className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg">WHATSAPP</button>
                           </>
                         )}
                       </div>

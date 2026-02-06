@@ -2,14 +2,12 @@
 
 import { 
   Truck, Zap, Star, MapPin, Wrench, Box, 
-  ChevronDown, LocateFixed, Moon, CalendarCheck, Loader2 
+  ChevronDown, LocateFixed, Moon, CalendarCheck, Loader2, Navigation, 
+  MessageCircle,
+  Phone
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
-/**
- * 🌐 AKILLI API_URL YÖNETİMİ
- * Local ortamda 3005 portuna, Render'da ise canlı linke otomatik bağlanır.
- */
 const API_URL = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:3005'
@@ -19,7 +17,6 @@ const CITIES = [
   "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
 ];
 
-// Fallback (B Planı) Koordinatları
 const DEFAULT_LAT = 38.4237; 
 const DEFAULT_LNG = 27.1428;
 
@@ -29,8 +26,7 @@ interface Driver {
   rating?: number; location?: { coordinates: [number, number] };
   companyStatus?: string; vehicleType?: 'kamyonet' | 'kamyon' | 'tir';
   routes?: string; reservationUrl?: string; extraWarnings?: string;
-  city?: string;
-  openingFee?: number; pricePerUnit?: number; minAmount?: number;
+  city?: string; openingFee?: number; pricePerUnit?: number; minAmount?: number;
 }
 
 interface ActionPanelProps {
@@ -39,14 +35,17 @@ interface ActionPanelProps {
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   actionType: string; onActionChange: (type: string) => void;
   drivers: Driver[]; loading: boolean; onReset: () => void;
+  // --- YENİ PROPLAR ---
+  activeDriverId: string | null; // Haritadan tıklanan ID
+  onSelectDriver: (id: string | null) => void; // Panelden tıklanan ID'yi haritaya bildirmek için
 }
 
 export default function ActionPanel({ 
   onSearchLocation, onFilterApply, onStartOrder, 
-  actionType, onActionChange, drivers, loading, onReset 
+  actionType, onActionChange, drivers, loading, onReset,
+  activeDriverId, onSelectDriver
 }: ActionPanelProps) {
   
-  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false); 
   const [isFullHeight, setIsFullHeight] = useState(false);
   const [tariffs, setTariffs] = useState<any[]>([]);
@@ -63,41 +62,48 @@ export default function ActionPanel({
 
   const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const dragStartY = useRef<number | null>(null);
-  
-  // --- 🧭 KONUM BULMA MANTIĞI ---
+  const listRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // --- 🧭 HARİTADAN TIKLANDIĞINDA PANELİ SENKRONİZE ET ---
+  useEffect(() => {
+    if (activeDriverId) {
+      setIsExpanded(true); // Paneli aç
+      // Tıklanan elemana yumuşak geçiş yap
+      setTimeout(() => {
+        itemRefs.current[activeDriverId]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 300);
+    }
+  }, [activeDriverId]);
+
   const findMyLocation = () => {
     setIsLocating(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          onSearchLocation(latitude, longitude);
+          onSearchLocation(position.coords.latitude, position.coords.longitude);
           setIsLocating(false);
         },
-        (error) => {
-          console.warn("⚠️ Konum izni alınamadı, Alsancak kullanılıyor.");
+        () => {
           onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
           setIsLocating(false);
         },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
-    } else {
-      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
-      setIsLocating(false);
     }
   };
 
   useEffect(() => {
-    findMyLocation(); // Açılışta konumu yakala
-    
-    // Tarifeleri çek (Backend 3005 veya Render)
+    findMyLocation();
     fetch(`${API_URL}/tariffs`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setTariffs(data); })
-      .catch(err => console.error("Tarifeler yüklenemedi:", err));
+      .catch(err => console.error(err));
   }, []);
 
-  // --- SÜRÜKLEME (DRAG) MANTIĞI ---
   const handleDragStart = (y: number) => { dragStartY.current = y; };
   const handleDragMove = (y: number) => {
     if (dragStartY.current === null) return;
@@ -108,21 +114,18 @@ export default function ActionPanel({
 
   const resetAllStates = () => {
     setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
-    setSelectedCity(''); setMinRating(0); setSortMode('distance'); onReset();
+    setSelectedCity(''); setMinRating(0); setSortMode('distance'); onReset(); onSelectDriver(null);
   };
 
-  // --- FİYATLANDIRMA HESABI ---
   const getPricing = (driver: Driver) => {
     const matched = tariffs.find(t => t.serviceType === driver.serviceType);
     const opening = driver.openingFee ?? matched?.openingFee ?? 250;
     const unit = driver.pricePerUnit ?? matched?.pricePerUnit ?? 30;
     const min = driver.minAmount ?? matched?.minAmount;
-    const distKm = (typeof driver.distance === 'number') ? driver.distance / 1000 : 0;
-    const calculated = opening + (distKm * unit);
+    const calculated = opening + ((driver.distance / 1000) * unit);
     return { total: min ? Math.max(calculated, min).toFixed(0) : calculated.toFixed(0), opening, unit, min };
   };
 
-  // --- LİSTE FİLTRELEME VE SIRALAMA ---
   const filteredDrivers = useMemo(() => {
     let list = [...safeDrivers];
     if (selectedCity) {
@@ -131,22 +134,13 @@ export default function ActionPanel({
         d.address?.toString().toLocaleLowerCase('tr').includes(selectedCity.toLocaleLowerCase('tr'))
       );
     }
-    if (minRating > 0) list = list.filter(d => (d.rating || 0) >= minRating);
-    
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       if (sortMode === 'price') return Number(getPricing(a).total) - Number(getPricing(b).total);
       return a.distance - b.distance;
     });
     return list;
-  }, [safeDrivers, minRating, sortMode, selectedCity, tariffs]);
-
-  const handleMainClick = (type: 'kurtarici' | 'nakliye' | 'sarj') => {
-    setIsExpanded(true);
-    if (type === 'kurtarici') { setShowTowRow(!showTowRow); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false); onActionChange('kurtarici'); }
-    if (type === 'nakliye') { setShowShipRow(!showShipRow); setShowTowRow(false); setShowChargeRow(false); onActionChange('nakliye'); }
-    if (type === 'sarj') { setShowChargeRow(!showChargeRow); setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); onActionChange('sarj'); }
-  };
+  }, [safeDrivers, sortMode, selectedCity, tariffs]);
 
   return (
     <div 
@@ -158,111 +152,113 @@ export default function ActionPanel({
       onTouchEnd={() => { dragStartY.current = null; }}
       className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-700 rounded-t-[3.5rem] flex flex-col ${
         isFullHeight ? 'h-[92vh]' : isExpanded ? 'h-[68vh]' : 'h-36'
-      } bg-white/10 backdrop-blur-2xl border-t border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
+      } bg-white/10 backdrop-blur-2xl border-t border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] pt-2`}
     >
-      {/* Sürükleme Kulpu */}
       <div onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0">
-        <div className="w-20 h-1.5 bg-gray-400/30 rounded-full shadow-inner"></div>
+        <div className="w-20 h-1.5 bg-gray-400/30 rounded-full"></div>
       </div>
 
-      <div className="px-6 pb-6 flex flex-col h-full overflow-hidden relative">
+      <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
         
-        {/* ANA KATEGORİ BUTONLARI */}
+        {/* ANA KATEGORİLER */}
         <div className="flex gap-3 shrink-0 mb-4">
-          <button onClick={() => handleMainClick('kurtarici')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
-            <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase">Kurtarıcı</span>
+          <button onClick={() => { setIsExpanded(true); setShowTowRow(!showTowRow); setShowShipRow(false); setShowChargeRow(false); onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all ${showTowRow ? 'bg-red-600 text-white scale-105 shadow-xl' : 'bg-white/90 text-red-600 border border-white/20'}`}>
+            <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
-          <button onClick={() => handleMainClick('nakliye')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
-            <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase">Nakliye</span>
+          <button onClick={() => { setIsExpanded(true); setShowShipRow(!showShipRow); setShowTowRow(false); setShowChargeRow(false); onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105 shadow-xl' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
+            <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
-          <button onClick={() => handleMainClick('sarj')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
-            <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase">Şarj</span>
+          <button onClick={() => { setIsExpanded(true); setShowChargeRow(!showChargeRow); setShowTowRow(false); setShowShipRow(false); onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all ${showChargeRow ? 'bg-blue-600 text-white scale-105 shadow-xl' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
+            <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Şarj</span>
           </button>
         </div>
 
-        {/* ALT KATEGORİ SATIRLARI */}
+        {/* ALT SEÇENEKLER */}
         <div className="space-y-3 shrink-0 mb-4">
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
-              <button onClick={() => onFilterApply('kurtarici')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'kurtarici' ? 'bg-red-800 ring-2 ring-red-400' : 'bg-red-600'}`}>Oto Kurtarma</button>
-              <button onClick={() => onFilterApply('vinc')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'vinc' ? 'bg-red-900 ring-2 ring-red-400' : 'bg-red-700'}`}>Vinç</button>
+              <button onClick={() => onFilterApply('kurtarici')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase ${actionType === 'kurtarici' ? 'bg-red-800 ring-2 ring-red-400' : 'bg-red-600'}`}>Oto Kurtarma</button>
+              <button onClick={() => onFilterApply('vinc')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase ${actionType === 'vinc' ? 'bg-red-900 ring-2 ring-red-400' : 'bg-red-700'}`}>Vinç</button>
             </div>
           )}
           {showShipRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
-              <button onClick={() => {setShowTicariRow(false); onFilterApply('nakliye');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'nakliye' && !showTicariRow ? 'bg-purple-900 ring-2 ring-purple-400' : 'bg-purple-600'}`}>Evden Eve</button>
-              <button onClick={() => setShowTicariRow(true)} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${showTicariRow ? 'bg-yellow-600 shadow-inner' : 'bg-yellow-500'}`}>Ticari Araç</button>
+              <button onClick={() => {setShowTicariRow(false); onFilterApply('nakliye');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase ${actionType === 'nakliye' && !showTicariRow ? 'bg-purple-900 ring-2 ring-purple-400' : 'bg-purple-600'}`}>Evden Eve</button>
+              <button onClick={() => setShowTicariRow(true)} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase ${showTicariRow ? 'bg-yellow-600' : 'bg-yellow-500'}`}>Ticari Araç</button>
             </div>
           )}
           {showTicariRow && (
             <div className="flex gap-2 animate-in zoom-in-95">
-              <button onClick={() => onFilterApply('kamyonet')} className={`flex-1 py-4 text-white rounded-2xl flex flex-col items-center gap-1 text-[9px] font-black uppercase shadow-md ${actionType === 'kamyonet' ? 'bg-yellow-700 ring-2 ring-yellow-400' : 'bg-yellow-500'}`}><Truck size={20}/> Kamyonet</button>
-              <button onClick={() => onFilterApply('kamyon')} className={`flex-1 py-4 text-white rounded-2xl flex flex-col items-center gap-1 text-[9px] font-black uppercase shadow-md ${actionType === 'kamyon' ? 'bg-yellow-700 ring-2 ring-yellow-400' : 'bg-yellow-500'}`}><Truck size={20}/> Kamyon</button>
-              <button onClick={() => onFilterApply('tir')} className={`flex-1 py-4 text-white rounded-2xl flex flex-col items-center gap-1 text-[9px] font-black uppercase shadow-md ${actionType === 'tir' ? 'bg-yellow-700 ring-2 ring-yellow-400' : 'bg-yellow-500'}`}><Truck size={20}/> TIR</button>
+              <button onClick={() => onFilterApply('kamyonet')} className={`flex-1 py-4 text-white rounded-2xl flex flex-col items-center gap-1 text-[9px] font-black uppercase ${actionType === 'kamyonet' ? 'bg-yellow-700' : 'bg-yellow-500'}`}><Truck size={20}/> Kamyonet</button>
+              <button onClick={() => onFilterApply('kamyon')} className={`flex-1 py-4 text-white rounded-2xl flex flex-col items-center gap-1 text-[9px] font-black uppercase ${actionType === 'kamyon' ? 'bg-yellow-700' : 'bg-yellow-500'}`}><Truck size={20}/> Kamyon</button>
+              <button onClick={() => onFilterApply('tir')} className={`flex-1 py-4 text-white rounded-2xl flex flex-col items-center gap-1 text-[9px] font-black uppercase ${actionType === 'tir' ? 'bg-yellow-700' : 'bg-yellow-500'}`}><Truck size={20}/> TIR</button>
             </div>
           )}
           {showChargeRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
-              <button onClick={() => onFilterApply('sarj_istasyonu')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 ring-2 ring-blue-300' : 'bg-blue-600'}`}>İstasyon</button>
-              <button onClick={() => onFilterApply('seyyar_sarj')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'seyyar_sarj' ? 'bg-cyan-700 ring-2 ring-cyan-300' : 'bg-cyan-600'}`}>Mobil Şarj</button>
+              <button onClick={() => onFilterApply('sarj_istasyonu')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase ${actionType === 'sarj_istasyonu' ? 'bg-blue-800' : 'bg-blue-600'}`}>İstasyon</button>
+              <button onClick={() => onFilterApply('seyyar_sarj')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase ${actionType === 'seyyar_sarj' ? 'bg-cyan-700' : 'bg-cyan-600'}`}>Mobil Şarj</button>
             </div>
           )}
         </div>
 
-        {/* FİLTRE VE SIRALAMA ÇUBUĞU */}
+        {/* FİLTRELEME ÇUBUĞU */}
         {isExpanded && (
-          <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-1 shrink-0">
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide shrink-0">
               <div className="relative shrink-0">
-                <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="appearance-none bg-black/80 text-white pl-4 pr-8 py-2.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border border-white/20">
-                  <option value="">TÜM TÜRKİYE (İL)</option>
-                  {CITIES.map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
+                <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="appearance-none bg-black text-white pl-4 pr-8 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/20">
+                  <option value="">TÜRKİYE (İL)</option>
+                  {CITIES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
               </div>
-              <button onClick={() => setSortMode('distance')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'distance' ? 'bg-black text-white' : 'bg-white/30 text-gray-700 border-white/20'}`}>EN YAKIN</button>
-              <button onClick={() => setSortMode('price')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'price' ? 'bg-black text-white' : 'bg-white/30 text-gray-700 border-white/20'}`}>EN UCUZ</button>
-              <button onClick={findMyLocation} className={`px-3 py-2.5 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : 'bg-blue-600'}`}>
-                 {isLocating ? <Loader2 size={18} className="animate-spin" /> : <LocateFixed size={18} />}
+              <button onClick={() => setSortMode('distance')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border ${sortMode === 'distance' ? 'bg-black text-white' : 'bg-white/30 text-gray-700'}`}>EN YAKIN</button>
+              <button onClick={() => setSortMode('price')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border ${sortMode === 'price' ? 'bg-black text-white' : 'bg-white/30 text-gray-700'}`}>EN UCUZ</button>
+              <button onClick={findMyLocation} className={`px-3 py-2.5 text-white rounded-xl bg-blue-600 ml-auto transition-all ${isLocating ? 'animate-pulse' : ''}`}>
+                 <LocateFixed size={18} />
               </button>
           </div>
         )}
 
         {/* SÜRÜCÜ LİSTESİ */}
-        <div className="flex-1 overflow-y-auto pr-1 pb-40 custom-scrollbar">
+        <div ref={listRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar">
           {loading ? (
-             <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Çevrendekiler Bulunuyor...</div>
+             <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
           ) : filteredDrivers.length === 0 ? (
-            <div className="text-center py-10 text-gray-600 text-xs font-bold bg-white/40 rounded-2xl backdrop-blur-sm border border-white/30">Sonuç bulunamadı.<br/><button onClick={resetAllStates} className="mt-3 text-blue-700 underline uppercase text-[10px]">Sıfırla</button></div>
+            <div className="text-center py-10 text-gray-400 text-[10px] font-black uppercase">Sonuç Bulunamadı.</div>
           ) : filteredDrivers.map((driver) => {
-            const isSelected = selectedDriverId === driver._id;
+            const isSelected = activeDriverId === driver._id;
             const pricing = getPricing(driver);
-            const isNakliye = driver.serviceType?.includes('nakliye') || ['tir', 'kamyon', 'kamyonet'].includes(driver.serviceType || '');
             const isCharge = driver.serviceType?.includes('sarj');
-            let iconBg = isCharge ? 'bg-blue-600' : isNakliye ? 'bg-purple-600' : 'bg-red-600';
+            let iconBg = isCharge ? 'bg-blue-600' : driver.serviceType?.includes('nakliye') ? 'bg-purple-600' : 'bg-red-600';
 
             return (
-              <div key={driver._id} onClick={() => setSelectedDriverId(isSelected ? null : driver._id)} className={`bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 ${isSelected ? 'border-green-500 scale-[1.02] ring-4 ring-green-500/10' : 'border-white/40'}`}>
+              <div 
+                key={driver._id} 
+                ref={el => { itemRefs.current[driver._id] = el; }}
+                onClick={() => onSelectDriver(isSelected ? null : driver._id)} 
+                className={`bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 ${isSelected ? 'border-green-500 scale-[1.02] ring-4 ring-green-500/10' : 'border-white/40'}`}
+              >
                 <div className="flex justify-between items-start">
-                  <div className="flex gap-4 min-w-0 flex-1">
+                  <div className="flex gap-4 flex-1">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg}`}>
-                       {isCharge ? <Zap color="white"/> : isNakliye ? <Truck color="white"/> : <Wrench color="white"/>}
+                       {isCharge ? <Zap color="white"/> : <Truck color="white"/>}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-black text-gray-900 text-sm truncate uppercase tracking-tighter">
+                    <div>
+                      <h4 className="font-black text-gray-900 text-sm uppercase tracking-tighter">
                         {driver.firstName} {driver.lastName} 
-                        <span className="text-[10px] text-gray-400 ml-1">({driver.companyStatus || 'şahıs'})</span>
                         <div className="flex items-center gap-0.5 mt-0.5">
                           {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
                         </div>
                       </h4>
-                      <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate">
-                        <MapPin size={10} className="text-green-500 shrink-0" /> {driver.address || 'Konum Bilgisi Yok'}
+                      <div className="flex items-center gap-1 mt-1 text-gray-500 text-[10px] font-bold">
+                        <MapPin size={10} className="text-green-500" /> {driver.city || 'Konum Belirtilmedi'}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-right">
                     <div className="text-xl font-black text-gray-900 leading-none">₺{pricing.unit}</div>
-                    <div className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-tighter">Birim Fiyat</div>
+                    <div className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-tighter">Birim Ücret</div>
                   </div>
                 </div>
 
@@ -271,15 +267,11 @@ export default function ActionPanel({
                     <div className="grid grid-cols-3 gap-2">
                         <div className="bg-gray-50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Açılış</div><div className="text-sm font-black">₺{pricing.opening}</div></div>
                         <div className="bg-gray-50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Birim</div><div className="text-sm font-black">₺{pricing.unit}</div></div>
-                        {pricing.min && <div className="bg-green-50 p-3 rounded-2xl text-center border border-green-100"><div className="text-[8px] font-black text-green-600 uppercase mb-1">Min. Tutar</div><div className="text-sm font-black text-green-700">₺{pricing.min}</div></div>}
+                        <div className="bg-green-50 p-3 rounded-2xl text-center border border-green-100"><div className="text-[8px] font-black text-green-600 uppercase mb-1">Mesafe</div><div className="text-sm font-black text-green-700">{(driver.distance/1000).toFixed(1)} km</div></div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-xs active:scale-95 shadow-lg uppercase">Ara</button>
-                      {isCharge ? (
-                         <button onClick={(e) => { e.stopPropagation(); if(driver.reservationUrl) window.open(driver.reservationUrl, '_blank'); }} className="flex-1 bg-blue-600 text-white py-5 rounded-[2rem] font-black text-xs active:scale-95 shadow-lg uppercase">Rezervasyon</button>
-                      ) : (
-                         <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-xs active:scale-95 shadow-lg uppercase">WhatsApp</button>
-                      )}
+                      <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> Sürücüyü Ara</button>
+                      <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button>
                     </div>
                   </div>
                 )}
