@@ -49,14 +49,15 @@ export default function ActionPanel({
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
 
-  // UI State'leri
+  // UI State'leri (Alt Menüler)
   const [showTowRow, setShowTowRow] = useState(false);
   const [showShipRow, setShowShipRow] = useState(false);
   const [showTicariRow, setShowTicariRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
 
   // LAZY LOADING STATE'İ (Sayfalama)
-  const [visibleItems, setVisibleItems] = useState(20); // İlk başta 20 tane göster
+  // İlk açılışta 20 tane gösteriyoruz.
+  const [visibleItems, setVisibleItems] = useState(20);
 
   const [sortMode, setSortMode] = useState<'distance' | 'price' | 'rating'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
@@ -80,7 +81,7 @@ export default function ActionPanel({
 
   // --- 🧭 SENKRONİZASYON 2: Filtre Değişince Sıfırla ---
   useEffect(() => {
-    // Filtre veya sıralama değişince listeyi başa sar
+    // Filtre veya sıralama değişince listeyi başa sar (Reset Lazy Load)
     setVisibleItems(20);
 
     if (!actionType) {
@@ -149,18 +150,6 @@ export default function ActionPanel({
     setSelectedCity(''); setSortMode('distance'); onReset(); onSelectDriver(null);
   };
 
-  // 🔥 KAYDIRMA OLAYI (SCROLL HANDLER)
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Listenin sonuna yaklaştıysa (50px kala)
-    if (scrollHeight - scrollTop <= clientHeight + 50) {
-      // Eğer daha yüklenecek veri varsa 10 tane daha aç
-      if (visibleItems < safeDrivers.length) {
-        setVisibleItems(prev => prev + 10);
-      }
-    }
-  };
-
   const getPricing = (driver: Driver) => {
     const matched = tariffs.find(t => t.serviceType === driver.serviceType);
     const opening = driver.openingFee ?? matched?.openingFee ?? 250;
@@ -186,6 +175,22 @@ export default function ActionPanel({
     return list;
   }, [safeDrivers, sortMode, selectedCity, tariffs]);
 
+  // 🔥 GÜÇLENDİRİLMİŞ SCROLL HANDLER (Infinite Scroll Logic)
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    
+    // Toleransı arttırdık: Listenin sonuna 250px kala yeni veri yükle (Daha akıcı)
+    // Eskiden: clientHeight + 50 idi.
+    if (scrollHeight - scrollTop <= clientHeight + 250) {
+      
+      // Eğer gösterilecek daha fazla sürücü varsa...
+      if (visibleItems < displayDrivers.length) {
+        // Her seferinde 20 tane daha aç (Eskiden 10 idi)
+        setVisibleItems(prev => Math.min(prev + 20, displayDrivers.length));
+      }
+    }
+  };
+
   // Görünür olanları kes (Lazy Load için)
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
 
@@ -197,10 +202,12 @@ export default function ActionPanel({
       onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
       onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
       onTouchEnd={() => { dragStartY.current = null; }}
+      // Tasarım: Şeffaf arka plan, blur efekti ve yuvarlak köşeler korundu.
       className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-700 rounded-t-[3.5rem] flex flex-col ${
         isFullHeight ? 'h-[85vh]' : isExpanded ? 'h-[65vh]' : 'h-36'
       } bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
     >
+      {/* Sürükleme Kulpu */}
       <div onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0">
         <div className="w-20 h-1.5 bg-white/40 rounded-full shadow-sm"></div>
       </div>
@@ -287,7 +294,7 @@ export default function ActionPanel({
         {/* SÜRÜCÜ LİSTESİ - onScroll EKLENDİ */}
         <div 
           className="flex-1 overflow-y-auto pb-40 custom-scrollbar"
-          onScroll={handleScroll} // 🔥 KAYDIRMA TETİKLEYİCİSİ
+          onScroll={handleScroll} // 🔥 KAYDIRMA TETİKLEYİCİSİ BURADA
         >
           {loading ? (
              <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
@@ -323,7 +330,8 @@ export default function ActionPanel({
                        {type.includes('sarj') ? (
                          <Zap color="white" strokeWidth={2.5} /> 
                        ) : (
-                         <Truck color={['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t)) ? 'white' : 'white'} strokeWidth={2.5} /> 
+                         // TİCARİ İKON RENGİ (SARI ZEMİN ÜZERİNE BEYAZ)
+                         <Truck color={'white'} strokeWidth={2.5} /> 
                        )}
                     </div>
                     <div className="min-w-0 flex-1">

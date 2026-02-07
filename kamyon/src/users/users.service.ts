@@ -18,7 +18,7 @@ export class UsersService implements OnModuleInit {
     this.logger.log('🚀 Sistem Hazır: 10x Performans Motoru ve İndeksler Aktif.');
   }
 
-  // --- 1. VERİ OLUŞTURMA ---
+  // --- 1. VERİ OLUŞTURMA (Create/Upsert) ---
   async create(data: any) {
     try {
       let user = await this.userModel.findOne({ email: data.email }).lean();
@@ -72,31 +72,21 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 2. HIZLI YAKINDAKİLER SORGUSU ---
+  // --- 2. HIZLI YAKINDAKİLER SORGUSU (ZOOM OUT FIX) ---
   async findNearby(lat: number, lng: number, type?: string) {
-    // Sadece Aktif Olanlar
     const query: any = { isActive: true };
 
-    // --- GRUPLAMA MANTIĞI ---
+    // Filtreleme Mantığı (ESR Kuralı)
     if (type) {
       if (type === 'sarj') {
-        // "sarj" denirse hem istasyon hem seyyar gelsin
         query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
-      } 
-      else if (type === 'kurtarici') {
-        // Kurtarıcı denirse vinç ve oto kurtarma dahil
+      } else if (type === 'kurtarici') {
         query.serviceType = { $in: ['kurtarici', 'vinc', 'oto_kurtarma'] };
-      } 
-      else if (type === 'nakliye') {
-        // Genel Nakliye denirse hepsi
+      } else if (type === 'nakliye') {
         query.serviceType = { $in: ['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'] };
-      }
-      else if (type === 'ticari') {
-        // Sadece ticari araçlar (Sarı renkler)
+      } else if (type === 'ticari') {
         query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet'] };
-      }
-      else {
-        // Kamyon, Tir, Vinc gibi spesifik bir şey geldiyse direkt onu ara
+      } else {
         query.serviceType = type;
       }
     }
@@ -106,21 +96,20 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          // ZOOM OUT İÇİN: 500 KM Çap
-          $maxDistance: 500000 
+          // 🔥 GÜNCELLEME 1: Çap 2.000 KM yapıldı (Tüm Türkiye'yi kapsar)
+          $maxDistance: 2000000 
         }
       }
     })
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    // 🔥 LİMİT ARTTIRILDI: Ekranda daha çok araç görünsün
-    .limit(500)
+    // 🔥 GÜNCELLEME 2: Limit 2500 yapıldı (Scroll bitmesin diye)
+    .limit(2500)
     .lean()
     .exec();
   }
 
-  // --- 3. MIGRATION (Artık sadece tetiklenirse çalışır, controllerdan sildik) ---
+  // --- 3. MIGRATION ---
   async migrateIsActiveField() {
-    // ...
     return { message: "Bu özellik güvenlik nedeniyle devre dışı bırakıldı." };
   }
 
@@ -129,7 +118,6 @@ export class UsersService implements OnModuleInit {
   }
 
   async deleteAll() {
-    // Güvenlik: Admin olmayanları sil
     await this.profileModel.deleteMany({});
     await this.userModel.deleteMany({ role: { $ne: 'admin' } });
     return { status: 'DELETED' };

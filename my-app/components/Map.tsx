@@ -42,7 +42,7 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. RENK VE İKON YAPILANDIRMASI (MEVCUT TASARIM) ---
+// --- 2. RENK VE İKON YAPILANDIRMASI ---
 const SERVICE_CONFIG: any = {
   kurtarici: { color: '#dc2626', Icon: Wrench },
   vinc: { color: '#991b1b', Icon: Construction },
@@ -56,11 +56,13 @@ const SERVICE_CONFIG: any = {
   other: { color: '#6b7280', Icon: Truck }
 };
 
-// --- 3. DİNAMİK İKON VE KÜME TASARIMLARI (MEVCUT TASARIM) ---
+// --- 3. DİNAMİK İKON TASARIMI (BÜYÜTÜLDÜ 🔍) ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  // Aktifse biraz daha büyük göster
-  const baseSize = Math.max(14, Math.min(40, isActive ? zoom * 2.2 : zoom * 1.8)); 
+  
+  // 🔥 İKON BOYUTLARI 1.1x BÜYÜTÜLDÜ
+  // Eski: 14/40 -> Yeni: 18/50
+  const baseSize = Math.max(18, Math.min(50, isActive ? zoom * 2.5 : zoom * 2.0)); 
   const innerSize = baseSize * 0.55;
 
   const iconHtml = renderToStaticMarkup(
@@ -76,8 +78,8 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
         height: ${baseSize}px; 
         border-radius: 50% 50% 50% 0; 
         transform: rotate(-45deg); 
-        border: ${zoom > 12 ? '3px' : '1px'} solid white; 
-        box-shadow: ${isActive ? '0 0 20px rgba(34, 197, 94, 0.6)' : '0 4px 12px rgba(0,0,0,0.3)'}; 
+        border: ${zoom > 12 ? '3px' : '2px'} solid white; 
+        box-shadow: ${isActive ? '0 0 25px rgba(34, 197, 94, 0.7)' : '0 6px 14px rgba(0,0,0,0.35)'}; 
         display: flex; 
         align-items: center; 
         justify-content: center;
@@ -89,10 +91,11 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
     `,
     iconSize: [baseSize, baseSize], 
     iconAnchor: [baseSize / 2, baseSize], 
-    popupAnchor: [0, -baseSize] // Popup tam tepede açılır
+    popupAnchor: [0, -baseSize]
   });
 };
 
+// 🔥 CLUSTER (KÜME) İKONU DA BÜYÜTÜLDÜ
 const createClusterIcon = (cluster: any, type: string) => {
   const count = cluster.getChildCount();
   const config = SERVICE_CONFIG[type] || SERVICE_CONFIG.other;
@@ -101,22 +104,22 @@ const createClusterIcon = (cluster: any, type: string) => {
     html: `
       <div style="
         background-color: ${config.color}; 
-        width: 40px; height: 40px; 
+        width: 48px; height: 48px; 
         border-radius: 50%; 
-        border: 3px solid white; 
+        border: 4px solid white; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
         color: white; 
         font-weight: 900; 
-        font-size: 12px; 
-        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        font-size: 14px; 
+        box-shadow: 0 8px 20px rgba(0,0,0,0.4);
         opacity: 0.98;">
         ${count}
       </div>
     `,
     className: 'custom-cluster-icon',
-    iconSize: [40, 40],
+    iconSize: [48, 48],
   });
 };
 
@@ -141,17 +144,23 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: {
   return null;
 }
 
-// Harita odağını değiştiren kontrolcü (Senkronizasyonun Kalbi)
+// 🔥 ZOOM OUT HATASINI ÇÖZEN AKILLI KONTROLCÜ
 function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
   const map = useMap();
-  
+  const prevCoordsRef = useRef<string>(""); // Önceki koordinatı hatırla
+
   useEffect(() => {
     if (activeDriverCoords) {
-      // Bir sürücü seçildiğinde oraya yumuşak uçuş yap ve zoomla
+      // Sürücü seçildiyse oraya kesin git
       map.flyTo(activeDriverCoords, 16, { duration: 1.5 });
     } else if (coords) {
-      // Genel arama yapıldığında oraya git
-      map.flyTo(coords, 13, { duration: 2, animate: true });
+      // Eğer arama koordinatı değiştiyse ve eskisiyle aynı değilse git.
+      // Bu sayede zoom out yapınca veya haritayı kaydırınca tekrar merkeze atmaz.
+      const coordsStr = coords.toString();
+      if (prevCoordsRef.current !== coordsStr) {
+        map.flyTo(coords, 13, { duration: 2, animate: true });
+        prevCoordsRef.current = coordsStr;
+      }
     }
   }, [coords, activeDriverCoords, map]);
   
@@ -163,22 +172,18 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
   const [currentZoom, setCurrentZoom] = useState(13);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
-  // Sürücüleri tiplerine göre grupla (Cluster renkleri için)
   const groupedDrivers = useMemo(() => {
     return drivers.reduce((acc: any, driver: any) => {
       const type = driver.serviceType || 'other';
-      // Özel tip kontrolü (örn: kamyon, tir -> nakliye rengi verebiliriz ama şimdilik config'den çekiyor)
       if (!acc[type]) acc[type] = [];
       acc[type].push(driver);
       return acc;
     }, {});
   }, [drivers]);
 
-  // Aktif sürücünün koordinatlarını hesapla
   const activeDriverCoords = useMemo(() => {
     const active = drivers.find(d => d._id === activeDriverId);
     if (active && active.location?.coordinates) {
-      // MongoDB [lng, lat] -> Leaflet [lat, lng]
       return [active.location.coordinates[1], active.location.coordinates[0]] as [number, number];
     }
     return null;
@@ -197,7 +202,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         
-        {/* Harita Olayları ve Kontrolcüsü */}
         <MapEvents 
           onZoomChange={setCurrentZoom} 
           onMapMove={onMapMove} 
@@ -228,7 +232,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
             spiderfyOnMaxZoom={true}
           >
             {groupedDrivers[type].map((driver: Driver) => {
-              // Koordinat dönüşümü
               const lng = driver.location.coordinates[0];
               const lat = driver.location.coordinates[1];
               
@@ -241,17 +244,14 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   position={[lat, lng]}
                   ref={(el) => { 
                     markerRefs.current[driver._id] = el; 
-                    if (el && isActive) el.openPopup(); // Aktifse popup aç
+                    if (el && isActive) el.openPopup(); 
                   }}
                   icon={createCustomIcon(driver.serviceType, currentZoom, isActive)}
                   eventHandlers={{
-                    click: () => {
-                      onSelectDriver(driver._id); // Pine tıklandığında paneli güncelle
-                    }
+                    click: () => onSelectDriver(driver._id) 
                   }}
                 >
                   <Popup className="custom-popup" minWidth={240}>
-                     {/* POPUP İÇERİĞİ MEVCUT KODLA AYNI */}
                     <div className="p-1 font-sans">
                       <div className="mb-3">
                         <div className="flex justify-between items-start mb-1">
@@ -264,7 +264,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                         </div>
                         <div className="flex items-center gap-0.5 mt-1">
                           {[1, 2, 3, 4, 5].map((s) => (
-                            <Star key={s} size={10} className={`${s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} />
+                            <Star key={s} size={10} className={`${s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>`} />
                           ))}
                         </div>
                       </div>
