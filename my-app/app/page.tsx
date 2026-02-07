@@ -12,6 +12,9 @@ import ChatWidget from '../components/ChatWidget';
 import ProviderPanel from '../components/provider/ProviderPanel';
 import AuthModal from '../components/AuthModal';
 
+// 👇 1. LOADER IMPORT EDİLDİ 👇
+import ScanningLoader from '../components/ScanningLoader'; 
+
 // --- MODALLAR ---
 import RatingModal from '../components/RatingModal';
 import ProfileModal from '../components/ProfileModal';
@@ -21,12 +24,7 @@ import CustomerGuide from '../components/CustomerGuide';
 // Harita Bileşeni (SSR devre dışı)
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center">
-      <div className="w-12 h-12 border-4 border-gray-700 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
-      <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Uydu Bağlantısı Kuruluyor...</p>
-    </div>
-  )
+  loading: () => <ScanningLoader /> // Harita yüklenirken de bunu göster
 });
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
@@ -56,10 +54,13 @@ export default function Home() {
 
   // 🌍 KONUM VE VERİ
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
-  const [allDrivers, setAllDrivers] = useState<any[]>([]); // Ham veri
-  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); // Ekranda görünenler
-  const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [allDrivers, setAllDrivers] = useState<any[]>([]); 
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); 
+  const [loadingDrivers, setLoadingDrivers] = useState(true); // İlk başta yükleniyor
   
+  // 👇 2. İLK YÜKLEME STATE'İ EKLENDİ 👇
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+
   // 🎯 AKSİYON VE SENKRONİZASYON
   const [actionType, setActionType] = useState<string>(''); 
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export default function Home() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. BAŞLANGIÇ AYARLARI
+  // BAŞLANGIÇ AYARLARI
   useEffect(() => {
     let storedId = localStorage.getItem('transporter_device_id');
     if (!storedId) {
@@ -100,33 +101,14 @@ export default function Home() {
     }
   }, []);
 
-  // 2. İSTEMCİ TARAFLI FİLTRELEME
-  const applyClientSideFilter = (type: string, sourceData: any[]) => {
-    if (!type) {
-      setFilteredDrivers(sourceData);
-      return;
-    }
-    // Backend zaten filtreliyor ama ani geçişler için client-side filtre de tutuyoruz
-    const filtered = sourceData.filter(d => {
-      const sType = d.serviceType || '';
-      if (type === 'kurtarici') return sType.includes('kurtarici') || sType.includes('vinc');
-      if (type === 'nakliye') return sType.includes('nakliye') || sType.includes('kamyon') || sType.includes('tir');
-      if (type === 'sarj') return sType.includes('sarj');
-      return sType.includes(type);
-    });
-    setFilteredDrivers(filtered);
-  };
-
-  // 3. VERİ ÇEKME MANTIĞI (Backend ile Zoom Out uyumlu)
+  // 3. VERİ ÇEKME MANTIĞI
   const fetchDrivers = useCallback((lat: number, lng: number, type?: string) => {
     setLoadingDrivers(true);
 
-    // Önceki isteği iptal et (Performans)
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // URL Oluşturma
     const url = new URL(`${API_URL}/users/nearby`);
     url.searchParams.append('lat', lat.toString());
     url.searchParams.append('lng', lng.toString());
@@ -137,7 +119,6 @@ export default function Home() {
       .then(data => {
         const cleanData = normalizeDriverData(data);
         setAllDrivers(cleanData);
-        // Gelen veri zaten backend'den filtrelenmiş geliyor, direkt basıyoruz.
         setFilteredDrivers(cleanData);
       })
       .catch(err => {
@@ -145,10 +126,14 @@ export default function Home() {
       })
       .finally(() => {
         setLoadingDrivers(false);
+        // 👇 3. YÜKLEME BİTİNCE RADAR EKRANINI KAPAT 👇
+        setTimeout(() => {
+           setIsFirstLoad(false);
+        }, 1500); // 1.5 saniye sonra kapat ki kullanıcı görsün
       });
   }, []);
 
-  // 4. KONUM BULMA (İlk Açılış)
+  // 4. KONUM BULMA
   useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -166,28 +151,42 @@ export default function Home() {
     } else {
       fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType);
     }
-  }, []); // Sadece ilk açılışta
+  }, []); 
 
   // --- HANDLER'LAR ---
+  
+  // İstemci Tarafı Filtreleme (Yedek)
+  const applyClientSideFilter = (type: string, sourceData: any[]) => {
+      if (!type) {
+        setFilteredDrivers(sourceData);
+        return;
+      }
+      const filtered = sourceData.filter(d => {
+        const sType = d.serviceType || '';
+        if (type === 'kurtarici') return sType.includes('kurtarici') || sType.includes('vinc');
+        if (type === 'nakliye') return sType.includes('nakliye') || sType.includes('kamyon') || sType.includes('tir');
+        if (type === 'sarj') return sType.includes('sarj');
+        return sType.includes(type);
+      });
+      setFilteredDrivers(filtered);
+  };
 
-  // Filtre Değişimi
   const handleFilterChange = (type: string) => {
     setActionType(type);
     setActiveDriverId(null);
-    // Filtre değişince mevcut koordinatta yeni arama yap
+    
+    // Hem client-side filtre uygula (hızlı tepki için)
+    applyClientSideFilter(type, allDrivers);
+
+    // Hem de backend'den taze veri çek (yeni konum için gerekirse)
     if (searchCoords) {
       fetchDrivers(searchCoords[0], searchCoords[1], type);
     }
   };
 
-  // 🔥 HARİTA KAYDIRMA (ZOOM OUT DESTEĞİ)
   const handleMapMove = (lat: number, lng: number) => {
-    // Debounce: Kullanıcı kaydırmayı bitirince istek at (500ms)
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    
     debounceTimerRef.current = setTimeout(() => {
-      // Koordinatı güncelleme, sadece veriyi yenile
-      // setSearchCoords([lat, lng]); // Bunu açarsak marker da hareket eder, gerek yok.
       fetchDrivers(lat, lng, actionType);
     }, 500);
   };
@@ -199,7 +198,6 @@ export default function Home() {
       status: 'IN_PROGRESS',
       startTime: new Date()
     });
-    
     try {
       await fetch(`${API_URL}/orders`, {
         method: 'POST',
@@ -228,46 +226,42 @@ export default function Home() {
     if (role === 'customer') setShowCustomerGuide(true);
   };
 
-  // --- RENDERING ---
-
   if (!userRole) return <AuthModal onRoleSelect={handleRoleSelect} />;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-white">
-      {/* 1. HARİTA (Senkronize) */}
+      
+      {/* 👇 4. RADAR EKRANI BURADA GÖSTERİLİYOR 👇 */}
+      {isFirstLoad && <ScanningLoader />}
+
       <MapComponent 
         searchCoords={searchCoords} 
         drivers={filteredDrivers} 
         onStartOrder={handleStartOrder} 
-        // 👇 ÇİFT YÖNLÜ BAĞLANTI BURADA KURULDU 👇
         activeDriverId={activeDriverId} 
-        onSelectDriver={setActiveDriverId} // Pin'e basınca state güncelle
-        onMapMove={handleMapMove} // Kaydırınca yeni veri çek
-        onMapClick={() => setActiveDriverId(null)} // Boşluğa basınca seçimi kaldır
+        onSelectDriver={setActiveDriverId} 
+        onMapMove={handleMapMove} 
+        onMapClick={() => setActiveDriverId(null)} 
       />
       
-      {/* 2. CHATBOT */}
       <ChatWidget 
         isOpen={isChatOpen} 
         onToggle={setChatOpen} 
         contextData={{ drivers: allDrivers, userLocation: searchCoords }}
       />
       
-      {/* 3. ÜST MENU */}
       <TopBar 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         onProfileClick={() => setShowProfileModal(true)} 
         sidebarOpen={sidebarOpen} 
       />
       
-      {/* 4. SİPARİŞ PANELİ */}
       <ActiveOrderPanel 
         activeOrder={activeOrder} 
         onComplete={() => { setActiveOrder(null); setShowRatingModal(true); }} 
         onCancel={() => setActiveOrder(null)} 
       />
 
-      {/* 5. AKSİYON PANELİ (Senkronize) */}
       {!activeOrder && userRole === 'customer' && (
         <ActionPanel 
           drivers={filteredDrivers} 
@@ -279,19 +273,17 @@ export default function Home() {
             setSearchCoords([lat, lng]);
             fetchDrivers(lat, lng, actionType);
           }}
-          // 👇 ÇİFT YÖNLÜ BAĞLANTI BURADA DA VAR 👇
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId} 
           onStartOrder={handleStartOrder}
           onReset={() => {
             setActionType('');
-            handleFilterChange(''); // Hepsini getir
+            handleFilterChange('');
             setActiveDriverId(null);
           }}
         />
       )}
 
-      {/* 6. KURUMSAL PANEL */}
       {userRole === 'provider' && currentProviderId && (
         <ProviderPanel 
           providerId={currentProviderId} 
@@ -301,7 +293,6 @@ export default function Home() {
         /> 
       )}
 
-      {/* 7. YAN MENÜ */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
@@ -312,7 +303,6 @@ export default function Home() {
         onReportClick={(id) => { setReportOrderId(id); setShowReportModal(true); setSidebarOpen(false); }}
       />
 
-      {/* Modallar */}
       <RatingModal isOpen={showRatingModal} onClose={() => setShowRatingModal(false)} onRate={() => {}} />
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} orderId={reportOrderId} />
