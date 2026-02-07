@@ -72,20 +72,34 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 2. HIZLI YAKINDAKİLER SORGUSU (3000 KM & 3000 LİMİT) ---
+  // --- 2. HIZLI YAKINDAKİLER SORGUSU (DEVASA ÇAP & LİMİT) ---
   async findNearby(lat: number, lng: number, type?: string) {
     const query: any = { isActive: true };
 
+    // 🔥 KATEGORİ AYRIŞTIRMASI (Backend tarafında da filtreyi sıkılaştırıyoruz)
     if (type) {
       if (type === 'sarj') {
+        // Şarj için hem istasyon hem seyyar
         query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
-      } else if (type === 'kurtarici') {
-        query.serviceType = { $in: ['kurtarici', 'vinc', 'oto_kurtarma'] };
-      } else if (type === 'nakliye') {
-        query.serviceType = { $in: ['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'] };
-      } else if (type === 'ticari') {
+      } 
+      else if (type === 'kurtarici') {
+        // Sadece kurtarıcı ve oto kurtarma (Vinç YOK)
+        query.serviceType = { $in: ['kurtarici', 'oto_kurtarma'] };
+      } 
+      else if (type === 'vinc') {
+        // Sadece Vinç
+        query.serviceType = 'vinc';
+      }
+      else if (type === 'nakliye') {
+        // Sadece Nakliye ve Evden Eve (Tır/Kamyon YOK)
+        query.serviceType = { $in: ['nakliye', 'evden_eve', 'evden_eve_nakliyat'] };
+      } 
+      else if (type === 'ticari') {
+        // Sadece Ticari Araçlar
         query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet'] };
-      } else {
+      } 
+      else {
+        // Spesifik bir şey geldiyse (örn: 'tir') direkt onu ara
         query.serviceType = type;
       }
     }
@@ -95,24 +109,20 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          $maxDistance: 3000000 // 3000 KM
+          // 🔥 5.000 KM (Tüm Türkiye + Avrupa'nın Yarısı)
+          $maxDistance: 5000000 
         }
       }
     })
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    .limit(3000) // 3000 Araç Limiti
+    // 🔥 LİMİT 10.000 (Tüm datayı çeksin, Frontend filtrelesin)
+    .limit(10000) 
     .lean()
     .exec();
   }
 
-  async migrateIsActiveField() {
-    return { message: "Devre dışı." };
-  }
-
-  async findAll() {
-    return this.profileModel.find().lean().exec();
-  }
-
+  async migrateIsActiveField() { return { message: "Devre dışı." }; }
+  async findAll() { return this.profileModel.find().lean().exec(); }
   async deleteAll() {
     await this.profileModel.deleteMany({});
     await this.userModel.deleteMany({ role: { $ne: 'admin' } });

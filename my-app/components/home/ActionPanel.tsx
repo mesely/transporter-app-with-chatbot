@@ -3,7 +3,7 @@
 import { 
   Truck, Zap, Star, MapPin, Wrench, 
   ChevronDown, LocateFixed, Loader2, 
-  MessageCircle, Phone, ArrowUp
+  MessageCircle, Phone
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
@@ -44,38 +44,33 @@ export default function ActionPanel({
   activeDriverId, onSelectDriver
 }: ActionPanelProps) {
   
-  // Panel Boyutlandırma State'leri
-  const [isExpanded, setIsExpanded] = useState(false); // Orta Boy
-  const [isFullHeight, setIsFullHeight] = useState(false); // Tam Boy
-  
+  const [isExpanded, setIsExpanded] = useState(false); 
+  const [isFullHeight, setIsFullHeight] = useState(false); 
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
 
-  // UI State'leri (Alt Menüler)
+  // UI State'leri
   const [showTowRow, setShowTowRow] = useState(false);
   const [showShipRow, setShowShipRow] = useState(false);
   const [showTicariRow, setShowTicariRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
 
-  // LAZY LOADING
+  // Lazy Loading
   const [visibleItems, setVisibleItems] = useState(20);
 
-  // Sıralama ve Filtreleme
-  const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance'); // 'price' kaldırıldı
+  // Filtreler
+  const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
   
-  // Otomatik şehir seçimi için flag
   const hasAutoSelectedCity = useRef(false);
-
   const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // --- 1. OTOMATİK ŞEHİR SEÇİMİ ---
+  // 1. OTOMATİK ŞEHİR SEÇİMİ (Veri ilk geldiğinde)
   useEffect(() => {
-    // Eğer veri geldiyse ve henüz şehir seçilmediyse
     if (safeDrivers.length > 0 && !selectedCity && !hasAutoSelectedCity.current) {
-      const nearestCity = safeDrivers[0].city; // Listenin başındaki en yakındır
+      const nearestCity = safeDrivers[0].city;
       if (nearestCity && CITIES.some(c => c.toLowerCase() === nearestCity.toLowerCase())) {
         setSelectedCity(nearestCity.toUpperCase());
         hasAutoSelectedCity.current = true;
@@ -83,44 +78,31 @@ export default function ActionPanel({
     }
   }, [safeDrivers, selectedCity]);
 
-  // --- 2. HARİTADAN SEÇİLİNCE ODAKLA VE AÇ ---
+  // 2. HARİTA ODAKLAMA
   useEffect(() => {
     if (activeDriverId) {
-      setIsExpanded(true); // Seçilince orta boya getir
-      // Biraz bekle sonra kaydır
+      setIsExpanded(true);
       setTimeout(() => {
-        itemRefs.current[activeDriverId]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
+        itemRefs.current[activeDriverId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
     } else {
-      // Haritada boşluğa tıklanınca panel küçülsün
-      // Ama eğer kategori seçiliyse (actionType varsa) tamamen kapanmasın, orta boy kalsın veya küçülsün
-      // İsteğe göre: Boşluğa tıklayınca en alta insin
-      if(!actionType) {
-          setIsExpanded(false);
-          setIsFullHeight(false);
-      }
+      setIsFullHeight(false);
+      setIsExpanded(false);
     }
-  }, [activeDriverId, actionType]);
+  }, [activeDriverId]);
 
-  // --- 3. KATEGORİ DEĞİŞİNCE PANELİ AÇ ---
+  // 3. KATEGORİ SEÇİMİ VE PANEL AÇILMASI
   useEffect(() => {
     setVisibleItems(20);
 
     if (!actionType) {
-        // Hiçbir şey seçili değilse kapat
         setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
-        setIsExpanded(false);
-        setIsFullHeight(false);
+        setIsExpanded(false); setIsFullHeight(false);
         return;
     }
 
-    // Bir şey seçildiyse en azından orta boya getir
     setIsExpanded(true); 
 
-    // Alt menüleri ayarla
     if (['kurtarici', 'vinc', 'oto_kurtarma'].some(t => actionType.includes(t))) {
         setShowTowRow(true); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
     } else if (['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'].some(t => actionType.includes(t))) {
@@ -153,7 +135,6 @@ export default function ActionPanel({
   };
 
   useEffect(() => {
-    // İlk açılışta konum bul
     findMyLocation();
     fetch(`${API_URL}/tariffs`)
       .then(res => res.json())
@@ -161,42 +142,19 @@ export default function ActionPanel({
       .catch(err => console.error(err));
   }, []);
 
-  // --- 4. GELİŞMİŞ PANEL BOYUTLANDIRMA (DRAG LOGIC) ---
+  // 4. PANEL SÜRÜKLEME (DRAG)
   const handleDragStart = (y: number) => { dragStartY.current = y; };
-  
   const handleDragMove = (y: number) => {
     if (dragStartY.current === null) return;
-    const diff = dragStartY.current - y; // Yukarı doğru pozitif, aşağı negatif
-
-    // YUKARI SÜRÜKLEME
+    const diff = dragStartY.current - y;
     if (diff > 50) { 
-        if (!isExpanded) {
-            setIsExpanded(true); // Küçük -> Orta
-            dragStartY.current = y; // Resetle ki birden zıplamasın
-        } else if (!isFullHeight) {
-            setIsFullHeight(true); // Orta -> Tam
-        }
+        if (!isExpanded) { setIsExpanded(true); dragStartY.current = y; } 
+        else if (!isFullHeight) { setIsFullHeight(true); }
     }
-    
-    // AŞAĞI SÜRÜKLEME
     if (diff < -50) { 
-        if (isFullHeight) {
-            setIsFullHeight(false); // Tam -> Orta
-            dragStartY.current = y;
-        } else if (isExpanded) {
-            setIsExpanded(false); // Orta -> Küçük
-            // Eğer kategori seçiliyse resetle
-            resetAllStates();
-        }
+        if (isFullHeight) { setIsFullHeight(false); dragStartY.current = y; } 
+        else if (isExpanded) { setIsExpanded(false); }
     }
-  };
-
-  const resetAllStates = () => {
-    setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
-    setSelectedCity(''); 
-    setSortMode('distance'); 
-    onReset(); 
-    onSelectDriver(null);
   };
 
   const getPricing = (driver: Driver) => {
@@ -208,7 +166,7 @@ export default function ActionPanel({
     return { total: min ? Math.max(calculated, min).toFixed(0) : calculated.toFixed(0), opening, unit, min };
   };
 
-  // --- 5. LİSTE FİLTRELEME VE KARIŞIKLIK ÇÖZÜMÜ ---
+  // 🔥 5. KATI FİLTRELEME MANTIĞI (SORUNLARI ÇÖZEN YER) 🔥
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
 
@@ -220,32 +178,58 @@ export default function ActionPanel({
       );
     }
 
-    // 🔥 KATI KATEGORİ FİLTRESİ (Frontend Side Strict Filter)
-    // Backend bazen karışık gönderebilir, burada temizliyoruz.
-    if (actionType === 'nakliye' || actionType === 'evden_eve') {
-        // Nakliye seçiliyse Tır/Kamyon/Kamyonet GÖSTERME
-        list = list.filter(d => !['kamyon', 'tir', 'kamyonet'].some(t => d.serviceType?.includes(t)));
-    } else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => actionType === t)) {
-        // Ticari seçiliyse Evden Eve GÖSTERME (Genelde sorun olmaz ama garanti olsun)
+    // KATEGORİ FİLTRESİ
+    if (actionType) {
+        // A. NAKLİYE (Evden Eve) -> Kamyon/Tır GÖSTERME
+        if (actionType === 'nakliye' || actionType === 'evden_eve') {
+            list = list.filter(d => {
+                const type = d.serviceType || '';
+                return (type.includes('nakliye') || type.includes('evden')) && 
+                       !type.includes('kamyon') && !type.includes('tir') && !type.includes('kamyonet');
+            });
+        }
+        // B. VİNÇ -> Oto Kurtarma GÖSTERME
+        else if (actionType === 'vinc') {
+            list = list.filter(d => d.serviceType === 'vinc');
+        }
+        // C. OTO KURTARMA -> Vinç GÖSTERME
+        else if (actionType === 'kurtarici' || actionType === 'oto_kurtarma') {
+            list = list.filter(d => (d.serviceType?.includes('kurtarici') || d.serviceType?.includes('oto_kurtarma')) && !d.serviceType?.includes('vinc'));
+        }
+        // D. TİCARİLER
+        else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => actionType === t)) {
+            if (actionType === 'ticari') {
+                 // Ticari genel kategori, kamyon/tir/kamyonet hepsi gelsin
+                 list = list.filter(d => ['kamyon', 'tir', 'kamyonet'].some(t => d.serviceType?.includes(t)));
+            } else {
+                 // Sadece seçileni getir (Sadece tır, sadece kamyon)
+                 list = list.filter(d => d.serviceType?.includes(actionType));
+            }
+        }
+        // E. ŞARJ
+        else if (actionType.includes('sarj')) {
+             if (actionType === 'sarj') {
+                list = list.filter(d => d.serviceType?.includes('sarj'));
+             } else {
+                list = list.filter(d => d.serviceType === actionType);
+             }
+        }
     }
 
     // SIRALAMA
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-      // Fiyat sıralaması kaldırıldı, varsayılan mesafe
       return a.distance - b.distance;
     });
     
     return list;
   }, [safeDrivers, sortMode, selectedCity, tariffs, actionType]);
 
-  // --- 6. SCROLL HANDLER (YENİLENMİŞ) ---
+  // SCROLL HANDLER
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Tolerans 250px
-    if (scrollHeight - scrollTop <= clientHeight + 250) {
+    if (scrollHeight - scrollTop <= clientHeight + 300) {
       if (visibleItems < displayDrivers.length) {
-        // Daha hızlı yüklenmesi için 50'şer arttır
         setVisibleItems(prev => Math.min(prev + 50, displayDrivers.length));
       }
     }
@@ -253,10 +237,9 @@ export default function ActionPanel({
 
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
 
-  // Panel Yüksekliği Hesaplama
-  let heightClass = 'h-36'; // Kapalı
-  if (isFullHeight) heightClass = 'h-[85vh]';
-  else if (isExpanded) heightClass = 'h-[55vh]'; // Orta boy
+  let heightClass = 'h-36';
+  if (isFullHeight) heightClass = 'h-[90vh]';
+  else if (isExpanded) heightClass = 'h-[55vh]';
 
   return (
     <div 
@@ -268,7 +251,6 @@ export default function ActionPanel({
       onTouchEnd={() => { dragStartY.current = null; }}
       className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-500 ease-out rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
     >
-      {/* Kulp */}
       <div onClick={() => {
           if(isFullHeight) setIsFullHeight(false);
           else if(isExpanded) setIsExpanded(false);
@@ -278,39 +260,18 @@ export default function ActionPanel({
       </div>
 
       <div className="px-6 pb-6 flex flex-col h-full overflow-hidden relative">
-        
-        {/* ANA KATEGORİLER */}
         <div className="flex gap-3 shrink-0 mb-4">
-          <button onClick={() => { 
-            setIsExpanded(true); 
-            setShowShipRow(false); setShowChargeRow(false); setShowTicariRow(false);
-            setShowTowRow(!showTowRow); 
-            onActionChange('kurtarici'); 
-          }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
+          <button onClick={() => { setIsExpanded(true); setShowShipRow(false); setShowChargeRow(false); setShowTicariRow(false); setShowTowRow(!showTowRow); onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
             <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
-          
-          <button onClick={() => { 
-            setIsExpanded(true); 
-            setShowTowRow(false); setShowChargeRow(false); setShowTicariRow(false);
-            setShowShipRow(!showShipRow); 
-            // Varsayılan olarak nakliye'yi aç ama ticariyi gösterme
-            onActionChange('nakliye'); 
-          }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
+          <button onClick={() => { setIsExpanded(true); setShowTowRow(false); setShowChargeRow(false); setShowTicariRow(false); setShowShipRow(!showShipRow); onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
-          
-          <button onClick={() => { 
-            setIsExpanded(true); 
-            setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false);
-            setShowChargeRow(!showChargeRow); 
-            onActionChange('sarj'); 
-          }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
+          <button onClick={() => { setIsExpanded(true); setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(!showChargeRow); onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
             <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Şarj</span>
           </button>
         </div>
 
-        {/* ALT SEÇENEKLER */}
         <div className="space-y-3 shrink-0 mb-4">
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
@@ -339,7 +300,6 @@ export default function ActionPanel({
           )}
         </div>
 
-        {/* FİLTRE VE SIRALAMA (EN UCUZ KALDIRILDI) */}
         {isExpanded && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-1 shrink-0">
               <div className="relative shrink-0">
@@ -357,11 +317,7 @@ export default function ActionPanel({
           </div>
         )}
 
-        {/* SÜRÜCÜ LİSTESİ */}
-        <div 
-          className="flex-1 overflow-y-auto pb-40 custom-scrollbar"
-          onScroll={handleScroll}
-        >
+        <div className="flex-1 overflow-y-auto pb-40 custom-scrollbar" onScroll={handleScroll}>
           {loading ? (
              <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
           ) : renderedDrivers.length === 0 ? (
@@ -369,46 +325,23 @@ export default function ActionPanel({
           ) : renderedDrivers.map((driver) => {
             const isSelected = activeDriverId === driver._id;
             const pricing = getPricing(driver);
-            
             const type = driver.serviceType || '';
             let iconBg = 'bg-gray-600'; 
-
-            if (type.includes('sarj')) {
-                iconBg = 'bg-blue-600'; 
-            } else if (type.includes('kurtar') || type.includes('vinc')) {
-                iconBg = 'bg-red-600'; 
-            } else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t))) {
-                iconBg = 'bg-yellow-500'; 
-            } else if (type.includes('nakliye') || type.includes('evden')) {
-                iconBg = 'bg-purple-600'; 
-            }
+            if (type.includes('sarj')) iconBg = 'bg-blue-600'; 
+            else if (type.includes('kurtar') || type.includes('vinc')) iconBg = 'bg-red-600'; 
+            else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t))) iconBg = 'bg-yellow-500'; 
+            else if (type.includes('nakliye') || type.includes('evden')) iconBg = 'bg-purple-600'; 
 
             return (
-              <div 
-                key={driver._id} 
-                ref={el => { itemRefs.current[driver._id] = el; }}
-                onClick={() => onSelectDriver(isSelected ? null : driver._id)} 
-                className={`bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 ${isSelected ? 'border-green-500 scale-[1.02] ring-4 ring-green-500/10' : 'border-white/40'}`}
-              >
+              <div key={driver._id} ref={el => { itemRefs.current[driver._id] = el; }} onClick={() => onSelectDriver(isSelected ? null : driver._id)} className={`bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 ${isSelected ? 'border-green-500 scale-[1.02] ring-4 ring-green-500/10' : 'border-white/40'}`}>
                 <div className="flex justify-between items-start">
                   <div className="flex gap-4 flex-1 min-w-0">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg}`}>
-                       {type.includes('sarj') ? (
-                         <Zap color="white" strokeWidth={2.5} /> 
-                       ) : (
-                         <Truck color={['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t)) ? 'white' : 'white'} strokeWidth={2.5} /> 
-                       )}
+                       {type.includes('sarj') ? <Zap color="white" strokeWidth={2.5} /> : <Truck color="white" strokeWidth={2.5} />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-black text-gray-900 text-sm uppercase tracking-tighter truncate">
-                        {driver.firstName} {driver.lastName} 
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                          {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
-                        </div>
-                      </h4>
-                      <div className="flex items-center gap-1 mt-1 text-gray-500 text-[10px] font-bold truncate">
-                        <MapPin size={10} className="text-green-500 shrink-0" /> {driver.city || 'Konum Belirtilmedi'}
-                      </div>
+                      <h4 className="font-black text-gray-900 text-sm uppercase tracking-tighter truncate">{driver.firstName} {driver.lastName} <span className="flex items-center gap-0.5 mt-0.5">{[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}</span></h4>
+                      <div className="flex items-center gap-1 mt-1 text-gray-500 text-[10px] font-bold truncate"><MapPin size={10} className="text-green-500 shrink-0" /> {driver.city || 'Konum Belirtilmedi'}</div>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -416,7 +349,6 @@ export default function ActionPanel({
                     <div className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-tighter">Birim Ücret</div>
                   </div>
                 </div>
-
                 {isSelected && (
                   <div className="mt-6 pt-6 border-t border-gray-100/50 space-y-4 animate-in fade-in slide-in-from-top-2">
                     <div className="grid grid-cols-3 gap-2">
@@ -433,11 +365,7 @@ export default function ActionPanel({
               </div>
             );
           })}
-          {visibleItems < displayDrivers.length && (
-             <div className="py-4 text-center text-[10px] text-gray-400 font-bold animate-pulse">
-               Daha Fazla Yükleniyor...
-             </div>
-          )}
+          {visibleItems < displayDrivers.length && <div className="py-4 text-center text-[10px] text-gray-400 font-bold animate-pulse">Daha Fazla Yükleniyor...</div>}
         </div>
       </div>
     </div>

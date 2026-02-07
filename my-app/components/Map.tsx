@@ -55,13 +55,12 @@ const SERVICE_CONFIG: any = {
   other: { color: '#6b7280', Icon: Truck }
 };
 
-// --- 3. DİNAMİK İKON TASARIMI (BÜYÜTÜLDÜ 🔍 1.2x) ---
+// --- 3. DİNAMİK İKON TASARIMI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
   
-  // 🔥 İKON BOYUTLARI ARTTIRILDI
-  // Eski: 18/50 -> Yeni: 22/55
-  const baseSize = Math.max(22, Math.min(55, isActive ? zoom * 2.8 : zoom * 2.2)); 
+  // İkon Boyutları (Hafifçe büyütüldü)
+  const baseSize = Math.max(24, Math.min(55, isActive ? zoom * 2.8 : zoom * 2.2)); 
   const innerSize = baseSize * 0.55;
 
   const iconHtml = renderToStaticMarkup(
@@ -94,22 +93,15 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
   });
 };
 
-// 🔥 GÜNCELLENMİŞ KÜME (CLUSTER) İKONU 🔥
-// Sayıya göre boyut değiştiren mantık
+// --- CLUSTER İKONU ---
 const createClusterIcon = (cluster: any, type: string) => {
   const count = cluster.getChildCount();
   const config = SERVICE_CONFIG[type] || SERVICE_CONFIG.other;
   
-  // 🔥 DİNAMİK BOYUT HESAPLAMA
-  let size = 48; // Varsayılan (Orta)
-  
-  if (count < 10) {
-    size = 40; // Az ise küçük
-  } else if (count > 50) {
-    size = 60; // Çok ise büyük
-  } else if (count > 100) {
-    size = 70; // Aşırı çok ise devasa
-  }
+  let size = 48; 
+  if (count < 10) size = 40; 
+  else if (count > 50) size = 60; 
+  else if (count > 100) size = 70; 
 
   return L.divIcon({
     html: `
@@ -125,13 +117,12 @@ const createClusterIcon = (cluster: any, type: string) => {
         font-weight: 900; 
         font-size: ${size > 50 ? '16px' : '13px'}; 
         box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-        opacity: 0.95;
-        transition: all 0.3s ease;">
+        opacity: 0.95;">
         ${count}
       </div>
     `,
     className: 'custom-cluster-icon',
-    iconSize: [size, size], // Leaflet'e de yeni boyutu bildiriyoruz
+    iconSize: [size, size],
   });
 };
 
@@ -156,17 +147,14 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: {
   return null;
 }
 
-// Akıllı Harita Kontrolcüsü (Zoom Out sorunu için)
 function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
   const map = useMap();
   const prevCoordsRef = useRef<string>(""); 
 
   useEffect(() => {
     if (activeDriverCoords) {
-      // Sürücü seçilirse kesin git
       map.flyTo(activeDriverCoords, 16, { duration: 1.5 });
     } else if (coords) {
-      // Eğer arama koordinatı değiştiyse git, ama aynıysa (zoom out yaptıysan) elleme
       const coordsStr = coords.toString();
       if (prevCoordsRef.current !== coordsStr) {
         map.flyTo(coords, 13, { duration: 2, animate: true });
@@ -192,14 +180,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     }, {});
   }, [drivers]);
 
-  const activeDriverCoords = useMemo(() => {
-    const active = drivers.find(d => d._id === activeDriverId);
-    if (active && active.location?.coordinates) {
-      return [active.location.coordinates[1], active.location.coordinates[0]] as [number, number];
-    }
-    return null;
-  }, [activeDriverId, drivers]);
-
   return (
     <div className="absolute inset-0 w-full h-full z-0 bg-gray-100">
       <MapContainer 
@@ -218,7 +198,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           onMapMove={onMapMove} 
           onMapClick={onMapClick} 
         />
-        <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
+        <MapController coords={searchCoords} activeDriverCoords={null} />
 
         {/* Kullanıcı Konumu */}
         {searchCoords && (
@@ -238,18 +218,11 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           <MarkerClusterGroup 
             key={type}
             iconCreateFunction={(cluster) => createClusterIcon(cluster, type)}
-            // 🔥 KRİTİK AYARLAR (Görüntü Karışıklığı ve Performans İçin) 🔥
-            
-            // 1. Gruplama Yarıçapı (Artırıldı): 
-            // 80px içindeki araçları tek top yap. Harita daha sade görünür.
-            maxClusterRadius={80} 
-            
+            // 🔥 PERFORMANS VE GÖRÜNÜM AYARLARI 🔥
+            maxClusterRadius={80} // Daha geniş alandakileri topla
             showCoverageOnHover={false}
             spiderfyOnMaxZoom={true}
-            
-            // 2. Parçalı Yükleme (Performans):
-            // 3000+ araç yüklenirken tarayıcı donmasın diye parça parça işler.
-            chunkedLoading={true} 
+            chunkedLoading={true} // Kasmayı önler (Parçalı Yükleme)
           >
             {groupedDrivers[type].map((driver: Driver) => {
               const lng = driver.location.coordinates[0];
