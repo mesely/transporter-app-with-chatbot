@@ -12,7 +12,7 @@ import ChatWidget from '../components/ChatWidget';
 import ProviderPanel from '../components/provider/ProviderPanel';
 import AuthModal from '../components/AuthModal';
 
-// 👇 1. LOADER IMPORT EDİLDİ 👇
+// 👇 LOADER IMPORT 👇
 import ScanningLoader from '../components/ScanningLoader'; 
 
 // --- MODALLAR ---
@@ -21,10 +21,10 @@ import ProfileModal from '../components/ProfileModal';
 import ReportModal from '../components/ReportModal';
 import CustomerGuide from '../components/CustomerGuide';
 
-// Harita Bileşeni (SSR devre dışı)
+// Harita Bileşeni (SSR devre dışı - Harita yüklenene kadar Loader gösterir)
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
-  loading: () => <ScanningLoader /> // Harita yüklenirken de bunu göster
+  loading: () => <ScanningLoader /> 
 });
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
@@ -54,11 +54,11 @@ export default function Home() {
 
   // 🌍 KONUM VE VERİ
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
-  const [allDrivers, setAllDrivers] = useState<any[]>([]); 
-  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); 
-  const [loadingDrivers, setLoadingDrivers] = useState(true); // İlk başta yükleniyor
+  const [allDrivers, setAllDrivers] = useState<any[]>([]); // Ham veri
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); // Ekranda görünenler
+  const [loadingDrivers, setLoadingDrivers] = useState(true); 
   
-  // 👇 2. İLK YÜKLEME STATE'İ EKLENDİ 👇
+  // 👇 İLK AÇILIŞ RADAR STATE'İ 👇
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   // 🎯 AKSİYON VE SENKRONİZASYON
@@ -81,7 +81,7 @@ export default function Home() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // BAŞLANGIÇ AYARLARI
+  // 1. BAŞLANGIÇ AYARLARI (Role ve ID Kontrolü)
   useEffect(() => {
     let storedId = localStorage.getItem('transporter_device_id');
     if (!storedId) {
@@ -101,14 +101,16 @@ export default function Home() {
     }
   }, []);
 
-  // 3. VERİ ÇEKME MANTIĞI
+  // 2. VERİ ÇEKME MANTIĞI
   const fetchDrivers = useCallback((lat: number, lng: number, type?: string) => {
     setLoadingDrivers(true);
 
+    // Eski isteği iptal et (Performans)
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    // URL Oluşturma
     const url = new URL(`${API_URL}/users/nearby`);
     url.searchParams.append('lat', lat.toString());
     url.searchParams.append('lng', lng.toString());
@@ -119,21 +121,33 @@ export default function Home() {
       .then(data => {
         const cleanData = normalizeDriverData(data);
         setAllDrivers(cleanData);
-        setFilteredDrivers(cleanData);
+        // İstemci tarafı filtreleme (Yedek)
+        if (type) {
+           const filtered = cleanData.filter(d => {
+             const sType = d.serviceType || '';
+             if (type === 'kurtarici') return sType.includes('kurtarici') || sType.includes('vinc');
+             if (type === 'nakliye') return sType.includes('nakliye') || sType.includes('kamyon') || sType.includes('tir');
+             if (type === 'sarj') return sType.includes('sarj');
+             return sType.includes(type);
+           });
+           setFilteredDrivers(filtered);
+        } else {
+           setFilteredDrivers(cleanData);
+        }
       })
       .catch(err => {
         if (err.name !== 'AbortError') console.error("Veri çekilemedi:", err);
       })
       .finally(() => {
         setLoadingDrivers(false);
-        // 👇 3. YÜKLEME BİTİNCE RADAR EKRANINI KAPAT 👇
+        // Veri geldikten 1.5 saniye sonra radarı kapat
         setTimeout(() => {
            setIsFirstLoad(false);
-        }, 1500); // 1.5 saniye sonra kapat ki kullanıcı görsün
+        }, 1500);
       });
   }, []);
 
-  // 4. KONUM BULMA
+  // 3. KONUM BULMA (İlk Açılış)
   useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -154,31 +168,10 @@ export default function Home() {
   }, []); 
 
   // --- HANDLER'LAR ---
-  
-  // İstemci Tarafı Filtreleme (Yedek)
-  const applyClientSideFilter = (type: string, sourceData: any[]) => {
-      if (!type) {
-        setFilteredDrivers(sourceData);
-        return;
-      }
-      const filtered = sourceData.filter(d => {
-        const sType = d.serviceType || '';
-        if (type === 'kurtarici') return sType.includes('kurtarici') || sType.includes('vinc');
-        if (type === 'nakliye') return sType.includes('nakliye') || sType.includes('kamyon') || sType.includes('tir');
-        if (type === 'sarj') return sType.includes('sarj');
-        return sType.includes(type);
-      });
-      setFilteredDrivers(filtered);
-  };
 
   const handleFilterChange = (type: string) => {
     setActionType(type);
     setActiveDriverId(null);
-    
-    // Hem client-side filtre uygula (hızlı tepki için)
-    applyClientSideFilter(type, allDrivers);
-
-    // Hem de backend'den taze veri çek (yeni konum için gerekirse)
     if (searchCoords) {
       fetchDrivers(searchCoords[0], searchCoords[1], type);
     }
@@ -198,6 +191,7 @@ export default function Home() {
       status: 'IN_PROGRESS',
       startTime: new Date()
     });
+    
     try {
       await fetch(`${API_URL}/orders`, {
         method: 'POST',
@@ -226,14 +220,17 @@ export default function Home() {
     if (role === 'customer') setShowCustomerGuide(true);
   };
 
+  // --- RENDERING ---
+
   if (!userRole) return <AuthModal onRoleSelect={handleRoleSelect} />;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-white">
       
-      {/* 👇 4. RADAR EKRANI BURADA GÖSTERİLİYOR 👇 */}
+      {/* 1. İLK AÇILIŞ RADARI */}
       {isFirstLoad && <ScanningLoader />}
 
+      {/* 2. HARİTA (Senkronize) */}
       <MapComponent 
         searchCoords={searchCoords} 
         drivers={filteredDrivers} 
@@ -241,27 +238,32 @@ export default function Home() {
         activeDriverId={activeDriverId} 
         onSelectDriver={setActiveDriverId} 
         onMapMove={handleMapMove} 
+        // 🔥 BURASI PANELİ KAPATIR: ActionPanel.tsx bunu dinliyor
         onMapClick={() => setActiveDriverId(null)} 
       />
       
+      {/* 3. CHATBOT */}
       <ChatWidget 
         isOpen={isChatOpen} 
         onToggle={setChatOpen} 
         contextData={{ drivers: allDrivers, userLocation: searchCoords }}
       />
       
+      {/* 4. ÜST MENU */}
       <TopBar 
         onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         onProfileClick={() => setShowProfileModal(true)} 
         sidebarOpen={sidebarOpen} 
       />
       
+      {/* 5. SİPARİŞ PANELİ */}
       <ActiveOrderPanel 
         activeOrder={activeOrder} 
         onComplete={() => { setActiveOrder(null); setShowRatingModal(true); }} 
         onCancel={() => setActiveOrder(null)} 
       />
 
+      {/* 6. AKSİYON PANELİ */}
       {!activeOrder && userRole === 'customer' && (
         <ActionPanel 
           drivers={filteredDrivers} 
@@ -284,6 +286,7 @@ export default function Home() {
         />
       )}
 
+      {/* 7. KURUMSAL PANEL */}
       {userRole === 'provider' && currentProviderId && (
         <ProviderPanel 
           providerId={currentProviderId} 
@@ -293,6 +296,7 @@ export default function Home() {
         /> 
       )}
 
+      {/* 8. YAN MENÜ */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
@@ -303,6 +307,7 @@ export default function Home() {
         onReportClick={(id) => { setReportOrderId(id); setShowReportModal(true); setSidebarOpen(false); }}
       />
 
+      {/* Modallar */}
       <RatingModal isOpen={showRatingModal} onClose={() => setShowRatingModal(false)} onRate={() => {}} />
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} orderId={reportOrderId} />

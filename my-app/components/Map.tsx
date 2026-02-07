@@ -52,7 +52,6 @@ const SERVICE_CONFIG: any = {
   kamyonet: { color: '#ca8a04', Icon: Truck },
   sarj_istasyonu: { color: '#2563eb', Icon: Zap },
   seyyar_sarj: { color: '#0891b2', Icon: BatteryCharging },
-  // Varsayılan
   other: { color: '#6b7280', Icon: Truck }
 };
 
@@ -95,16 +94,28 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
   });
 };
 
-// 🔥 CLUSTER (KÜME) İKONU DA BÜYÜTÜLDÜ (1.2x)
+// 🔥 GÜNCELLENMİŞ KÜME (CLUSTER) İKONU 🔥
+// Sayıya göre boyut değiştiren mantık
 const createClusterIcon = (cluster: any, type: string) => {
   const count = cluster.getChildCount();
   const config = SERVICE_CONFIG[type] || SERVICE_CONFIG.other;
   
+  // 🔥 DİNAMİK BOYUT HESAPLAMA
+  let size = 48; // Varsayılan (Orta)
+  
+  if (count < 10) {
+    size = 40; // Az ise küçük
+  } else if (count > 50) {
+    size = 60; // Çok ise büyük
+  } else if (count > 100) {
+    size = 70; // Aşırı çok ise devasa
+  }
+
   return L.divIcon({
     html: `
       <div style="
         background-color: ${config.color}; 
-        width: 52px; height: 52px; 
+        width: ${size}px; height: ${size}px; 
         border-radius: 50%; 
         border: 4px solid white; 
         display: flex; 
@@ -112,14 +123,15 @@ const createClusterIcon = (cluster: any, type: string) => {
         justify-content: center; 
         color: white; 
         font-weight: 900; 
-        font-size: 15px; 
+        font-size: ${size > 50 ? '16px' : '13px'}; 
         box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-        opacity: 0.98;">
+        opacity: 0.95;
+        transition: all 0.3s ease;">
         ${count}
       </div>
     `,
     className: 'custom-cluster-icon',
-    iconSize: [52, 52],
+    iconSize: [size, size], // Leaflet'e de yeni boyutu bildiriyoruz
   });
 };
 
@@ -144,18 +156,17 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: {
   return null;
 }
 
-// 🔥 ZOOM OUT HATASINI ÇÖZEN AKILLI KONTROLCÜ
+// Akıllı Harita Kontrolcüsü (Zoom Out sorunu için)
 function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
   const map = useMap();
-  const prevCoordsRef = useRef<string>(""); // Önceki koordinatı hatırla
+  const prevCoordsRef = useRef<string>(""); 
 
   useEffect(() => {
     if (activeDriverCoords) {
-      // Sürücü seçildiyse oraya kesin git
+      // Sürücü seçilirse kesin git
       map.flyTo(activeDriverCoords, 16, { duration: 1.5 });
     } else if (coords) {
-      // Eğer arama koordinatı değiştiyse ve eskisiyle aynı değilse git.
-      // Bu sayede zoom out yapınca veya haritayı kaydırınca tekrar merkeze atmaz.
+      // Eğer arama koordinatı değiştiyse git, ama aynıysa (zoom out yaptıysan) elleme
       const coordsStr = coords.toString();
       if (prevCoordsRef.current !== coordsStr) {
         map.flyTo(coords, 13, { duration: 2, animate: true });
@@ -227,10 +238,18 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           <MarkerClusterGroup 
             key={type}
             iconCreateFunction={(cluster) => createClusterIcon(cluster, type)}
-            maxClusterRadius={50}
+            // 🔥 KRİTİK AYARLAR (Görüntü Karışıklığı ve Performans İçin) 🔥
+            
+            // 1. Gruplama Yarıçapı (Artırıldı): 
+            // 80px içindeki araçları tek top yap. Harita daha sade görünür.
+            maxClusterRadius={80} 
+            
             showCoverageOnHover={false}
             spiderfyOnMaxZoom={true}
-            chunkedLoading={true} // 🔥 KASMA SORUNU İÇİN (Performans)
+            
+            // 2. Parçalı Yükleme (Performans):
+            // 3000+ araç yüklenirken tarayıcı donmasın diye parça parça işler.
+            chunkedLoading={true} 
           >
             {groupedDrivers[type].map((driver: Driver) => {
               const lng = driver.location.coordinates[0];

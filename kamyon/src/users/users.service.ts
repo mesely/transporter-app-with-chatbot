@@ -18,7 +18,7 @@ export class UsersService implements OnModuleInit {
     this.logger.log('🚀 Sistem Hazır: 10x Performans Motoru ve İndeksler Aktif.');
   }
 
-  // --- 1. VERİ OLUŞTURMA (Create/Upsert) ---
+  // --- 1. VERİ OLUŞTURMA ---
   async create(data: any) {
     try {
       let user = await this.userModel.findOne({ email: data.email }).lean();
@@ -72,11 +72,10 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 2. HIZLI YAKINDAKİLER SORGUSU (ZOOM OUT FIX) ---
+  // --- 2. HIZLI YAKINDAKİLER SORGUSU (3000 KM & 3000 LİMİT) ---
   async findNearby(lat: number, lng: number, type?: string) {
     const query: any = { isActive: true };
 
-    // Filtreleme Mantığı (ESR Kuralı)
     if (type) {
       if (type === 'sarj') {
         query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
@@ -96,21 +95,18 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          // 🔥 GÜNCELLEME 1: Çap 3.000 KM yapıldı (Tam Karar)
-          $maxDistance: 3500000 
+          $maxDistance: 3000000 // 3000 KM
         }
       }
     })
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    // 🔥 GÜNCELLEME 2: Limit 3000 yapıldı (Menzille orantılı)
-    .limit(3500)
+    .limit(3000) // 3000 Araç Limiti
     .lean()
     .exec();
   }
 
-  // --- 3. MIGRATION ---
   async migrateIsActiveField() {
-    return { message: "Bu özellik güvenlik nedeniyle devre dışı bırakıldı." };
+    return { message: "Devre dışı." };
   }
 
   async findAll() {

@@ -3,7 +3,7 @@
 import { 
   Truck, Zap, Star, MapPin, Wrench, 
   ChevronDown, LocateFixed, Loader2, 
-  MessageCircle, Phone, Navigation
+  MessageCircle, Phone, ArrowUp
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
@@ -44,8 +44,10 @@ export default function ActionPanel({
   activeDriverId, onSelectDriver
 }: ActionPanelProps) {
   
-  const [isExpanded, setIsExpanded] = useState(false); 
-  const [isFullHeight, setIsFullHeight] = useState(false);
+  // Panel Boyutlandırma State'leri
+  const [isExpanded, setIsExpanded] = useState(false); // Orta Boy
+  const [isFullHeight, setIsFullHeight] = useState(false); // Tam Boy
+  
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -55,47 +57,75 @@ export default function ActionPanel({
   const [showTicariRow, setShowTicariRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
 
-  // LAZY LOADING STATE'İ (Sayfalama)
-  // İlk açılışta 20 tane gösteriyoruz.
+  // LAZY LOADING
   const [visibleItems, setVisibleItems] = useState(20);
 
-  const [sortMode, setSortMode] = useState<'distance' | 'price' | 'rating'>('distance');
+  // Sıralama ve Filtreleme
+  const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance'); // 'price' kaldırıldı
   const [selectedCity, setSelectedCity] = useState('');
+  
+  // Otomatik şehir seçimi için flag
+  const hasAutoSelectedCity = useRef(false);
 
   const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // --- 🧭 SENKRONİZASYON 1: Haritadan Seçilince Panele Odakla ---
+  // --- 1. OTOMATİK ŞEHİR SEÇİMİ ---
+  useEffect(() => {
+    // Eğer veri geldiyse ve henüz şehir seçilmediyse
+    if (safeDrivers.length > 0 && !selectedCity && !hasAutoSelectedCity.current) {
+      const nearestCity = safeDrivers[0].city; // Listenin başındaki en yakındır
+      if (nearestCity && CITIES.some(c => c.toLowerCase() === nearestCity.toLowerCase())) {
+        setSelectedCity(nearestCity.toUpperCase());
+        hasAutoSelectedCity.current = true;
+      }
+    }
+  }, [safeDrivers, selectedCity]);
+
+  // --- 2. HARİTADAN SEÇİLİNCE ODAKLA VE AÇ ---
   useEffect(() => {
     if (activeDriverId) {
-      setIsExpanded(true);
+      setIsExpanded(true); // Seçilince orta boya getir
+      // Biraz bekle sonra kaydır
       setTimeout(() => {
         itemRefs.current[activeDriverId]?.scrollIntoView({
           behavior: 'smooth',
           block: 'center'
         });
       }, 300);
+    } else {
+      // Haritada boşluğa tıklanınca panel küçülsün
+      // Ama eğer kategori seçiliyse (actionType varsa) tamamen kapanmasın, orta boy kalsın veya küçülsün
+      // İsteğe göre: Boşluğa tıklayınca en alta insin
+      if(!actionType) {
+          setIsExpanded(false);
+          setIsFullHeight(false);
+      }
     }
-  }, [activeDriverId]);
+  }, [activeDriverId, actionType]);
 
-  // --- 🧭 SENKRONİZASYON 2: Filtre Değişince Sıfırla ---
+  // --- 3. KATEGORİ DEĞİŞİNCE PANELİ AÇ ---
   useEffect(() => {
-    // Filtre veya sıralama değişince listeyi başa sar (Reset Lazy Load)
     setVisibleItems(20);
 
     if (!actionType) {
+        // Hiçbir şey seçili değilse kapat
         setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
+        setIsExpanded(false);
+        setIsFullHeight(false);
         return;
     }
 
+    // Bir şey seçildiyse en azından orta boya getir
     setIsExpanded(true); 
 
+    // Alt menüleri ayarla
     if (['kurtarici', 'vinc', 'oto_kurtarma'].some(t => actionType.includes(t))) {
         setShowTowRow(true); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
     } else if (['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'].some(t => actionType.includes(t))) {
         setShowShipRow(true); setShowTowRow(false); setShowChargeRow(false);
-        if (['kamyon', 'tir', 'kamyonet'].some(t => actionType.includes(t))) {
+        if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => actionType.includes(t))) {
             setShowTicariRow(true);
         } else {
             setShowTicariRow(false); 
@@ -103,14 +133,7 @@ export default function ActionPanel({
     } else if (['sarj', 'sarj_istasyonu', 'seyyar_sarj'].some(t => actionType.includes(t))) {
         setShowChargeRow(true); setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false);
     }
-  }, [actionType, sortMode, selectedCity]);
-
-  // Haritada boşluğa tıklanınca paneli kapat
-  useEffect(() => {
-    if (!activeDriverId && !actionType) {
-       setIsExpanded(false);
-    }
-  }, [activeDriverId, actionType]);
+  }, [actionType]);
 
   const findMyLocation = () => {
     setIsLocating(true);
@@ -130,6 +153,7 @@ export default function ActionPanel({
   };
 
   useEffect(() => {
+    // İlk açılışta konum bul
     findMyLocation();
     fetch(`${API_URL}/tariffs`)
       .then(res => res.json())
@@ -137,17 +161,42 @@ export default function ActionPanel({
       .catch(err => console.error(err));
   }, []);
 
+  // --- 4. GELİŞMİŞ PANEL BOYUTLANDIRMA (DRAG LOGIC) ---
   const handleDragStart = (y: number) => { dragStartY.current = y; };
+  
   const handleDragMove = (y: number) => {
     if (dragStartY.current === null) return;
-    const diff = dragStartY.current - y;
-    if (diff > 80) { setIsExpanded(true); setIsFullHeight(true); }
-    if (diff < -80) { setIsFullHeight(false); if (diff < -200) { setIsExpanded(false); resetAllStates(); } }
+    const diff = dragStartY.current - y; // Yukarı doğru pozitif, aşağı negatif
+
+    // YUKARI SÜRÜKLEME
+    if (diff > 50) { 
+        if (!isExpanded) {
+            setIsExpanded(true); // Küçük -> Orta
+            dragStartY.current = y; // Resetle ki birden zıplamasın
+        } else if (!isFullHeight) {
+            setIsFullHeight(true); // Orta -> Tam
+        }
+    }
+    
+    // AŞAĞI SÜRÜKLEME
+    if (diff < -50) { 
+        if (isFullHeight) {
+            setIsFullHeight(false); // Tam -> Orta
+            dragStartY.current = y;
+        } else if (isExpanded) {
+            setIsExpanded(false); // Orta -> Küçük
+            // Eğer kategori seçiliyse resetle
+            resetAllStates();
+        }
+    }
   };
 
   const resetAllStates = () => {
     setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
-    setSelectedCity(''); setSortMode('distance'); onReset(); onSelectDriver(null);
+    setSelectedCity(''); 
+    setSortMode('distance'); 
+    onReset(); 
+    onSelectDriver(null);
   };
 
   const getPricing = (driver: Driver) => {
@@ -159,40 +208,55 @@ export default function ActionPanel({
     return { total: min ? Math.max(calculated, min).toFixed(0) : calculated.toFixed(0), opening, unit, min };
   };
 
+  // --- 5. LİSTE FİLTRELEME VE KARIŞIKLIK ÇÖZÜMÜ ---
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
+
+    // İL FİLTRESİ
     if (selectedCity) {
       list = list.filter(d => 
         d.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr') ||
         d.address?.toString().toLocaleLowerCase('tr').includes(selectedCity.toLocaleLowerCase('tr'))
       );
     }
+
+    // 🔥 KATI KATEGORİ FİLTRESİ (Frontend Side Strict Filter)
+    // Backend bazen karışık gönderebilir, burada temizliyoruz.
+    if (actionType === 'nakliye' || actionType === 'evden_eve') {
+        // Nakliye seçiliyse Tır/Kamyon/Kamyonet GÖSTERME
+        list = list.filter(d => !['kamyon', 'tir', 'kamyonet'].some(t => d.serviceType?.includes(t)));
+    } else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => actionType === t)) {
+        // Ticari seçiliyse Evden Eve GÖSTERME (Genelde sorun olmaz ama garanti olsun)
+    }
+
+    // SIRALAMA
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-      if (sortMode === 'price') return Number(getPricing(a).total) - Number(getPricing(b).total);
+      // Fiyat sıralaması kaldırıldı, varsayılan mesafe
       return a.distance - b.distance;
     });
+    
     return list;
-  }, [safeDrivers, sortMode, selectedCity, tariffs]);
+  }, [safeDrivers, sortMode, selectedCity, tariffs, actionType]);
 
-  // 🔥 GÜÇLENDİRİLMİŞ SCROLL HANDLER (Infinite Scroll Logic)
+  // --- 6. SCROLL HANDLER (YENİLENMİŞ) ---
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    
-    // Toleransı arttırdık: Listenin sonuna 250px kala yeni veri yükle (Daha akıcı)
-    // Eskiden: clientHeight + 50 idi.
+    // Tolerans 250px
     if (scrollHeight - scrollTop <= clientHeight + 250) {
-      
-      // Eğer gösterilecek daha fazla sürücü varsa...
       if (visibleItems < displayDrivers.length) {
-        // Her seferinde 20 tane daha aç (Eskiden 10 idi)
-        setVisibleItems(prev => Math.min(prev + 20, displayDrivers.length));
+        // Daha hızlı yüklenmesi için 50'şer arttır
+        setVisibleItems(prev => Math.min(prev + 50, displayDrivers.length));
       }
     }
   };
 
-  // Görünür olanları kes (Lazy Load için)
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
+
+  // Panel Yüksekliği Hesaplama
+  let heightClass = 'h-36'; // Kapalı
+  if (isFullHeight) heightClass = 'h-[85vh]';
+  else if (isExpanded) heightClass = 'h-[55vh]'; // Orta boy
 
   return (
     <div 
@@ -202,13 +266,14 @@ export default function ActionPanel({
       onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
       onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
       onTouchEnd={() => { dragStartY.current = null; }}
-      // Tasarım: Şeffaf arka plan, blur efekti ve yuvarlak köşeler korundu.
-      className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-700 rounded-t-[3.5rem] flex flex-col ${
-        isFullHeight ? 'h-[85vh]' : isExpanded ? 'h-[65vh]' : 'h-36'
-      } bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
+      className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-500 ease-out rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
     >
-      {/* Sürükleme Kulpu */}
-      <div onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0">
+      {/* Kulp */}
+      <div onClick={() => {
+          if(isFullHeight) setIsFullHeight(false);
+          else if(isExpanded) setIsExpanded(false);
+          else setIsExpanded(true);
+      }} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50">
         <div className="w-20 h-1.5 bg-white/40 rounded-full shadow-sm"></div>
       </div>
 
@@ -229,6 +294,7 @@ export default function ActionPanel({
             setIsExpanded(true); 
             setShowTowRow(false); setShowChargeRow(false); setShowTicariRow(false);
             setShowShipRow(!showShipRow); 
+            // Varsayılan olarak nakliye'yi aç ama ticariyi gösterme
             onActionChange('nakliye'); 
           }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
@@ -255,7 +321,7 @@ export default function ActionPanel({
           {showShipRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
               <button onClick={() => {setShowTicariRow(false); onFilterApply('nakliye');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'nakliye' && !showTicariRow ? 'bg-purple-900 ring-2 ring-purple-400' : 'bg-purple-600'}`}>Evden Eve</button>
-              <button onClick={() => setShowTicariRow(true)} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${showTicariRow ? 'bg-yellow-600 shadow-inner' : 'bg-yellow-500'}`}>Ticari Araç</button>
+              <button onClick={() => {setShowTicariRow(true); onFilterApply('ticari');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${showTicariRow ? 'bg-yellow-600 shadow-inner' : 'bg-yellow-500'}`}>Ticari Araç</button>
             </div>
           )}
           {showTicariRow && (
@@ -273,7 +339,7 @@ export default function ActionPanel({
           )}
         </div>
 
-        {/* FİLTRE VE SIRALAMA */}
+        {/* FİLTRE VE SIRALAMA (EN UCUZ KALDIRILDI) */}
         {isExpanded && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-1 shrink-0">
               <div className="relative shrink-0">
@@ -284,17 +350,17 @@ export default function ActionPanel({
                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
               </div>
               <button onClick={() => setSortMode('distance')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'distance' ? 'bg-black text-white' : 'bg-white/90 text-gray-700 border-white/20'}`}>EN YAKIN</button>
-              <button onClick={() => setSortMode('price')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'price' ? 'bg-black text-white' : 'bg-white/90 text-gray-700 border-white/20'}`}>EN UCUZ</button>
+              <button onClick={() => setSortMode('rating')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'rating' ? 'bg-black text-white' : 'bg-white/90 text-gray-700 border-white/20'}`}>EN YÜKSEK PUAN</button>
               <button onClick={findMyLocation} className={`px-3 py-2.5 text-white rounded-xl bg-blue-600 shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : 'bg-blue-600'}`}>
                  <LocateFixed size={18} />
               </button>
           </div>
         )}
 
-        {/* SÜRÜCÜ LİSTESİ - onScroll EKLENDİ */}
+        {/* SÜRÜCÜ LİSTESİ */}
         <div 
           className="flex-1 overflow-y-auto pb-40 custom-scrollbar"
-          onScroll={handleScroll} // 🔥 KAYDIRMA TETİKLEYİCİSİ BURADA
+          onScroll={handleScroll}
         >
           {loading ? (
              <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
@@ -312,7 +378,7 @@ export default function ActionPanel({
             } else if (type.includes('kurtar') || type.includes('vinc')) {
                 iconBg = 'bg-red-600'; 
             } else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t))) {
-                iconBg = 'bg-yellow-500'; // SARI ZEMİN
+                iconBg = 'bg-yellow-500'; 
             } else if (type.includes('nakliye') || type.includes('evden')) {
                 iconBg = 'bg-purple-600'; 
             }
@@ -330,8 +396,7 @@ export default function ActionPanel({
                        {type.includes('sarj') ? (
                          <Zap color="white" strokeWidth={2.5} /> 
                        ) : (
-                         // TİCARİ İKON RENGİ (SARI ZEMİN ÜZERİNE BEYAZ)
-                         <Truck color={'white'} strokeWidth={2.5} /> 
+                         <Truck color={['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t)) ? 'white' : 'white'} strokeWidth={2.5} /> 
                        )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -368,7 +433,6 @@ export default function ActionPanel({
               </div>
             );
           })}
-          {/* Lazy Loading Göstergesi */}
           {visibleItems < displayDrivers.length && (
              <div className="py-4 text-center text-[10px] text-gray-400 font-bold animate-pulse">
                Daha Fazla Yükleniyor...
