@@ -56,13 +56,13 @@ const SERVICE_CONFIG: any = {
   other: { color: '#6b7280', Icon: Truck }
 };
 
-// --- 3. DİNAMİK İKON TASARIMI (BÜYÜTÜLDÜ 🔍) ---
+// --- 3. DİNAMİK İKON TASARIMI (BÜYÜTÜLDÜ 🔍 1.2x) ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
   
-  // 🔥 İKON BOYUTLARI 1.1x BÜYÜTÜLDÜ
-  // Eski: 14/40 -> Yeni: 18/50
-  const baseSize = Math.max(18, Math.min(50, isActive ? zoom * 2.5 : zoom * 2.0)); 
+  // 🔥 İKON BOYUTLARI ARTTIRILDI
+  // Eski: 18/50 -> Yeni: 22/55
+  const baseSize = Math.max(22, Math.min(55, isActive ? zoom * 2.8 : zoom * 2.2)); 
   const innerSize = baseSize * 0.55;
 
   const iconHtml = renderToStaticMarkup(
@@ -95,7 +95,7 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
   });
 };
 
-// 🔥 CLUSTER (KÜME) İKONU DA BÜYÜTÜLDÜ
+// 🔥 CLUSTER (KÜME) İKONU DA BÜYÜTÜLDÜ (1.2x)
 const createClusterIcon = (cluster: any, type: string) => {
   const count = cluster.getChildCount();
   const config = SERVICE_CONFIG[type] || SERVICE_CONFIG.other;
@@ -104,7 +104,7 @@ const createClusterIcon = (cluster: any, type: string) => {
     html: `
       <div style="
         background-color: ${config.color}; 
-        width: 48px; height: 48px; 
+        width: 52px; height: 52px; 
         border-radius: 50%; 
         border: 4px solid white; 
         display: flex; 
@@ -112,14 +112,14 @@ const createClusterIcon = (cluster: any, type: string) => {
         justify-content: center; 
         color: white; 
         font-weight: 900; 
-        font-size: 14px; 
+        font-size: 15px; 
         box-shadow: 0 8px 20px rgba(0,0,0,0.4);
         opacity: 0.98;">
         ${count}
       </div>
     `,
     className: 'custom-cluster-icon',
-    iconSize: [48, 48],
+    iconSize: [52, 52],
   });
 };
 
@@ -230,6 +230,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
             maxClusterRadius={50}
             showCoverageOnHover={false}
             spiderfyOnMaxZoom={true}
+            chunkedLoading={true} // 🔥 KASMA SORUNU İÇİN (Performans)
           >
             {groupedDrivers[type].map((driver: Driver) => {
               const lng = driver.location.coordinates[0];

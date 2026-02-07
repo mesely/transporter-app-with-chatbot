@@ -96,14 +96,14 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          // 🔥 GÜNCELLEME 1: Çap 2.000 KM yapıldı (Tüm Türkiye'yi kapsar)
-          $maxDistance: 2000000 
+          // 🔥 GÜNCELLEME 1: Çap 3.000 KM yapıldı (Tam Karar)
+          $maxDistance: 3000000 
         }
       }
     })
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    // 🔥 GÜNCELLEME 2: Limit 2500 yapıldı (Scroll bitmesin diye)
-    .limit(2500)
+    // 🔥 GÜNCELLEME 2: Limit 3000 yapıldı (Menzille orantılı)
+    .limit(3000)
     .lean()
     .exec();
   }
