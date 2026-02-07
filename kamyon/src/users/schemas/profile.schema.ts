@@ -34,6 +34,9 @@ export class Profile extends Document {
 
   @Prop({ default: 0 })
   rating: number;
+
+  @Prop({ default: true }) 
+isActive: boolean;
 }
 
 export const ProfileSchema = SchemaFactory.createForClass(Profile);

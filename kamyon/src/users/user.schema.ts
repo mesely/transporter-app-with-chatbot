@@ -26,6 +26,8 @@ export class User {
 
   @Prop({ default: 0 })
   totalRatings: number;
+
+  
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

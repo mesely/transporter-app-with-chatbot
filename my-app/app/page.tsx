@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // --- BİLEŞENLER ---
@@ -10,56 +10,77 @@ import Sidebar from '../components/home/Sidebar';
 import ActiveOrderPanel from '../components/home/ActiveOrderPanel';
 import ChatWidget from '../components/ChatWidget';
 import ProviderPanel from '../components/provider/ProviderPanel';
+import AuthModal from '../components/AuthModal';
 
 // --- MODALLAR ---
 import RatingModal from '../components/RatingModal';
 import ProfileModal from '../components/ProfileModal';
 import ReportModal from '../components/ReportModal';
 import CustomerGuide from '../components/CustomerGuide';
-import AuthModal from '../components/AuthModal';
 
-// Harita Bileşeni (SSR devre dışı)
+// Harita Bileşeni (SSR devre dışı - Siyah ekran önlemi)
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center">
-      <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-4"></div>
-      <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Sistem Yükleniyor...</p>
+    <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center">
+      <div className="w-12 h-12 border-4 border-gray-700 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
+      <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Uydu Bağlantısı Kuruluyor...</p>
     </div>
   )
 });
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
-const FALLBACK_LAT = 38.4382; 
-const FALLBACK_LNG = 27.1418;
+const FALLBACK_LAT = 38.4237; 
+const FALLBACK_LNG = 27.1428;
+
+// 🛠️ PERFORMANS: Veri Normalizasyonu (Backend formatını standartlaştırır)
+const normalizeDriverData = (data: any[]) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(d => ({
+    ...d,
+    location: Array.isArray(d.location) 
+      ? { coordinates: d.location } 
+      : d.location?.coordinates 
+        ? d.location 
+        : { coordinates: [FALLBACK_LNG, FALLBACK_LAT] },
+    address: d.address || 'Konum verisi alınıyor...'
+  }));
+};
 
 export default function Home() {
   // --- STATE YÖNETİMİ ---
   const [userRole, setUserRole] = useState<'guest' | 'customer' | 'provider' | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentProviderId, setCurrentProviderId] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null); 
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
 
+  // 🌍 KONUM VE VERİ
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
-  const [allDrivers, setAllDrivers] = useState<any[]>([]);      
-  const [mapDrivers, setMapDrivers] = useState<any[]>([]);      
-  const [panelDrivers, setPanelDrivers] = useState<any[]>([]);  
+  const [allDrivers, setAllDrivers] = useState<any[]>([]); // Ham veri
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); // Ekranda görünenler
   const [loadingDrivers, setLoadingDrivers] = useState(false);
-  const [actionType, setActionType] = useState<string>('');     
-
-  // --- 🚀 SENKRONİZASYON & SENARYO STATE'LERİ ---
+  
+  // 🎯 AKSİYON VE SENKRONİZASYON
+  const [actionType, setActionType] = useState<string>(''); 
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
+  
+  // 📦 SİPARİŞ VE UI
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [deviceId, setDeviceId] = useState<string>(''); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChatOpen, setChatOpen] = useState(false);
   
+  // Modallar
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportOrderId, setReportOrderId] = useState<string | null>(null);
 
-  // 1. Cihaz Kimliği ve Kullanıcı Rolü Yükleme
+  // 🚦 Referanslar (Performans İçin)
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 1. BAŞLANGIÇ AYARLARI
   useEffect(() => {
     let storedId = localStorage.getItem('transporter_device_id');
     if (!storedId) {
@@ -72,109 +93,118 @@ export default function Home() {
     const savedProviderId = localStorage.getItem('transporter_provider_id');
 
     if (savedRole) {
-      setUserRole(savedRole as any); 
+      setUserRole(savedRole as any);
       if (savedRole === 'provider' && savedProviderId) {
         setCurrentProviderId(savedProviderId);
       }
     }
   }, []);
 
-  // 2. Filtreleme Mantığı
-  const applyFilter = useCallback((type: string, data: any[]) => {
+  // 2. İSTEMCİ TARAFLI FİLTRELEME
+  const applyClientSideFilter = (type: string, sourceData: any[]) => {
     if (!type) {
-      setMapDrivers(data);
-      setPanelDrivers([]); 
+      setFilteredDrivers(sourceData);
       return;
     }
-    let filtered;
-    if (type === 'sarj') {
-      filtered = data.filter(d => d.serviceType === 'sarj_istasyonu' || d.serviceType === 'seyyar_sarj');
-    } else {
-      filtered = data.filter(d => d.serviceType === type);
-    }
-    setMapDrivers(filtered);
-    setPanelDrivers(filtered);
-  }, []);
+    const filtered = sourceData.filter(d => {
+      if (type === 'kurtarici') return d.serviceType?.includes('kurtarici') || d.serviceType?.includes('vinc');
+      if (type === 'nakliye') return d.serviceType?.includes('nakliye') || d.serviceType?.includes('kamyon') || d.serviceType?.includes('tir');
+      if (type === 'sarj') return d.serviceType?.includes('sarj');
+      return d.serviceType === type;
+    });
+    setFilteredDrivers(filtered);
+  };
 
-  /**
-   * 📡 VERİ ÇEKME MANTIĞI (GÜVENLİ VERSİYON)
-   * Siyah ekranı önlemek için AbortController ve Timeout eklendi.
-   */
-  const fetchAllData = useCallback((lat: number, lng: number) => {
-    setLoadingDrivers(true);
+  // 3. VERİ ÇEKME MANTIĞI
+  const fetchDrivers = useCallback((lat: number, lng: number, type?: string) => {
     setSearchCoords([lat, lng]);
-    
-    // 10 saniye sonra isteği iptal et (Sonsuz yüklenmeyi ve çökmeyi önler)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    setLoadingDrivers(true);
 
-    fetch(`${API_URL}/users/nearby?lat=${lat}&lng=${lng}`, { signal: controller.signal })
-      .then(res => {
-        if (!res.ok) throw new Error("Sunucu yanıt vermedi");
-        return res.json();
-      })
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}`;
+
+    fetch(url, { signal: controller.signal })
+      .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          const cleanData = data.map((d: any) => ({
-            ...d,
-            address: (typeof d.address === 'string') ? d.address : 'Konum bilgisi yok'
-          }));
-          setAllDrivers(cleanData);
-          applyFilter(actionType, cleanData);
+        const cleanData = normalizeDriverData(data);
+        setAllDrivers(cleanData);
+        
+        if (type || actionType) {
+          applyClientSideFilter(type || actionType, cleanData);
+        } else {
+          setFilteredDrivers(cleanData);
         }
       })
       .catch(err => {
-        console.error("❌ API Bağlantı Hatası:", err.name === 'AbortError' ? 'Zaman Aşımı' : err.message);
-        setAllDrivers([]); // Hata durumunda listeyi temizle
+        if (err.name !== 'AbortError') console.error("Veri çekilemedi:", err);
       })
       .finally(() => {
         clearTimeout(timeoutId);
-        setLoadingDrivers(false); // NE OLURSA OLSUN loading'i kapat
+        setLoadingDrivers(false);
       });
-  }, [actionType, applyFilter]);
+  }, [actionType]);
 
-  // 3. Konum Bulma (Zaman Aşımlı Güvenli Yapı)
+  // 4. KONUM BULMA
   useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => fetchAllData(pos.coords.latitude, pos.coords.longitude),
-        (err) => {
-          console.warn("⚠️ Konum alınamadı, Alsancak yükleniyor.");
-          fetchAllData(FALLBACK_LAT, FALLBACK_LNG);
-        },
-        { 
-          enableHighAccuracy: false, // Mobil hızı için false kalsın
-          timeout: 6000,             // 6 saniyede konum bulamazsa vazgeç
-          maximumAge: 10000 
-        }
+        (pos) => fetchDrivers(pos.coords.latitude, pos.coords.longitude),
+        () => fetchDrivers(FALLBACK_LAT, FALLBACK_LNG),
+        { timeout: 10000, enableHighAccuracy: false }
       );
     } else {
-      fetchAllData(FALLBACK_LAT, FALLBACK_LNG);
+      fetchDrivers(FALLBACK_LAT, FALLBACK_LNG);
     }
-  }, [fetchAllData]);
+  }, [fetchDrivers]);
 
   // --- HANDLER'LAR ---
 
   const handleFilterChange = (type: string) => {
     setActionType(type);
-    applyFilter(type, allDrivers);
-    setChatOpen(false);
-    setActiveDriverId(null); // Filtre değişince seçimi temizle
-  };
-
-  const handleResetMap = () => {
-    setActionType(''); 
-    setMapDrivers(allDrivers); 
-    setPanelDrivers([]); 
+    applyClientSideFilter(type, allDrivers);
     setActiveDriverId(null);
   };
 
-  const handleChatToggle = (isOpen: boolean) => {
-    setChatOpen(isOpen);
-    if (isOpen) {
-      handleResetMap(); 
-      setSidebarOpen(false); 
-    }
+  // İleride Map bileşeni güncellenince burası bağlanacak
+  const handleMapMove = (lat: number, lng: number) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      fetchDrivers(lat, lng, actionType);
+    }, 500);
+  };
+
+  const handleStartOrder = async (driver: any, method: 'call' | 'message') => {
+    setActiveOrder({
+      ...driver,
+      driverId: driver._id,
+      status: 'IN_PROGRESS',
+      startTime: new Date()
+    });
+    
+    // API isteği burada yapılacak
+    try {
+      await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: deviceId,
+          driverId: driver._id,
+          driverName: `${driver.firstName} ${driver.lastName}`,
+          serviceType: driver.serviceType,
+          location: driver.location,
+          method: method
+        })
+      });
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDriverSelect = (id: string | null) => {
+    setActiveDriverId(id);
   };
 
   const handleRoleSelect = (role: 'customer' | 'provider', providerData?: any) => {
@@ -189,134 +219,66 @@ export default function Home() {
     if (role === 'customer') setShowCustomerGuide(true);
   };
 
-  const handleStartOrder = async (driver: any, method: 'call' | 'message') => {
-    if (!deviceId) return;
-    setActiveOrder({
-      driverId: driver._id,
-      driverName: `${driver.firstName} ${driver.lastName}`,
-      serviceType: driver.serviceType,
-      phoneNumber: driver.phoneNumber,
-      startTime: new Date(),
-      status: 'IN_PROGRESS'
-    });
-    setPanelDrivers([]);
-    setSidebarOpen(false);
-    setChatOpen(false); 
-
-    try {
-      const res = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: deviceId,
-          driverId: driver._id,
-          driverName: `${driver.firstName} ${driver.lastName}`,
-          serviceType: driver.serviceType,
-          location: driver.location,
-          method: method
-        })
-      });
-      const newOrderData = await res.json();
-      if (newOrderData._id) {
-        setActiveOrder((prev: any) => ({ ...prev, _id: newOrderData._id }));
-      }
-    } catch (e) { console.error("Sipariş hatası:", e); }
-  };
-
-  const handleCompleteOrder = async () => {
-    if (activeOrder?._id) {
-      try {
-        await fetch(`${API_URL}/orders/${activeOrder._id}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'COMPLETED' })
-        });
-      } catch (e) {}
-    }
-    setActiveOrder(null); 
-    setShowRatingModal(true); 
-  };
-
-  const handleMenuClick = () => {
-    setSidebarOpen(!sidebarOpen);
-    if (!sidebarOpen) {
-      handleResetMap();
-      setChatOpen(false);
-    }
-  };
-
-  const handleActionSelect = (type: any) => {
-    setSidebarOpen(false); 
-    handleFilterChange(type);
-  };
-
   // --- RENDERING ---
 
-  if (!userRole) {
-    return <AuthModal onRoleSelect={handleRoleSelect} />;
-  }
+  if (!userRole) return <AuthModal onRoleSelect={handleRoleSelect} />;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-white">
-      {/* 1. HARİTA (Senkronizasyon Propları Eklendi) */}
+      {/* 1. HARİTA 
+         Not: onMapMove prop'u kaldırıldı çünkü Map bileşeni henüz bunu desteklemiyor.
+         Map.tsx güncellendiğinde buraya tekrar eklenecek.
+      */}
       <MapComponent 
         searchCoords={searchCoords} 
-        drivers={mapDrivers} 
+        drivers={filteredDrivers} 
         onStartOrder={handleStartOrder} 
-        activeDriverId={activeDriverId}
-        onSelectDriver={setActiveDriverId}
+        activeDriverId={activeDriverId} 
+        onSelectDriver={handleDriverSelect} 
       />
       
       {/* 2. CHATBOT */}
       <ChatWidget 
         isOpen={isChatOpen} 
-        onToggle={handleChatToggle} 
-        contextData={{
-          drivers: allDrivers,
-          userLocation: searchCoords,
-          activeOrder: activeOrder,
-          userRole: userRole
-        }}
+        onToggle={setChatOpen} 
+        contextData={{ drivers: allDrivers, userLocation: searchCoords }}
       />
       
-      {showCustomerGuide && <CustomerGuide onClose={() => setShowCustomerGuide(false)} />}
-      
-      {/* 3. ÜST ARAÇ ÇUBUĞU */}
+      {/* 3. ÜST MENU */}
       <TopBar 
-        onMenuClick={handleMenuClick} 
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         onProfileClick={() => setShowProfileModal(true)} 
         sidebarOpen={sidebarOpen} 
       />
       
-      {/* 4. SİPARİŞ TAKİBİ */}
+      {/* 4. SİPARİŞ PANELİ */}
       <ActiveOrderPanel 
         activeOrder={activeOrder} 
-        onComplete={handleCompleteOrder} 
-        onCancel={() => { setActiveOrder(null); handleResetMap(); }} 
+        onComplete={() => { setActiveOrder(null); setShowRatingModal(true); }} 
+        onCancel={() => setActiveOrder(null)} 
       />
 
-      {/* 5. MODALLAR */}
-      <RatingModal isOpen={showRatingModal} onRate={() => { setShowRatingModal(false); handleResetMap(); }} onClose={() => { setShowRatingModal(false); handleResetMap(); }} />
-      <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
-      <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} orderId={reportOrderId} />
-      
-      {/* 6. MÜŞTERİ PANELİ (Senkronizasyon Propları Eklendi) */}
+      {/* 5. AKSİYON PANELİ */}
       {!activeOrder && userRole === 'customer' && (
         <ActionPanel 
-          onSearchLocation={fetchAllData} 
-          onFilterApply={handleFilterChange} 
-          onStartOrder={handleStartOrder}
-          actionType={actionType} 
-          onActionChange={handleActionSelect} 
-          drivers={panelDrivers} 
+          drivers={filteredDrivers} 
           loading={loadingDrivers}
-          onReset={handleResetMap}
+          actionType={actionType} 
+          onActionChange={setActionType}
+          onFilterApply={handleFilterChange} 
+          onSearchLocation={(lat, lng) => fetchDrivers(lat, lng, actionType)}
           activeDriverId={activeDriverId}
-          onSelectDriver={setActiveDriverId}
+          onSelectDriver={setActiveDriverId} 
+          onStartOrder={handleStartOrder}
+          onReset={() => {
+            setActionType('');
+            setFilteredDrivers(allDrivers);
+            setActiveDriverId(null);
+          }}
         />
       )}
 
-      {/* 7. KURUMSAL PANEL */}
+      {/* 6. KURUMSAL PANEL */}
       {userRole === 'provider' && currentProviderId && (
         <ProviderPanel 
           providerId={currentProviderId} 
@@ -326,13 +288,22 @@ export default function Home() {
         /> 
       )}
 
-      {/* 8. YAN MENÜ */}
+      {/* 7. YAN MENÜ */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
-        onSelectAction={handleActionSelect} 
-        onReportClick={(id) => { setReportOrderId(id); setShowReportModal(true); setSidebarOpen(false); }} 
+        onSelectAction={(type) => {
+            setSidebarOpen(false);
+            handleFilterChange(type);
+        }} 
+        onReportClick={(id) => { setReportOrderId(id); setShowReportModal(true); setSidebarOpen(false); }}
       />
+
+      {/* Modallar */}
+      <RatingModal isOpen={showRatingModal} onClose={() => setShowRatingModal(false)} onRate={() => {}} />
+      <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
+      <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} orderId={reportOrderId} />
+      {showCustomerGuide && <CustomerGuide onClose={() => setShowCustomerGuide(false)} />}
     </div>
   );
 }

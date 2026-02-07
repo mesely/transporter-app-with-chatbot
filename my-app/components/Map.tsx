@@ -1,15 +1,18 @@
 'use client';
 
+// --- LEAFLET & REACT ---
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+
+// --- CLUSTER & ICONS ---
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { 
   Truck, Zap, BatteryCharging, Wrench, 
-  Phone, MessageCircle, Navigation, Map as MapIcon,
-  Construction, Home, Star, CalendarCheck
+  Construction, Home, Star, CalendarCheck,
+  Navigation, Map as MapIcon
 } from 'lucide-react';
 
 // --- 1. TİPLER ---
@@ -34,6 +37,8 @@ interface MapProps {
   // --- SENKRONİZASYON PROPLARI ---
   activeDriverId: string | null;
   onSelectDriver: (id: string | null) => void;
+  // Harita kaydırıldığında veri çekmek için (Opsiyonel ama performans için iyi)
+  onMapMove?: (lat: number, lng: number) => void;
 }
 
 // --- 2. RENK VE İKON YAPILANDIRMASI ---
@@ -81,12 +86,13 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
     `,
     iconSize: [baseSize, baseSize], 
     iconAnchor: [baseSize / 2, baseSize], 
-    popupAnchor: [0, -baseSize]
+    popupAnchor: [0, -baseSize] // Popup tam tepede açılır
   });
 };
 
 const createClusterIcon = (cluster: any, type: string) => {
   const count = cluster.getChildCount();
+  const driver = cluster.getAllChildMarkers()[0]?.options?.driverData; // İlk marker'dan tipi al
   const config = SERVICE_CONFIG[type] || { color: '#333' };
   
   return L.divIcon({
@@ -113,21 +119,29 @@ const createClusterIcon = (cluster: any, type: string) => {
 };
 
 // --- 4. HARİTA KONTROL BİLEŞENLERİ ---
-function MapEvents({ onZoomChange }: { onZoomChange: (z: number) => void }) {
+function MapEvents({ onZoomChange, onMapMove }: { onZoomChange: (z: number) => void, onMapMove?: (lat: number, lng: number) => void }) {
   const map = useMapEvents({
     zoomend: () => onZoomChange(map.getZoom()),
+    moveend: () => {
+      if (onMapMove) {
+        const center = map.getCenter();
+        onMapMove(center.lat, center.lng);
+      }
+    }
   });
   return null;
 }
 
+// Harita odağını değiştiren kontrolcü
 function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
   const map = useMap();
   
   useEffect(() => {
     if (activeDriverCoords) {
-      // Bir sürücü seçildiğinde oraya odaklan
-      map.flyTo(activeDriverCoords, 15, { duration: 1.5 });
+      // Bir sürücü seçildiğinde oraya yumuşak uçuş yap
+      map.flyTo(activeDriverCoords, 16, { duration: 1.5 });
     } else if (coords) {
+      // Konum değiştiğinde oraya git (ama çok zoom yapma ki çevreyi görsün)
       map.flyTo(coords, 14, { duration: 2, animate: true });
     }
   }, [coords, activeDriverCoords, map]);
@@ -136,12 +150,13 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
 }
 
 // --- 5. ANA BİLEŞEN ---
-export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver }: MapProps) {
+export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove }: MapProps) {
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
   const [isRouting, setIsRouting] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(13);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
+  // Sürücüleri tiplerine göre grupla (Cluster renkleri için)
   const groupedDrivers = useMemo(() => {
     return drivers.reduce((acc: any, driver: any) => {
       const type = driver.serviceType || 'other';
@@ -151,10 +166,13 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     }, {});
   }, [drivers]);
 
-  // Aktif sürücünün koordinatlarını bul
+  // Aktif sürücünün koordinatlarını hesapla
   const activeDriverCoords = useMemo(() => {
     const active = drivers.find(d => d._id === activeDriverId);
-    if (active) return [active.location.coordinates[1], active.location.coordinates[0]] as [number, number];
+    if (active && active.location?.coordinates) {
+      // MongoDB [lng, lat] -> Leaflet [lat, lng]
+      return [active.location.coordinates[1], active.location.coordinates[0]] as [number, number];
+    }
     return null;
   }, [activeDriverId, drivers]);
 
@@ -165,16 +183,19 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     }
   }, [activeDriverId]);
 
+  // Rota çizme fonksiyonu
   const handleDrawRoute = async (destLat: number, destLng: number) => {
     if (!searchCoords) return;
     setIsRouting(true);
     const [startLat, startLng] = searchCoords;
+    // OSRM API (Ücretsiz rota servisi)
     const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson`;
 
     try {
       const response = await fetch(url);
       const data = await response.json();
       if (data.routes?.[0]) {
+        // GeoJSON [lng, lat] -> Leaflet [lat, lng]
         const coords = data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]]);
         setRoutePath(coords);
       }
@@ -184,7 +205,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
   const userIcon = L.divIcon({
     className: 'user-marker',
-    html: `<div style="background-color: #3b82f6; width: 22px; height: 22px; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);"></div>`,
+    html: `<div style="background-color: #3b82f6; width: 22px; height: 22px; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); animation: pulse 2s infinite;"></div>`,
     iconSize: [22, 22], iconAnchor: [11, 11],
   });
 
@@ -197,23 +218,27 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
         className="w-full h-full"
       >
         <TileLayer
-          attribution='© OpenStreetMap'
+          attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         
-        <MapEvents onZoomChange={setCurrentZoom} />
+        {/* Harita Olayları ve Kontrolcüsü */}
+        <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} />
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
+        {/* Kullanıcı Konumu */}
         {searchCoords && (
           <Marker position={searchCoords} icon={userIcon}>
             <Popup>Şu anki konumunuz</Popup>
           </Marker>
         )}
 
+        {/* Rota Çizgisi */}
         {routePath.length > 0 && (
           <Polyline positions={routePath} color="#3b82f6" weight={6} opacity={0.6} dashArray="1, 12" lineCap="round" />
         )}
 
+        {/* Sürücü Markerları (Cluster İçinde) */}
         {Object.keys(groupedDrivers).map((type) => (
           <MarkerClusterGroup 
             key={type}
@@ -223,7 +248,10 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
             spiderfyOnMaxZoom={true}
           >
             {groupedDrivers[type].map((driver: Driver) => {
-              const [lng, lat] = driver.location.coordinates;
+              // Koordinat dönüşümü
+              const lng = driver.location.coordinates[0];
+              const lat = driver.location.coordinates[1];
+              
               const isCharge = driver.serviceType?.includes('sarj');
               const isActive = activeDriverId === driver._id;
 
@@ -240,6 +268,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   <Popup className="custom-popup" minWidth={240}>
                     <div className="p-1 font-sans">
                       
+                      {/* Başlık ve Mesafe */}
                       <div className="mb-3">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-tighter">
@@ -261,15 +290,17 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                         </div>
                       </div>
 
+                      {/* Aksiyon Butonları (Rota & Gmaps) */}
                       <div className="flex gap-1.5 mb-3">
                         <button onClick={() => handleDrawRoute(lat, lng)} className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all">
                           {isRouting ? '...' : <><Navigation size={12} /> ROTA</>}
                         </button>
-                        <button onClick={() => window.open(`http://maps.google.com/?daddr=${lat},${lng}`, '_blank')} className="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                        <button onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank')} className="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all">
                           <MapIcon size={12} /> G-MAPS
                         </button>
                       </div>
 
+                      {/* Alt Butonlar (Ara & WhatsApp) */}
                       <div className="flex gap-2 pt-3 border-t border-gray-100">
                         {isCharge ? (
                           <button onClick={() => driver.reservationUrl && window.open(driver.reservationUrl, '_blank')} className={`w-full py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 transition-all ${driver.reservationUrl ? 'bg-blue-600 text-white shadow-lg active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
@@ -278,7 +309,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                         ) : (
                           <>
                             <button onClick={() => { onStartOrder(driver, 'call'); window.location.href = `tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg">ARA</button>
-                            {/* WP -> WHATSAPP GÜNCELLEMESİ */}
                             <button onClick={() => { onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`, '_blank'); }} className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg">WHATSAPP</button>
                           </>
                         )}

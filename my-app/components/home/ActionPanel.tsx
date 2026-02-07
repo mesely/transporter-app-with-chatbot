@@ -1,8 +1,8 @@
 'use client';
 
 import { 
-  Truck, Zap, Star, MapPin, Wrench, Box, 
-  ChevronDown, LocateFixed, CalendarCheck, Loader2, Navigation, 
+  Truck, Zap, Star, MapPin, Wrench, 
+  ChevronDown, LocateFixed, Loader2, 
   MessageCircle, Phone 
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -29,8 +29,11 @@ interface ActionPanelProps {
   onSearchLocation: (lat: number, lng: number) => void;
   onFilterApply: (type: string) => void; 
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
-  actionType: string; onActionChange: (type: string) => void;
-  drivers: Driver[]; loading: boolean; onReset: () => void;
+  actionType: string; 
+  onActionChange: (type: string) => void;
+  drivers: Driver[]; 
+  loading: boolean; 
+  onReset: () => void;
   activeDriverId: string | null;
   onSelectDriver: (id: string | null) => void;
 }
@@ -46,6 +49,7 @@ export default function ActionPanel({
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
 
+  // UI State'leri
   const [showTowRow, setShowTowRow] = useState(false);
   const [showShipRow, setShowShipRow] = useState(false);
   const [showTicariRow, setShowTicariRow] = useState(false);
@@ -58,10 +62,11 @@ export default function ActionPanel({
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // --- 🧭 SENKRONİZASYON: Haritadan Seçilince Otomatik Kay ---
+  // --- 🧭 SENKRONİZASYON 1: Haritadan Seçilince Panele Odakla ---
   useEffect(() => {
     if (activeDriverId) {
       setIsExpanded(true);
+      // Panel açıldıktan biraz sonra kaydır ki animasyon bozulmasın
       setTimeout(() => {
         itemRefs.current[activeDriverId]?.scrollIntoView({
           behavior: 'smooth',
@@ -70,6 +75,31 @@ export default function ActionPanel({
       }, 300);
     }
   }, [activeDriverId]);
+
+  // --- 🧭 SENKRONİZASYON 2: Dışarıdan Kategori Değişirse Paneli Ayarla ---
+  // (Yeni Eklenen Kısım: Sidebar'dan 'Nakliye' seçince burası tepki verir)
+  useEffect(() => {
+    if (!actionType) {
+        // Filtre temizlendiyse alt menüleri kapat ama paneli tamamen kapatma (kullanıcı deneyimi)
+        setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
+        return;
+    }
+
+    setIsExpanded(true); // Bir şey seçildiyse paneli aç
+
+    // Hangi alt menünün açılacağını belirle
+    if (['kurtarici', 'vinc', 'oto_kurtarma'].some(t => actionType.includes(t))) {
+        setShowTowRow(true); setShowShipRow(false); setShowChargeRow(false);
+    } else if (['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'].some(t => actionType.includes(t))) {
+        setShowShipRow(true); setShowTowRow(false); setShowChargeRow(false);
+        // Eğer alt kategori seçildiyse ticari satırı da aç
+        if (['kamyon', 'tir', 'kamyonet'].some(t => actionType.includes(t))) {
+            setShowTicariRow(true);
+        }
+    } else if (['sarj', 'sarj_istasyonu', 'seyyar_sarj'].some(t => actionType.includes(t))) {
+        setShowChargeRow(true); setShowTowRow(false); setShowShipRow(false);
+    }
+  }, [actionType]);
 
   const findMyLocation = () => {
     setIsLocating(true);
@@ -89,12 +119,14 @@ export default function ActionPanel({
   };
 
   useEffect(() => {
+    // İlk açılışta konum bul
     findMyLocation();
+    // Tarifeleri çek
     fetch(`${API_URL}/tariffs`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setTariffs(data); })
       .catch(err => console.error(err));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDragStart = (y: number) => { dragStartY.current = y; };
   const handleDragMove = (y: number) => {
@@ -118,7 +150,9 @@ export default function ActionPanel({
     return { total: min ? Math.max(calculated, min).toFixed(0) : calculated.toFixed(0), opening, unit, min };
   };
 
-  const filteredDrivers = useMemo(() => {
+  // İstemci Taraflı Sıralama ve Şehir Filtreleme
+  // (Not: Ana filtreleme page.tsx'te yapılır, burası sadece görünümü düzenler)
+  const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
     if (selectedCity) {
       list = list.filter(d => 
@@ -132,7 +166,7 @@ export default function ActionPanel({
       return a.distance - b.distance;
     });
     return list;
-  }, [safeDrivers, sortMode, selectedCity, tariffs]);
+  }, [safeDrivers, sortMode, selectedCity, tariffs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div 
@@ -142,7 +176,6 @@ export default function ActionPanel({
       onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
       onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
       onTouchEnd={() => { dragStartY.current = null; }}
-      // 🛠️ YÜKSEKLİK AYARI: h-[92vh] -> h-[85vh] yapıldı
       className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-700 rounded-t-[3.5rem] flex flex-col ${
         isFullHeight ? 'h-[85vh]' : isExpanded ? 'h-[65vh]' : 'h-36'
       } bg-white/10 backdrop-blur-2xl border-t border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
@@ -156,13 +189,13 @@ export default function ActionPanel({
         
         {/* ANA KATEGORİLER */}
         <div className="flex gap-3 shrink-0 mb-4">
-          <button onClick={() => { setIsExpanded(true); setShowTowRow(!showTowRow); setShowShipRow(false); setShowChargeRow(false); onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
+          <button onClick={() => { onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
             <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
-          <button onClick={() => { setIsExpanded(true); setShowShipRow(!showShipRow); setShowTowRow(false); setShowChargeRow(false); onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
+          <button onClick={() => { onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
-          <button onClick={() => { setIsExpanded(true); setShowChargeRow(!showChargeRow); setShowTowRow(false); setShowShipRow(false); onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
+          <button onClick={() => { onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
             <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Şarj</span>
           </button>
         </div>
@@ -218,9 +251,9 @@ export default function ActionPanel({
         <div className="flex-1 overflow-y-auto pb-40 custom-scrollbar">
           {loading ? (
              <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
-          ) : filteredDrivers.length === 0 ? (
+          ) : displayDrivers.length === 0 ? (
             <div className="text-center py-10 text-gray-400 text-[10px] font-black uppercase">Sonuç Bulunamadı.</div>
-          ) : filteredDrivers.map((driver) => {
+          ) : displayDrivers.map((driver) => {
             const isSelected = activeDriverId === driver._id;
             const pricing = getPricing(driver);
             const isCharge = driver.serviceType?.includes('sarj');
