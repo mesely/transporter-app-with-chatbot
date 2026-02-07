@@ -62,11 +62,17 @@ export class ChatService {
     return messages[code] || "Anlaşılamadı, lütfen biraz daha detay verir misiniz?";
   }
 
-  async chat(message: string, history: any[]) {
+  /**
+   * ANA SOHBET FONKSİYONU
+   * @param message Kullanıcı mesajı
+   * @param history Sohbet geçmişi
+   * @param location { lat, lng } Kullanıcı konumu (Opsiyonel)
+   */
+  async chat(message: string, history: any[], location?: { lat: number; lng: number }) {
     try {
       let systemCode = "";
       let foundData: any = null;
-      let dataType = 'drivers';
+      let dataType = 'text'; // Varsayılan veri tipi
       let aiNeeded = false;
       
       const lowerMsg = message.toLowerCase();
@@ -109,17 +115,31 @@ export class ChatService {
             foundData = { service: serviceKey, unit: unitType };
           } else {
             // Dinamik Tarife Hesaplama
-            let safeTariff = { openingFee: 500, pricePerUnit: 20, unit: unitType };
+            let safeTariff = { openingFee: 500, pricePerUnit: 20, unit: unitType }; // Default değerler
             try {
+              // Veritabanından güncel tarifeyi çek
               const dbTariff = await this.tariffsService.findByType(serviceKey);
-              if (dbTariff) safeTariff = { openingFee: dbTariff.openingFee, pricePerUnit: dbTariff.pricePerUnit, unit: dbTariff.unit };
-            } catch (e) { this.logger.warn("Tarife çekilemedi, default kullanılıyor."); }
+              if (dbTariff) {
+                safeTariff = { 
+                  openingFee: dbTariff.openingFee, 
+                  pricePerUnit: dbTariff.pricePerUnit, 
+                  unit: dbTariff.unit 
+                };
+              }
+            } catch (e) { 
+              this.logger.warn("Tarife çekilemedi, default değerler kullanılıyor."); 
+            }
 
             const total = safeTariff.openingFee + (amount * safeTariff.pricePerUnit);
+            
             foundData = {
               service: serviceKey.toUpperCase().replace('_', ' '),
-              amount, unit: safeTariff.unit, total,
-              breakdown: `${safeTariff.openingFee} TL Açılış + ${amount}${safeTariff.unit} x ${safeTariff.pricePerUnit} TL`
+              amount, 
+              unit: safeTariff.unit, 
+              total,
+              openingFee: safeTariff.openingFee,
+              pricePerUnit: safeTariff.pricePerUnit,
+              breakdown: `${safeTariff.openingFee} TL Açılış + (${amount} ${safeTariff.unit} x ${safeTariff.pricePerUnit} TL)`
             };
             dataType = 'calculation_result';
             systemCode = "HESAP_SONUC";
@@ -132,6 +152,7 @@ export class ChatService {
         try {
           foundData = await this.tariffsService.findAll();
           if (!foundData || foundData.length === 0) {
+            // Veritabanı boşsa örnek veri dön
             foundData = [{ serviceType: 'kurtarici', openingFee: 1200, pricePerUnit: 35, unit: 'km' }];
           }
         } catch (e) { foundData = []; }
@@ -146,9 +167,15 @@ export class ChatService {
 
       // --- SENARYO 4: ARAÇ / HİZMET ARAMA (Konum Bazlı) ---
       else if (searchType) {
-        // HATA DÜZELTİLDİ: Artık 3 parametre (tür, lat, lng) güvenle gönderiliyor
-        // Örnek koordinat: İzmir (38.42, 27.14)
-        foundData = await this.usersService.findProvidersByType(searchType, 38.42, 27.14);
+        // Eğer konum bilgisi geldiyse onu kullan, yoksa varsayılan (İzmir) kullan
+        const lat = location?.lat || 38.42;
+        const lng = location?.lng || 27.14;
+
+        this.logger.log(`Araç Arama: ${searchType} @ [${lat}, ${lng}]`);
+
+        // UsersService üzerinden arama yap (Artık findNearby kullanıyoruz)
+        foundData = await this.usersService.findNearby(lat, lng, searchType);
+        
         dataType = 'drivers';
         systemCode = foundData && foundData.length > 0 ? "ARAC_BULUNDU" : "ARAC_YOK";
       }
@@ -161,30 +188,41 @@ export class ChatService {
       // --- CEVAP OLUŞTURMA VE DATA PACKET ---
       let content = "";
       if (systemCode) {
+        // Sistem mesajını al
         content = this.getMessageForCode(systemCode);
       } else if (aiNeeded) {
-        const chatResponse = await this.client.chat.complete({
-          model: 'mistral-tiny',
-          messages: [
-            { role: 'system', content: 'Sen Transporter uygulamasının zeki asistanı Madlensin. Lojistik, çekici ve şarj konularında kısa, profesyonel Türkçe cevaplar ver.' },
-            ...history,
-            { role: 'user', content: message }
-          ] as any,
-        });
-        content = (chatResponse.choices?.[0]?.message?.content as string) || "Size nasıl yardımcı olabilirim?";
+        // AI'ya sor
+        try {
+          const chatResponse = await this.client.chat.complete({
+            model: 'mistral-tiny',
+            messages: [
+              { role: 'system', content: 'Sen Transporter uygulamasının zeki asistanı Madlensin. Lojistik, çekici ve şarj konularında kısa, profesyonel Türkçe cevaplar ver. Kullanıcıya her zaman yardımcı olmaya çalış.' },
+              ...history, // Önceki konuşmalar
+              { role: 'user', content: message } // Güncel mesaj
+            ] as any,
+          });
+          content = (chatResponse.choices?.[0]?.message?.content as string) || "Üzgünüm, şu an cevap veremiyorum.";
+        } catch (aiError) {
+          this.logger.error(`AI Hatası: ${aiError}`);
+          content = "Bağlantı yoğunluğu nedeniyle şu an cevap veremiyorum, lütfen tekrar deneyin.";
+        }
       }
 
-      // Data ekleme (Frontend'in anlayacağı format)
+      // Data Packet Ekleme (Frontend'in parse edeceği kısım)
+      // Format: ||DATA||{...JSON...}||DATA||
       if (foundData) {
-        const packet = { type: dataType, items: Array.isArray(foundData) ? foundData : [foundData] };
+        const packet = { 
+          type: dataType, 
+          items: Array.isArray(foundData) ? foundData : [foundData] 
+        };
         content += `||DATA||${JSON.stringify(packet)}||DATA||`;
       }
 
       return { response: content, role: 'assistant' };
 
     } catch (error) {
-      this.logger.error(`Chat Hatası: ${error.message}`);
-      return { response: "Bağlantı sırasında bir sorun oluştu, lütfen tekrar deneyin.", role: 'assistant' };
+      this.logger.error(`Chat Servis Hatası: ${error.message}`);
+      return { response: "Sistemsel bir hata oluştu, lütfen daha sonra tekrar deneyin.", role: 'assistant' };
     }
   }
 }
