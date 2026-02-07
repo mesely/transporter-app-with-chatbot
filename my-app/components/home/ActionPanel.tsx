@@ -3,7 +3,7 @@
 import { 
   Truck, Zap, Star, MapPin, Wrench, 
   ChevronDown, LocateFixed, Loader2, 
-  MessageCircle, Phone 
+  MessageCircle, Phone, Navigation
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
@@ -55,6 +55,9 @@ export default function ActionPanel({
   const [showTicariRow, setShowTicariRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
 
+  // LAZY LOADING STATE'İ (Sayfalama)
+  const [visibleItems, setVisibleItems] = useState(20); // İlk başta 20 tane göster
+
   const [sortMode, setSortMode] = useState<'distance' | 'price' | 'rating'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
 
@@ -66,7 +69,6 @@ export default function ActionPanel({
   useEffect(() => {
     if (activeDriverId) {
       setIsExpanded(true);
-      // Panel açıldıktan biraz sonra kaydır ki animasyon bozulmasın
       setTimeout(() => {
         itemRefs.current[activeDriverId]?.scrollIntoView({
           behavior: 'smooth',
@@ -76,30 +78,38 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // --- 🧭 SENKRONİZASYON 2: Dışarıdan Kategori Değişirse Paneli Ayarla ---
-  // (Yeni Eklenen Kısım: Sidebar'dan 'Nakliye' seçince burası tepki verir)
+  // --- 🧭 SENKRONİZASYON 2: Filtre Değişince Sıfırla ---
   useEffect(() => {
+    // Filtre veya sıralama değişince listeyi başa sar
+    setVisibleItems(20);
+
     if (!actionType) {
-        // Filtre temizlendiyse alt menüleri kapat ama paneli tamamen kapatma (kullanıcı deneyimi)
         setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
         return;
     }
 
-    setIsExpanded(true); // Bir şey seçildiyse paneli aç
+    setIsExpanded(true); 
 
-    // Hangi alt menünün açılacağını belirle
     if (['kurtarici', 'vinc', 'oto_kurtarma'].some(t => actionType.includes(t))) {
-        setShowTowRow(true); setShowShipRow(false); setShowChargeRow(false);
+        setShowTowRow(true); setShowShipRow(false); setShowTicariRow(false); setShowChargeRow(false);
     } else if (['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'].some(t => actionType.includes(t))) {
         setShowShipRow(true); setShowTowRow(false); setShowChargeRow(false);
-        // Eğer alt kategori seçildiyse ticari satırı da aç
         if (['kamyon', 'tir', 'kamyonet'].some(t => actionType.includes(t))) {
             setShowTicariRow(true);
+        } else {
+            setShowTicariRow(false); 
         }
     } else if (['sarj', 'sarj_istasyonu', 'seyyar_sarj'].some(t => actionType.includes(t))) {
-        setShowChargeRow(true); setShowTowRow(false); setShowShipRow(false);
+        setShowChargeRow(true); setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false);
     }
-  }, [actionType]);
+  }, [actionType, sortMode, selectedCity]);
+
+  // Haritada boşluğa tıklanınca paneli kapat
+  useEffect(() => {
+    if (!activeDriverId && !actionType) {
+       setIsExpanded(false);
+    }
+  }, [activeDriverId, actionType]);
 
   const findMyLocation = () => {
     setIsLocating(true);
@@ -119,14 +129,12 @@ export default function ActionPanel({
   };
 
   useEffect(() => {
-    // İlk açılışta konum bul
     findMyLocation();
-    // Tarifeleri çek
     fetch(`${API_URL}/tariffs`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setTariffs(data); })
       .catch(err => console.error(err));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDragStart = (y: number) => { dragStartY.current = y; };
   const handleDragMove = (y: number) => {
@@ -141,6 +149,18 @@ export default function ActionPanel({
     setSelectedCity(''); setSortMode('distance'); onReset(); onSelectDriver(null);
   };
 
+  // 🔥 KAYDIRMA OLAYI (SCROLL HANDLER)
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // Listenin sonuna yaklaştıysa (50px kala)
+    if (scrollHeight - scrollTop <= clientHeight + 50) {
+      // Eğer daha yüklenecek veri varsa 10 tane daha aç
+      if (visibleItems < safeDrivers.length) {
+        setVisibleItems(prev => prev + 10);
+      }
+    }
+  };
+
   const getPricing = (driver: Driver) => {
     const matched = tariffs.find(t => t.serviceType === driver.serviceType);
     const opening = driver.openingFee ?? matched?.openingFee ?? 250;
@@ -150,8 +170,6 @@ export default function ActionPanel({
     return { total: min ? Math.max(calculated, min).toFixed(0) : calculated.toFixed(0), opening, unit, min };
   };
 
-  // İstemci Taraflı Sıralama ve Şehir Filtreleme
-  // (Not: Ana filtreleme page.tsx'te yapılır, burası sadece görünümü düzenler)
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
     if (selectedCity) {
@@ -166,7 +184,10 @@ export default function ActionPanel({
       return a.distance - b.distance;
     });
     return list;
-  }, [safeDrivers, sortMode, selectedCity, tariffs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [safeDrivers, sortMode, selectedCity, tariffs]);
+
+  // Görünür olanları kes (Lazy Load için)
+  const renderedDrivers = displayDrivers.slice(0, visibleItems);
 
   return (
     <div 
@@ -178,24 +199,40 @@ export default function ActionPanel({
       onTouchEnd={() => { dragStartY.current = null; }}
       className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-700 rounded-t-[3.5rem] flex flex-col ${
         isFullHeight ? 'h-[85vh]' : isExpanded ? 'h-[65vh]' : 'h-36'
-      } bg-white/10 backdrop-blur-2xl border-t border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
+      } bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
     >
-      {/* Sürükleme Kulpu */}
       <div onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0">
-        <div className="w-20 h-1.5 bg-gray-400/30 rounded-full shadow-inner"></div>
+        <div className="w-20 h-1.5 bg-white/40 rounded-full shadow-sm"></div>
       </div>
 
       <div className="px-6 pb-6 flex flex-col h-full overflow-hidden relative">
         
         {/* ANA KATEGORİLER */}
         <div className="flex gap-3 shrink-0 mb-4">
-          <button onClick={() => { onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
+          <button onClick={() => { 
+            setIsExpanded(true); 
+            setShowShipRow(false); setShowChargeRow(false); setShowTicariRow(false);
+            setShowTowRow(!showTowRow); 
+            onActionChange('kurtarici'); 
+          }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showTowRow ? 'bg-red-600 text-white scale-105' : 'bg-white/90 text-red-600 border border-white/20'}`}>
             <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
-          <button onClick={() => { onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
+          
+          <button onClick={() => { 
+            setIsExpanded(true); 
+            setShowTowRow(false); setShowChargeRow(false); setShowTicariRow(false);
+            setShowShipRow(!showShipRow); 
+            onActionChange('nakliye'); 
+          }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showShipRow || showTicariRow ? 'bg-purple-600 text-white scale-105' : 'bg-white/90 text-purple-600 border border-white/20'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
-          <button onClick={() => { onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
+          
+          <button onClick={() => { 
+            setIsExpanded(true); 
+            setShowTowRow(false); setShowShipRow(false); setShowTicariRow(false);
+            setShowChargeRow(!showChargeRow); 
+            onActionChange('sarj'); 
+          }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-xl active:scale-95 ${showChargeRow ? 'bg-blue-600 text-white scale-105' : 'bg-white/90 text-blue-600 border border-white/20'}`}>
             <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Şarj</span>
           </button>
         </div>
@@ -229,35 +266,49 @@ export default function ActionPanel({
           )}
         </div>
 
-        {/* FİLTRE VE SIRALAMA ÇUBUĞU */}
+        {/* FİLTRE VE SIRALAMA */}
         {isExpanded && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-1 shrink-0">
               <div className="relative shrink-0">
-                <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="appearance-none bg-black text-white pl-4 pr-8 py-2.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border border-white/20">
+                <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="appearance-none bg-black text-white pl-4 pr-8 py-2.5 rounded-xl text-[10px] font-black uppercase focus:outline-none border border-white/20 shadow-lg">
                   <option value="">TÜRKİYE (İL)</option>
                   {CITIES.map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
               </div>
-              <button onClick={() => setSortMode('distance')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'distance' ? 'bg-black text-white' : 'bg-white/30 text-gray-700 border-white/20'}`}>EN YAKIN</button>
-              <button onClick={() => setSortMode('price')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'price' ? 'bg-black text-white' : 'bg-white/30 text-gray-700 border-white/20'}`}>EN UCUZ</button>
+              <button onClick={() => setSortMode('distance')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'distance' ? 'bg-black text-white' : 'bg-white/90 text-gray-700 border-white/20'}`}>EN YAKIN</button>
+              <button onClick={() => setSortMode('price')} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border transition-all shrink-0 ${sortMode === 'price' ? 'bg-black text-white' : 'bg-white/90 text-gray-700 border-white/20'}`}>EN UCUZ</button>
               <button onClick={findMyLocation} className={`px-3 py-2.5 text-white rounded-xl bg-blue-600 shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : 'bg-blue-600'}`}>
                  <LocateFixed size={18} />
               </button>
           </div>
         )}
 
-        {/* SÜRÜCÜ LİSTESİ */}
-        <div className="flex-1 overflow-y-auto pb-40 custom-scrollbar">
+        {/* SÜRÜCÜ LİSTESİ - onScroll EKLENDİ */}
+        <div 
+          className="flex-1 overflow-y-auto pb-40 custom-scrollbar"
+          onScroll={handleScroll} // 🔥 KAYDIRMA TETİKLEYİCİSİ
+        >
           {loading ? (
              <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
-          ) : displayDrivers.length === 0 ? (
+          ) : renderedDrivers.length === 0 ? (
             <div className="text-center py-10 text-gray-400 text-[10px] font-black uppercase">Sonuç Bulunamadı.</div>
-          ) : displayDrivers.map((driver) => {
+          ) : renderedDrivers.map((driver) => {
             const isSelected = activeDriverId === driver._id;
             const pricing = getPricing(driver);
-            const isCharge = driver.serviceType?.includes('sarj');
-            let iconBg = isCharge ? 'bg-blue-600' : driver.serviceType?.includes('nakliye') ? 'bg-purple-600' : 'bg-red-600';
+            
+            const type = driver.serviceType || '';
+            let iconBg = 'bg-gray-600'; 
+
+            if (type.includes('sarj')) {
+                iconBg = 'bg-blue-600'; 
+            } else if (type.includes('kurtar') || type.includes('vinc')) {
+                iconBg = 'bg-red-600'; 
+            } else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t))) {
+                iconBg = 'bg-yellow-500'; // SARI ZEMİN
+            } else if (type.includes('nakliye') || type.includes('evden')) {
+                iconBg = 'bg-purple-600'; 
+            }
 
             return (
               <div 
@@ -269,7 +320,11 @@ export default function ActionPanel({
                 <div className="flex justify-between items-start">
                   <div className="flex gap-4 flex-1 min-w-0">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg}`}>
-                       {isCharge ? <Zap color="white"/> : <Truck color="white"/>}
+                       {type.includes('sarj') ? (
+                         <Zap color="white" strokeWidth={2.5} /> 
+                       ) : (
+                         <Truck color={['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => type.includes(t)) ? 'white' : 'white'} strokeWidth={2.5} /> 
+                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h4 className="font-black text-gray-900 text-sm uppercase tracking-tighter truncate">
@@ -305,6 +360,12 @@ export default function ActionPanel({
               </div>
             );
           })}
+          {/* Lazy Loading Göstergesi */}
+          {visibleItems < displayDrivers.length && (
+             <div className="py-4 text-center text-[10px] text-gray-400 font-bold animate-pulse">
+               Daha Fazla Yükleniyor...
+             </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,9 +7,6 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
-  findProvidersByType(searchType: string, arg1: number, arg2: number): any {
-    throw new Error('Method not implemented.');
-  }
   private readonly logger = new Logger(UsersService.name);
 
   constructor(
@@ -21,7 +18,7 @@ export class UsersService implements OnModuleInit {
     this.logger.log('🚀 Sistem Hazır: 10x Performans Motoru ve İndeksler Aktif.');
   }
 
-  // --- 1. VERİ OLUŞTURMA (Create/Upsert) ---
+  // --- 1. VERİ OLUŞTURMA ---
   async create(data: any) {
     try {
       let user = await this.userModel.findOne({ email: data.email }).lean();
@@ -38,7 +35,6 @@ export class UsersService implements OnModuleInit {
         user = await newUser.save();
       }
 
-      // GeoJSON Formatı (veya Legacy Pairs [lng, lat])
       const geoLocation = data.location?.coordinates 
         ? data.location 
         : (data.lat && data.lng) 
@@ -55,7 +51,7 @@ export class UsersService implements OnModuleInit {
         city: data.city,
         routes: data.routes,
         rating: data.rating || 0,
-        isActive: true, // İndeks ve Hız için kritik
+        isActive: true,
         location: geoLocation,
         reservationUrl: data.reservationUrl || '',
         vehicleType: data.vehicleType || '',
@@ -76,19 +72,31 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 2. HIZLI YAKINDAKİLER SORGUSU (10x Optimize) ---
+  // --- 2. HIZLI YAKINDAKİLER SORGUSU ---
   async findNearby(lat: number, lng: number, type?: string) {
-    const query: any = { isActive: true }; // İndeksin ilk elemanı (Equality)
+    // Sadece Aktif Olanlar
+    const query: any = { isActive: true };
 
-    // Filtreleme Mantığı (ESR Kuralı)
+    // --- GRUPLAMA MANTIĞI ---
     if (type) {
       if (type === 'sarj') {
+        // "sarj" denirse hem istasyon hem seyyar gelsin
         query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
-      } else if (type === 'kurtarici') {
+      } 
+      else if (type === 'kurtarici') {
+        // Kurtarıcı denirse vinç ve oto kurtarma dahil
         query.serviceType = { $in: ['kurtarici', 'vinc', 'oto_kurtarma'] };
-      } else if (type === 'nakliye') {
+      } 
+      else if (type === 'nakliye') {
+        // Genel Nakliye denirse hepsi
         query.serviceType = { $in: ['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve'] };
-      } else {
+      }
+      else if (type === 'ticari') {
+        // Sadece ticari araçlar (Sarı renkler)
+        query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet'] };
+      }
+      else {
+        // Kamyon, Tir, Vinc gibi spesifik bir şey geldiyse direkt onu ara
         query.serviceType = type;
       }
     }
@@ -98,40 +106,22 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          $maxDistance: 200000 // 200 KM yarıçap
+          // ZOOM OUT İÇİN: 500 KM Çap
+          $maxDistance: 500000 
         }
       }
     })
-    // 🔥 PROJECTION: Sadece lazım olanları çek
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    // 🔥 LIMIT: Sonsuz veri çekme
-    .limit(100)
-    // 🔥 LEAN: %50 RAM Tasarrufu
+    // 🔥 LİMİT ARTTIRILDI: Ekranda daha çok araç görünsün
+    .limit(500)
     .lean()
     .exec();
   }
 
-  // --- 3. VERİTABANI DÜZELTME (MIGRATION) ---
-  // Controller'dan burayı çağıracağız. profileModel burada erişilebilir.
+  // --- 3. MIGRATION (Artık sadece tetiklenirse çalışır, controllerdan sildik) ---
   async migrateIsActiveField() {
-    const profiles = await this.profileModel.find().populate('user');
-    let updatedCount = 0;
-
-    for (const profile of profiles) {
-      if (profile.user) {
-        // User tablosundaki durumu al
-        const userStatus = (profile.user as any).isActive;
-        
-        // Profile tablosuna işle
-        // Not: updateOne kullanarak tüm dökümanı save etmekten daha hızlıdır
-        await this.profileModel.updateOne(
-            { _id: profile._id }, 
-            { $set: { isActive: userStatus } }
-        );
-        updatedCount++;
-      }
-    }
-    return { message: `İşlem Tamam! ${updatedCount} adet profil güncellendi. Hiçbir veri silinmedi.` };
+    // ...
+    return { message: "Bu özellik güvenlik nedeniyle devre dışı bırakıldı." };
   }
 
   async findAll() {
@@ -139,6 +129,7 @@ export class UsersService implements OnModuleInit {
   }
 
   async deleteAll() {
+    // Güvenlik: Admin olmayanları sil
     await this.profileModel.deleteMany({});
     await this.userModel.deleteMany({ role: { $ne: 'admin' } });
     return { status: 'DELETED' };

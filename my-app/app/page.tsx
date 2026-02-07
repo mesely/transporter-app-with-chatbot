@@ -18,7 +18,7 @@ import ProfileModal from '../components/ProfileModal';
 import ReportModal from '../components/ReportModal';
 import CustomerGuide from '../components/CustomerGuide';
 
-// Harita Bileşeni (SSR devre dışı - Siyah ekran önlemi)
+// Harita Bileşeni (SSR devre dışı)
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => (
@@ -33,7 +33,7 @@ const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 const FALLBACK_LAT = 38.4237; 
 const FALLBACK_LNG = 27.1428;
 
-// 🛠️ PERFORMANS: Veri Normalizasyonu (Backend formatını standartlaştırır)
+// 🛠️ PERFORMANS: Veri Normalizasyonu
 const normalizeDriverData = (data: any[]) => {
   if (!Array.isArray(data)) return [];
   return data.map(d => ({
@@ -76,7 +76,7 @@ export default function Home() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportOrderId, setReportOrderId] = useState<string | null>(null);
 
-  // 🚦 Referanslar (Performans İçin)
+  // 🚦 Referanslar
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -106,74 +106,88 @@ export default function Home() {
       setFilteredDrivers(sourceData);
       return;
     }
+    // Backend zaten filtreliyor ama ani geçişler için client-side filtre de tutuyoruz
     const filtered = sourceData.filter(d => {
-      if (type === 'kurtarici') return d.serviceType?.includes('kurtarici') || d.serviceType?.includes('vinc');
-      if (type === 'nakliye') return d.serviceType?.includes('nakliye') || d.serviceType?.includes('kamyon') || d.serviceType?.includes('tir');
-      if (type === 'sarj') return d.serviceType?.includes('sarj');
-      return d.serviceType === type;
+      const sType = d.serviceType || '';
+      if (type === 'kurtarici') return sType.includes('kurtarici') || sType.includes('vinc');
+      if (type === 'nakliye') return sType.includes('nakliye') || sType.includes('kamyon') || sType.includes('tir');
+      if (type === 'sarj') return sType.includes('sarj');
+      return sType.includes(type);
     });
     setFilteredDrivers(filtered);
   };
 
-  // 3. VERİ ÇEKME MANTIĞI
+  // 3. VERİ ÇEKME MANTIĞI (Backend ile Zoom Out uyumlu)
   const fetchDrivers = useCallback((lat: number, lng: number, type?: string) => {
-    setSearchCoords([lat, lng]);
     setLoadingDrivers(true);
 
+    // Önceki isteği iptal et (Performans)
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    // URL Oluşturma
+    const url = new URL(`${API_URL}/users/nearby`);
+    url.searchParams.append('lat', lat.toString());
+    url.searchParams.append('lng', lng.toString());
+    if (type) url.searchParams.append('type', type);
 
-    let url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}`;
-
-    fetch(url, { signal: controller.signal })
+    fetch(url.toString(), { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         const cleanData = normalizeDriverData(data);
         setAllDrivers(cleanData);
-        
-        if (type || actionType) {
-          applyClientSideFilter(type || actionType, cleanData);
-        } else {
-          setFilteredDrivers(cleanData);
-        }
+        // Gelen veri zaten backend'den filtrelenmiş geliyor, direkt basıyoruz.
+        setFilteredDrivers(cleanData);
       })
       .catch(err => {
         if (err.name !== 'AbortError') console.error("Veri çekilemedi:", err);
       })
       .finally(() => {
-        clearTimeout(timeoutId);
         setLoadingDrivers(false);
       });
-  }, [actionType]);
+  }, []);
 
-  // 4. KONUM BULMA
+  // 4. KONUM BULMA (İlk Açılış)
   useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => fetchDrivers(pos.coords.latitude, pos.coords.longitude),
-        () => fetchDrivers(FALLBACK_LAT, FALLBACK_LNG),
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setSearchCoords([latitude, longitude]);
+          fetchDrivers(latitude, longitude, actionType);
+        },
+        () => {
+          setSearchCoords([FALLBACK_LAT, FALLBACK_LNG]);
+          fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType);
+        },
         { timeout: 10000, enableHighAccuracy: false }
       );
     } else {
-      fetchDrivers(FALLBACK_LAT, FALLBACK_LNG);
+      fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType);
     }
-  }, [fetchDrivers]);
+  }, []); // Sadece ilk açılışta
 
   // --- HANDLER'LAR ---
 
+  // Filtre Değişimi
   const handleFilterChange = (type: string) => {
     setActionType(type);
-    applyClientSideFilter(type, allDrivers);
     setActiveDriverId(null);
+    // Filtre değişince mevcut koordinatta yeni arama yap
+    if (searchCoords) {
+      fetchDrivers(searchCoords[0], searchCoords[1], type);
+    }
   };
 
-  // İleride Map bileşeni güncellenince burası bağlanacak
+  // 🔥 HARİTA KAYDIRMA (ZOOM OUT DESTEĞİ)
   const handleMapMove = (lat: number, lng: number) => {
+    // Debounce: Kullanıcı kaydırmayı bitirince istek at (500ms)
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    
     debounceTimerRef.current = setTimeout(() => {
+      // Koordinatı güncelleme, sadece veriyi yenile
+      // setSearchCoords([lat, lng]); // Bunu açarsak marker da hareket eder, gerek yok.
       fetchDrivers(lat, lng, actionType);
     }, 500);
   };
@@ -186,7 +200,6 @@ export default function Home() {
       startTime: new Date()
     });
     
-    // API isteği burada yapılacak
     try {
       await fetch(`${API_URL}/orders`, {
         method: 'POST',
@@ -201,10 +214,6 @@ export default function Home() {
         })
       });
     } catch (e) { console.error(e); }
-  };
-
-  const handleDriverSelect = (id: string | null) => {
-    setActiveDriverId(id);
   };
 
   const handleRoleSelect = (role: 'customer' | 'provider', providerData?: any) => {
@@ -225,16 +234,16 @@ export default function Home() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-white">
-      {/* 1. HARİTA 
-         Not: onMapMove prop'u kaldırıldı çünkü Map bileşeni henüz bunu desteklemiyor.
-         Map.tsx güncellendiğinde buraya tekrar eklenecek.
-      */}
+      {/* 1. HARİTA (Senkronize) */}
       <MapComponent 
         searchCoords={searchCoords} 
         drivers={filteredDrivers} 
         onStartOrder={handleStartOrder} 
+        // 👇 ÇİFT YÖNLÜ BAĞLANTI BURADA KURULDU 👇
         activeDriverId={activeDriverId} 
-        onSelectDriver={handleDriverSelect} 
+        onSelectDriver={setActiveDriverId} // Pin'e basınca state güncelle
+        onMapMove={handleMapMove} // Kaydırınca yeni veri çek
+        onMapClick={() => setActiveDriverId(null)} // Boşluğa basınca seçimi kaldır
       />
       
       {/* 2. CHATBOT */}
@@ -258,7 +267,7 @@ export default function Home() {
         onCancel={() => setActiveOrder(null)} 
       />
 
-      {/* 5. AKSİYON PANELİ */}
+      {/* 5. AKSİYON PANELİ (Senkronize) */}
       {!activeOrder && userRole === 'customer' && (
         <ActionPanel 
           drivers={filteredDrivers} 
@@ -266,13 +275,17 @@ export default function Home() {
           actionType={actionType} 
           onActionChange={setActionType}
           onFilterApply={handleFilterChange} 
-          onSearchLocation={(lat, lng) => fetchDrivers(lat, lng, actionType)}
+          onSearchLocation={(lat, lng) => {
+            setSearchCoords([lat, lng]);
+            fetchDrivers(lat, lng, actionType);
+          }}
+          // 👇 ÇİFT YÖNLÜ BAĞLANTI BURADA DA VAR 👇
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId} 
           onStartOrder={handleStartOrder}
           onReset={() => {
             setActionType('');
-            setFilteredDrivers(allDrivers);
+            handleFilterChange(''); // Hepsini getir
             setActiveDriverId(null);
           }}
         />
