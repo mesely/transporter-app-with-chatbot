@@ -337,7 +337,7 @@ export default function ActionPanel({
         </div>
       </div>
       
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/20 to-transparent backdrop-blur-[4px] pointer-events-none rounded-b-[3.5rem] z-20" />
+     
     </div>
   );
 }

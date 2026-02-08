@@ -18,42 +18,74 @@ export class UsersService implements OnModuleInit {
     this.logger.log('🚀 Sistem Hazır: 10x Performans Motoru ve İndeksler Aktif.');
   }
 
-  // --- 1. VERİ OLUŞTURMA (İsim Temizleme Eklendi) ---
+  // --- 1. VERİ OLUŞTURMA (AKILLI TEKİLLEŞTİRME) ---
   async create(data: any) {
     try {
-      let user = await this.userModel.findOne({ email: data.email }).lean();
-      
-      if (!user) {
-        const hashedPassword = await bcrypt.hash(data.password || '123', 10);
-        const newUser = new this.userModel({
-          email: data.email,
-          password: hashedPassword,
-          role: data.role || 'provider',
-          isActive: true,
-          rating: data.rating || 0
-        });
-        user = await newUser.save();
+      // 1. İSİM TEMİZLEME: "(Kamyon)", "(Vinç)" gibi tagleri temizle
+      let cleanFirstName = data.firstName;
+      if (cleanFirstName) {
+         cleanFirstName = cleanFirstName.replace(/\s*\(.*?\)\s*/g, '').trim(); 
       }
 
+      // 2. DUPLICATE KONTROLÜ (Telefon Numarası - Son 10 Hane)
+      let existingProfile = null;
+      
+      if (data.phoneNumber) {
+        // Tüm boşlukları ve karakterleri sil, sadece rakam kalsın
+        const rawPhone = data.phoneNumber.replace(/\D/g, '');
+        if (rawPhone.length >= 10) {
+          // Son 10 haneye göre ara (532... veya 0532... fark etmez)
+          const last10 = rawPhone.slice(-10);
+          existingProfile = await this.profileModel.findOne({ 
+            phoneNumber: { $regex: last10 } 
+          }).lean();
+        }
+      }
+
+      // Telefon yoksa veya bulunamadıysa: İsim + Şehir + Tip kombinasyonuna bak
+      if (!existingProfile) {
+        existingProfile = await this.profileModel.findOne({ 
+          firstName: cleanFirstName, 
+          city: data.city,
+          serviceType: data.serviceType 
+        }).lean();
+      }
+
+      // Kullanıcı ID Belirleme (Var olanı kullan veya yeni oluştur)
+      let userId = existingProfile ? existingProfile.user : null;
+
+      if (!userId) {
+        // Profil yoksa User tablosuna bak (Email ile)
+        let user = await this.userModel.findOne({ email: data.email }).lean();
+        
+        if (!user) {
+          const hashedPassword = await bcrypt.hash(data.password || '123', 10);
+          const newUser = new this.userModel({
+            email: data.email,
+            password: hashedPassword,
+            role: data.role || 'provider',
+            isActive: true,
+            rating: data.rating || 0
+          });
+          user = await newUser.save();
+        }
+        userId = user['_id'];
+      }
+
+      // --- PROFİL VERİSİNİ GÜNCELLE / OLUŞTUR ---
       const geoLocation = data.location?.coordinates 
         ? data.location 
         : (data.lat && data.lng) 
           ? { type: 'Point', coordinates: [parseFloat(data.lng), parseFloat(data.lat)] }
           : null;
 
-      // 🔥 İSİM TEMİZLEME: Parantez içindeki (Kamyon), (Vinç) vb. siler.
-      let cleanFirstName = data.firstName;
-      if (cleanFirstName) {
-         cleanFirstName = cleanFirstName.replace(/\s*\(.*?\)\s*/g, '').trim(); 
-      }
-
       const profileData = {
-        user: user['_id'],
-        firstName: cleanFirstName, // Temizlenmiş isim
+        user: userId,
+        firstName: cleanFirstName, // Temiz isim
         lastName: data.lastName,
-        phoneNumber: data.phoneNumber,
+        phoneNumber: data.phoneNumber, // Formatlanmış numara
         address: data.address,
-        serviceType: data.serviceType,
+        serviceType: data.serviceType, // DataService'den gelen (Yurt dışı vb.)
         city: data.city,
         routes: data.routes,
         rating: data.rating || 0,
@@ -67,14 +99,17 @@ export class UsersService implements OnModuleInit {
         minAmount: data.minAmount || 0
       };
 
+      // Upsert: Varsa güncelle, yoksa yeni yarat
       return this.profileModel.findOneAndUpdate(
-        { user: user['_id'] },
+        { user: userId },
         profileData,
         { upsert: true, new: true, lean: true }
       );
+
     } catch (error) {
-      this.logger.error(`Kayıt Hatası (${data.email}): ${error.message}`);
-      throw error;
+      // Hata olsa bile akışı bozma, logla geç
+      this.logger.error(`Kayıt Hatası (${data.firstName}): ${error.message}`);
+      return null;
     }
   }
 
@@ -84,27 +119,30 @@ export class UsersService implements OnModuleInit {
 
     if (type) {
       if (type === 'sarj') {
-        // Şarj: İstasyon ve Seyyar HEPSİ
         query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
       } 
       else if (type === 'kurtarici') {
-        // 🔥 DÜZELTME: Artık 'vinc' de bu gruba dahil!
+        // Vinç de dahil
         query.serviceType = { $in: ['kurtarici', 'oto_kurtarma', 'vinc'] };
       } 
       else if (type === 'vinc') {
-        // Sadece Vinç (Özel filtreleme için)
+        // Sadece vinç
         query.serviceType = 'vinc';
       }
       else if (type === 'nakliye') {
-        // Nakliye: Tır, Kamyon, Evden Eve HEPSİ
-        query.serviceType = { $in: ['nakliye', 'evden_eve', 'evden_eve_nakliyat', 'kamyon', 'tir', 'kamyonet'] };
+        // Nakliye grubu: Tır, Kamyon, Evden Eve, Yurt Dışı hepsi
+        query.serviceType = { $in: ['nakliye', 'evden_eve', 'evden_eve_nakliyat', 'kamyon', 'tir', 'kamyonet', 'yurt_disi_nakliye'] };
       } 
+      else if (type === 'yurt_disi') {
+        // Sadece Yurt Dışı
+        query.serviceType = 'yurt_disi_nakliye';
+      }
       else if (type === 'ticari') {
-        // Sadece Ticari
-        query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet'] };
+        // Sadece Ticari (Kamyon/Tır)
+        query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet', 'yurt_disi_nakliye'] };
       } 
       else {
-        // Spesifik tip (örn: 'sarj_istasyonu' tek başına istenirse)
+        // Spesifik tip (örn: 'seyyar_sarj')
         query.serviceType = type;
       }
     }
@@ -126,6 +164,8 @@ export class UsersService implements OnModuleInit {
 
   async migrateIsActiveField() { return { message: "Devre dışı." }; }
   async findAll() { return this.profileModel.find().lean().exec(); }
+  
+  // 🔥 TEMİZLİK: Tüm veriyi siler (Yeniden çekim öncesi kullanılabilir)
   async deleteAll() {
     await this.profileModel.deleteMany({});
     await this.userModel.deleteMany({ role: { $ne: 'admin' } });

@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { 
   Truck, Zap, BatteryCharging, Wrench, 
-  Construction, Home, Star, CalendarCheck, CarFront
+  Construction, Star, CalendarCheck, CarFront
 } from 'lucide-react';
 
 // --- 1. TİPLER ---
@@ -50,8 +50,8 @@ const SERVICE_CONFIG: any = {
   vinc: { color: '#7f1d1d', Icon: Construction },       // Bordo (Koyu Kırmızı)
 
   // NAKLİYE GRUBU (Hepsi Mor)
-  nakliye: { color: '#9333ea', Icon: Home },            // Mor
-  evden_eve: { color: '#9333ea', Icon: Home },          // Mor
+  nakliye: { color: '#9333ea', Icon: Truck },            // Mor
+  evden_eve: { color: '#9333ea', Icon: Truck },          // Mor
   kamyon: { color: '#9333ea', Icon: Truck },            // Mor (Sarı Kalktı)
   tir: { color: '#9333ea', Icon: Truck },               // Mor
   kamyonet: { color: '#9333ea', Icon: Truck },          // Mor

@@ -69,8 +69,7 @@ export class DataService {
   { il: 'Şırnak', ilce: 'Beytüşşebap' }, { il: 'Şırnak', ilce: 'Cizre' }, { il: 'Şırnak', ilce: 'Güçlükonak' },
   { il: 'Şırnak', ilce: 'Silopi' }, { il: 'Şırnak', ilce: 'Uludere' }, { il: 'Şırnak', ilce: 'İdil' }, { il: 'Şırnak', ilce: 'Şırnak Merkez' }
 ];
-
-  constructor(private readonly usersService: UsersService) {}
+constructor(private readonly usersService: UsersService) {}
 
   private cleanAddress(fullAddress: string): string {
     if (!fullAddress) return '';
@@ -82,12 +81,18 @@ export class DataService {
   private getEnhancedMetadata(type: string, city: string, district: string) {
     const cityUpper = city.toLocaleUpperCase('tr-TR');
     const distUpper = district.toLocaleUpperCase('tr-TR');
+    
+    // Yurt dışı için özel etiket
+    if (type === 'yurt_disi_nakliye') {
+        return { route: `${cityUpper} - AVRUPA / ASYA / GLOBAL`, status: 'ULUSLARARASI L2' };
+    }
+
     const metaMap: Record<string, { route: string; status: string }> = {
       sarj_istasyonu: { route: `${cityUpper} - AKILLI ŞARJ AĞI`, status: 'KURUMSAL' },
       seyyar_sarj: { route: `${distUpper} / ${cityUpper} MOBİL DESTEK`, status: '7/24 AKTİF' },
       kurtarici: { route: `${cityUpper} MERKEZ & OTOYOL DESTEK`, status: 'ONAYLI ÇEKİCİ' },
       vinc: { route: `${cityUpper} GENELİ AĞIR OPERASYON`, status: 'OPERASYONEL' },
-      tir: { route: `${cityUpper} - ULUSLARARASI KORİDOR`, status: 'L2 BELGELİ' },
+      tir: { route: `${cityUpper} - LİMAN & GÜMRÜK HATTI`, status: 'L1/L2 BELGELİ' },
       kamyon: { route: `ŞEHİRLER ARASI SEVKİYAT`, status: 'K1 BELGELİ' },
       kamyonet: { route: `${distUpper} İÇİ EKSPRES DAĞITIM`, status: 'ŞEHİR İÇİ' },
       nakliye: { route: `${distUpper} / ${cityUpper} EVDEN EVE`, status: 'K3 BELGELİ' }
@@ -96,8 +101,59 @@ export class DataService {
   }
 
   private getResultLimit(city: string): number {
-    const metropolises = ['İstanbul', 'Ankara', 'İzmir'];
-    return metropolises.includes(city) ? 5 : 2;
+    const metropolises = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Gaziantep', 'Kocaeli', 'Mersin'];
+    return metropolises.includes(city) ? 6 : 3; // Büyük şehirlerde daha çok veri çek
+  }
+
+  // 🔥 ALGORİTMA: İsimden Yurt Dışı ve Yanlış Veri Tespiti 🔥
+  private analyzeServiceType(originalType: string, name: string): string {
+    const nameLower = name.toLowerCase('tr-TR');
+
+    // 1. NEGATİF KELİMELER (Bunlar varsa asla nakliye yapma)
+    const negatives = [
+      'hospital', 'hastane', 'medical', 'tıp merkezi', 'sağlık',
+      'school', 'okul', 'college', 'kolej', 'üniversite', 'lise',
+      'hotel', 'otel', 'resort', 'pansiyon', 'konaklama',
+      'market', 'bakkal', 'süpermarket', 'büfe',
+      'restaurant', 'restoran', 'cafe', 'kafe', 'lokanta',
+      'berber', 'kuaför', 'güzellik',
+      'avukat', 'hukuk', 'eczane'
+    ];
+
+    if (negatives.some(neg => nameLower.includes(neg))) {
+        // Eğer yanlışlıkla nakliye diye geldiyse ama aslında hastaneyse
+        // Bunu kaydetmemek en iyisi ama şimdilik tipini değiştirmiyoruz,
+        // çağıran fonksiyonda filtrelenebilir. Burası sadece tip değişimi için.
+        return originalType; 
+    }
+
+    // 2. YURT DIŞI / ULUSLARARASI TESPİTİ
+    // Sadece nakliye, tır, kamyon gruplarında ara
+    if (['nakliye', 'tir', 'kamyon', 'kamyonet'].includes(originalType)) {
+        
+        const internationalKeywords = [
+            'uluslararası', 'international', 'global', 'inter', 
+            'lojistik', 'logistics', 'transport', 'shipping',
+            'ithalat', 'ihracat', 'export', 'import', 'gümrük', 'forwarding'
+        ];
+
+        const countries = [
+            'avrupa', 'asya', 'balkan', 'türki', 'ortadoğu',
+            'almanya', 'germany', 'fransa', 'france', 'italya', 'italy',
+            'rusya', 'russia', 'ukrayna', 'bulgaristan', 'yunanistan',
+            'irak', 'iran', 'gürcistan', 'azerbaycan', 'kıbrıs'
+        ];
+
+        // İsimde bu kelimelerden biri geçiyorsa Yurt Dışı yap
+        if (
+            internationalKeywords.some(k => nameLower.includes(k)) ||
+            countries.some(c => nameLower.includes(c))
+        ) {
+            return 'yurt_disi_nakliye';
+        }
+    }
+
+    return originalType;
   }
 
   async fetchPlaceFromGoogle(query: string, type: string, il: string, ilce: string, tag: string, limit: number) {
@@ -121,20 +177,26 @@ export class DataService {
       if (!places || places.length === 0) return 0;
 
       for (const place of places) {
-        const meta = this.getEnhancedMetadata(type, il, ilce);
-        const placeName = place.displayName?.text;
-        let phone = place.nationalPhoneNumber?.replace(/\D/g, '') || `05${Math.floor(30 + Math.random() * 20)}${Math.floor(1000000 + Math.random() * 9000000)}`;
-        const email = `${placeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8)}_${Math.floor(Math.random() * 9999)}@transporter.app`;
+        const placeName = place.displayName?.text || '';
+        
+        // 🔥 AKILLI TİP ANALİZİ ÇAĞRISI
+        const finalType = this.analyzeServiceType(type, placeName);
 
+        const meta = this.getEnhancedMetadata(finalType, il, ilce);
+        
+        let phone = place.nationalPhoneNumber?.replace(/\D/g, '') || `05${Math.floor(30 + Math.random() * 20)}${Math.floor(1000000 + Math.random() * 9000000)}`;
+        const email = `${placeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}_${Math.floor(Math.random() * 9999)}@transporter.app`;
+
+        // UsersService.create tekilleştirme yapacak
         await this.usersService.create({
           email,
           password: '123',
           role: 'provider',
           isActive: true,
           firstName: `${placeName} (${tag})`,
-          lastName: 'Hizmetleri',
+          lastName: 'Hizmetleri', // Lojistik yerine Hizmetleri daha genel
           phoneNumber: phone.startsWith('0') ? phone : '0' + phone,
-          serviceType: type,
+          serviceType: finalType,
           address: this.cleanAddress(place.formattedAddress),
           city: il,
           routes: meta.route,
@@ -154,18 +216,27 @@ export class DataService {
   }
 
   async populateTurkeyData() {
-    this.logger.log("⚡️ EK KAYNAK TARAMASI BAŞLATILDI: Şarj, Mobil Şarj ve Kamyon Garajları aranıyor...");
+    this.logger.log("🚛 GENİŞ KAPSAMLI VERİ ENTEGRASYONU BAŞLATILDI...");
     
-    // 🔥 SADECE İSTENEN 3 KATEGORİ 🔥
+    // 🔥 GENİŞLETİLMİŞ SORGULAR (Eksik yer kalmasın) 🔥
     const categories = [
-      // 1. Şarj İstasyonları
-      { q: 'Elektrikli Araç Şarj İstasyonu', t: 'sarj_istasyonu', tag: 'İstasyon' },
+      // 1. KURTARICI (Otoyol, Otoban, 7/24)
+      { q: 'Oto Kurtarma Çekici Yol Yardım', t: 'kurtarici', tag: 'Çekici' },
+      { q: 'Vinç Kiralama Ağır Kaldırma', t: 'vinc', tag: 'Vinç' },
+      { q: 'Oto Tamir Elektrik 7/24', t: 'oto_kurtarma', tag: 'Yol Yardım' }, // Yeni: Tamircileri de ekle (Mobil)
       
-      // 2. Mobil Şarj (Yol Yardım üzerinden bulunur)
-      { q: 'Oto Elektrik Yol Yardım', t: 'seyyar_sarj', tag: 'Mobil Şarj' },
+      // 2. NAKLİYE (Evden Eve, Lojistik, Taşımacılık)
+      { q: 'Evden Eve Nakliyat Taşımacılık', t: 'nakliye', tag: 'Nakliye' },
+      { q: 'Nakliye Kamyonet Taksi', t: 'kamyonet', tag: 'Kamyonet' }, // Şehir içi küçük nakliye
+      
+      // 3. TİCARİ (Garajlar, Kooperatifler - Kürtçe/Yerel uyumlu geniş terimler)
+      { q: 'Kamyon Garajı Nakliyeciler Sitesi Tır Parkı', t: 'kamyon', tag: 'Kamyon' },
+      { q: 'Uluslararası Lojistik Transport', t: 'tir', tag: 'TIR' }, // Yurt dışı potansiyeli yüksek
+      { q: 'Hafriyat Nakliyat', t: 'kamyon', tag: 'Kamyon' }, // İnşaat/Hafriyat da kamyon grubuna girer
 
-      // 3. Kamyon (Garaj ve Nakliyeciler Sitesi üzerinden bulunur)
-      { q: 'Kamyon Garajı Nakliyeciler Sitesi', t: 'kamyon', tag: 'Kamyon' }
+      // 4. ŞARJ
+      { q: 'Elektrikli Araç Şarj İstasyonu E-Şarj', t: 'sarj_istasyonu', tag: 'İstasyon' },
+      { q: 'Akü Yol Yardım Oto Elektrik', t: 'seyyar_sarj', tag: 'Mobil Şarj' }
     ];
 
     let totalSaved = 0;
@@ -174,10 +245,10 @@ export class DataService {
       for (const cat of categories) {
         const count = await this.fetchPlaceFromGoogle(cat.q, cat.t, item.il, item.ilce, cat.tag, limit);
         totalSaved += count;
-        // Hız limiti aşmamak için bekleme
+        // API'yi boğmamak için bekleme
         await new Promise(r => setTimeout(r, 150)); 
       }
-      this.logger.log(`✅ ${item.ilce} / ${item.il} tarandı. Eklenen: ${totalSaved}`);
+      this.logger.log(`✅ ${item.ilce} / ${item.il} işlendi.`);
     }
     return { status: 'SUCCESS', totalAdded: totalSaved };
   }

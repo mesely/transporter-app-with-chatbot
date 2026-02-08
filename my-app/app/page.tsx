@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 
 // --- BİLEŞENLER ---
@@ -21,7 +21,7 @@ import ProfileModal from '../components/ProfileModal';
 import ReportModal from '../components/ReportModal';
 import CustomerGuide from '../components/CustomerGuide';
 
-// Harita Bileşeni (SSR devre dışı - Client Side Only)
+// Harita Bileşeni
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => <ScanningLoader /> 
@@ -45,42 +45,35 @@ const normalizeDriverData = (data: any[]) => {
 };
 
 export default function Home() {
-  // --- STATE YÖNETİMİ ---
   const [userRole, setUserRole] = useState<'guest' | 'customer' | 'provider' | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentProviderId, setCurrentProviderId] = useState<string | null>(null);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
 
-  // 🌍 KONUM VE VERİ
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
   const [allDrivers, setAllDrivers] = useState<any[]>([]); 
-  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); 
-  const [loadingDrivers, setLoadingDrivers] = useState(true); 
   
-  // 👇 İLK YÜKLEME STATE'İ 👇
+  // filteredDrivers artık state değil, aşağıda useMemo ile hesaplanan bir değer olacak
+  // const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); // BU SATIR KALKTI
+  
+  const [loadingDrivers, setLoadingDrivers] = useState(true); 
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-  // 🎯 AKSİYON VE SENKRONİZASYON
   const [actionType, setActionType] = useState<string>(''); 
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
-  
-  // 📦 SİPARİŞ VE UI
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [deviceId, setDeviceId] = useState<string>(''); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChatOpen, setChatOpen] = useState(false);
   
-  // Modallar
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportOrderId, setReportOrderId] = useState<string | null>(null);
 
-  // 🚦 Referanslar
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // BAŞLANGIÇ
   useEffect(() => {
     let storedId = localStorage.getItem('transporter_device_id');
     if (!storedId) {
@@ -100,14 +93,8 @@ export default function Home() {
     }
   }, []);
 
-  // 🔥 GÜÇLENDİRİLMİŞ VERİ ÇEKME (SESSİZ MOD DESTEKLİ) 🔥
   const fetchDrivers = useCallback((lat: number, lng: number, type?: string, isBackground: boolean = false) => {
-    
-    // Eğer kategori değişimi ise (isBackground=false), kullanıcıya yükleniyor göster.
-    // Eğer harita kaydırma ise (isBackground=true), sessizce hallet.
-    if (!isBackground) {
-        setLoadingDrivers(true);
-    }
+    if (!isBackground) setLoadingDrivers(true);
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -116,25 +103,28 @@ export default function Home() {
     const url = new URL(`${API_URL}/users/nearby`);
     url.searchParams.append('lat', lat.toString());
     url.searchParams.append('lng', lng.toString());
+    
+    // Backend'e her zaman GENEL kategori isteği atıyoruz ki client-side filtreleme yapabilelim
+    // Örn: 'vinc' seçilse bile backend'e 'kurtarici' atabiliriz veya type'ı olduğu gibi yollarız.
+    // Ancak en garantisi type'ı olduğu gibi yollamak, Backend geniş gönderiyorsa burada süzeceğiz.
     if (type) url.searchParams.append('type', type);
 
     fetch(url.toString(), { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         const cleanData = normalizeDriverData(data);
-        setAllDrivers(cleanData);
-        setFilteredDrivers(cleanData);
+        setAllDrivers(cleanData); // Ham veriyi sakla
+        // setFilteredDrivers(cleanData); // ARTIK GEREK YOK, useMemo halledecek
       })
       .catch(err => {
         if (err.name !== 'AbortError') console.error("Veri çekilemedi:", err);
       })
       .finally(() => {
         setLoadingDrivers(false);
-        setTimeout(() => { setIsFirstLoad(false); }, 1500);
+        setTimeout(() => { setIsFirstLoad(false); }, 7000);
       });
   }, []);
 
-  // KONUM BULMA
   useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -154,51 +144,65 @@ export default function Home() {
     }
   }, []); 
 
-  // --- HANDLER'LAR ---
+  // 🔥 MERKEZİ FİLTRELEME MANTIĞI (Harita ve Panel Burayı Kullanır) 🔥
+  const finalFilteredDrivers = useMemo(() => {
+    let list = [...allDrivers];
 
-  // 🔥 FİLTRE DEĞİŞİMİ (Üst butonlara basınca burası çalışır)
+    if (!actionType) return list;
+
+    // 1. Nakliye Grubu (Hepsi Gelsin)
+    if (actionType === 'nakliye') {
+       // Filtre yok, hepsi
+    }
+    // 2. Vinç (Sadece Vinç)
+    else if (actionType === 'vinc') {
+        list = list.filter(d => d.serviceType === 'vinc');
+    }
+    // 3. Oto Kurtarma (Vinçleri Gizle)
+    else if (actionType === 'oto_kurtarma') {
+        list = list.filter(d => !d.serviceType?.includes('vinc'));
+    }
+    // 4. Şarj İstasyonu (Sadece İstasyon)
+    else if (actionType === 'sarj_istasyonu') {
+        list = list.filter(d => d.serviceType === 'sarj_istasyonu');
+    }
+    // 5. Mobil Şarj (Sadece Seyyar)
+    else if (actionType === 'seyyar_sarj') {
+        list = list.filter(d => d.serviceType === 'seyyar_sarj');
+    }
+    
+    return list;
+  }, [allDrivers, actionType]);
+
+
   const handleFilterChange = (type: string) => {
     setActionType(type);
     setActiveDriverId(null);
-    
-    // Eski verileri temizle ki kullanıcı karışıklık yaşamasın
-    setFilteredDrivers([]); 
     setLoadingDrivers(true);
-
+    
+    // Backend'e yine de type'ı gönderiyoruz ki veri yükünü azaltsın
+    // Ama ince ayarı yukarıdaki useMemo yapacak.
     if (searchCoords) {
-      // false = Loading göstererek çek
       fetchDrivers(searchCoords[0], searchCoords[1], type, false);
     }
   };
 
-  // 🔥 HARİTA HAREKETİ (Sessiz güncelleme)
   const handleMapMove = (lat: number, lng: number) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      // true = Loading GÖSTERME (Arka planda sessizce çek)
       fetchDrivers(lat, lng, actionType, true);
     }, 500);
   };
 
   const handleStartOrder = async (driver: any, method: 'call' | 'message') => {
-    setActiveOrder({
-      ...driver,
-      driverId: driver._id,
-      status: 'IN_PROGRESS',
-      startTime: new Date()
-    });
-    
+    setActiveOrder({ ...driver, driverId: driver._id, status: 'IN_PROGRESS', startTime: new Date() });
     try {
       await fetch(`${API_URL}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: deviceId,
-          driverId: driver._id,
-          driverName: `${driver.firstName} ${driver.lastName}`,
-          serviceType: driver.serviceType,
-          location: driver.location,
-          method: method
+          customerId: deviceId, driverId: driver._id, driverName: `${driver.firstName} ${driver.lastName}`,
+          serviceType: driver.serviceType, location: driver.location, method: method
         })
       });
     } catch (e) { console.error(e); }
@@ -220,60 +224,36 @@ export default function Home() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-white">
-      
-      {/* 1. YÜKLEME EKRANI */}
       {isFirstLoad && <ScanningLoader />}
-
-      {/* 2. HARİTA */}
+      
       <MapComponent 
         searchCoords={searchCoords} 
-        drivers={filteredDrivers} 
+        // 🔥 ARTIK SÜZÜLMÜŞ VERİYİ GÖNDERİYORUZ 🔥
+        drivers={finalFilteredDrivers} 
         onStartOrder={handleStartOrder} 
         activeDriverId={activeDriverId} 
         onSelectDriver={setActiveDriverId} 
         onMapMove={handleMapMove} 
-        // 🔥 Boşluğa tıklayınca paneli kapatır
         onMapClick={() => setActiveDriverId(null)} 
       />
       
-      {/* 3. DİĞER BİLEŞENLER */}
-      <ChatWidget 
-        isOpen={isChatOpen} 
-        onToggle={setChatOpen} 
-        contextData={{ drivers: allDrivers, userLocation: searchCoords }}
-      />
+      <ChatWidget isOpen={isChatOpen} onToggle={setChatOpen} contextData={{ drivers: allDrivers, userLocation: searchCoords }} />
+      <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} onProfileClick={() => setShowProfileModal(true)} sidebarOpen={sidebarOpen} />
       
-      <TopBar 
-        onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
-        onProfileClick={() => setShowProfileModal(true)} 
-        sidebarOpen={sidebarOpen} 
-      />
-      
-      <ActiveOrderPanel 
-        activeOrder={activeOrder} 
-        onComplete={() => { setActiveOrder(null); setShowRatingModal(true); }} 
-        onCancel={() => setActiveOrder(null)} 
-      />
+      <ActiveOrderPanel activeOrder={activeOrder} onComplete={() => { setActiveOrder(null); setShowRatingModal(true); }} onCancel={() => setActiveOrder(null)} />
 
-      {/* 4. AKSİYON PANELİ */}
       {!activeOrder && userRole === 'customer' && (
         <ActionPanel 
-          drivers={filteredDrivers} 
+          // 🔥 ARTIK SÜZÜLMÜŞ VERİYİ GÖNDERİYORUZ 🔥
+          drivers={finalFilteredDrivers} 
           loading={loadingDrivers}
           actionType={actionType} 
-          
-          // 🔥 KRİTİK: Hem state'i değiştirir hem veriyi çeker
           onActionChange={handleFilterChange} 
-          
-          // Alt butonlara basınca veri çeker
           onFilterApply={handleFilterChange} 
-          
-          // Konum arayınca sessiz güncelleme yapar (true)
           onSearchLocation={(lat, lng) => { 
               setSearchCoords([lat, lng]); 
               fetchDrivers(lat, lng, actionType, true); 
           }}
-          
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId} 
           onStartOrder={handleStartOrder}
@@ -282,24 +262,10 @@ export default function Home() {
       )}
 
       {userRole === 'provider' && currentProviderId && (
-        <ProviderPanel 
-          providerId={currentProviderId} 
-          providerData={currentUser || allDrivers.find(d => d._id === currentProviderId)} 
-          onComplete={() => window.location.reload()} 
-          onCancel={() => window.location.reload()}
-        /> 
+        <ProviderPanel providerId={currentProviderId} providerData={currentUser || allDrivers.find(d => d._id === currentProviderId)} onComplete={() => window.location.reload()} onCancel={() => window.location.reload()} /> 
       )}
 
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
-        onSelectAction={(type) => {
-            setSidebarOpen(false);
-            handleFilterChange(type);
-        }} 
-        onReportClick={(id) => { setReportOrderId(id); setShowReportModal(true); setSidebarOpen(false); }}
-      />
-
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onSelectAction={(type) => { setSidebarOpen(false); handleFilterChange(type); }} onReportClick={(id) => { setReportOrderId(id); setShowReportModal(true); setSidebarOpen(false); }} />
       <RatingModal isOpen={showRatingModal} onClose={() => setShowRatingModal(false)} onRate={() => {}} />
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
       <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} orderId={reportOrderId} />
