@@ -107,7 +107,6 @@ export class UsersService implements OnModuleInit {
       );
 
     } catch (error) {
-      // Hata olsa bile akışı bozma, logla geç
       this.logger.error(`Kayıt Hatası (${data.firstName}): ${error.message}`);
       return null;
     }
@@ -142,7 +141,7 @@ export class UsersService implements OnModuleInit {
         query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet', 'yurt_disi_nakliye'] };
       } 
       else {
-        // Spesifik tip (örn: 'seyyar_sarj')
+        // Spesifik tip (örn: 'seyyar_sarj' veya 'yurt_disi_nakliye')
         query.serviceType = type;
       }
     }
@@ -165,7 +164,6 @@ export class UsersService implements OnModuleInit {
   async migrateIsActiveField() { return { message: "Devre dışı." }; }
   async findAll() { return this.profileModel.find().lean().exec(); }
   
-  // 🔥 TEMİZLİK: Tüm veriyi siler (Yeniden çekim öncesi kullanılabilir)
   async deleteAll() {
     await this.profileModel.deleteMany({});
     await this.userModel.deleteMany({ role: { $ne: 'admin' } });

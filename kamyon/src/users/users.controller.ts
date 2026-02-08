@@ -33,10 +33,11 @@ export class UsersController {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
 
-    // DÜZELTME: Gelen tipi çok sert değiştirmeden servise iletiyoruz.
+    // Gelen tipi servise uygun hale getir
     const searchType = this.normalizeServiceType(type);
 
-    this.logger.log(`📍 Arama: ${searchType || 'Tümü'} (${latitude}, ${longitude})`);
+    // Logu temiz tutmak için çok sık basmayalım
+    // this.logger.log(`📍 Arama: ${searchType || 'Tümü'} (${latitude}, ${longitude})`);
     
     return this.usersService.findNearby(latitude, longitude, searchType);
   }
@@ -45,8 +46,6 @@ export class UsersController {
   findAll() {
     return this.usersService.findAll();
   }
-
-  // Güvenlik için migration kodunu buradan kaldırdık (Artık işi bitti)
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
@@ -60,7 +59,6 @@ export class UsersController {
 
     let count = 0;
     for (const item of data) {
-      // Koordinat kontrolü (lat/lng veya latitude/longitude)
       const lat = parseFloat(item.lat || item.latitude);
       const lng = parseFloat(item.lng || item.longitude);
 
@@ -73,7 +71,6 @@ export class UsersController {
             firstName: item.firstName || item.isim || 'İsimsiz',
             lastName: item.lastName || item.soyisim || 'Sağlayıcı',
             phoneNumber: item.phoneNumber ? String(item.phoneNumber) : '05555555555',
-            // Import ederken veriyi bozmayalım, ne geliyorsa onu işleyelim
             serviceType: this.cleanImportType(item.serviceType || item.hizmetTipi),
             address: item.address || '',
             city: item.city || 'Belirsiz',
@@ -94,34 +91,45 @@ export class UsersController {
     return { status: 'SUCCESS', message: `${count} yeni sağlayıcı başarıyla eklendi.` };
   }
 
-  // ARAMA İÇİN NORMALİZASYON (Frontend'den gelen isteği düzenler)
+  // 🔥 ARAMA İÇİN NORMALİZASYON (Frontend'den gelen isteği düzenler) 🔥
   private normalizeServiceType(type: string): string {
     if (!type) return '';
     const lower = type.toLowerCase().trim();
 
-    // Şarj araması: 'sarj' döndür (Service bunu istasyon + seyyar olarak açacak)
+    // 1. Önce "Yurt Dışı" kontrolü yap (Nakliye kelimesi yüzünden ezilmesin)
+    if (lower.includes('yurt') || lower.includes('global') || lower === 'yurt_disi_nakliye') {
+        return 'yurt_disi';
+    }
+
+    // 2. Şarj
     if (lower.includes('şarj') || lower.includes('sarj')) return 'sarj';
     
-    // Vinç ve Kurtarıcı
+    // 3. Vinç ve Kurtarıcı
     if (lower.includes('vinc') || lower.includes('vinç')) return 'vinc';
     if (lower.includes('kurtar')) return 'kurtarici';
 
-    // Nakliye Grubu: Spesifik ise spesifik kalsın (kamyon, tir vs.), değilse genel nakliye dön.
+    // 4. Nakliye Grubu
+    // Spesifik ise spesifik kalsın
     if (lower === 'kamyon') return 'kamyon';
     if (lower === 'kamyonet') return 'kamyonet';
     if (lower === 'tir' || lower === 'tır') return 'tir';
     
-    // Eğer genel 'nakliye' veya 'ticari' dendiyse:
+    // Genel nakliye veya ticari
     if (lower.includes('nakli')) return 'nakliye';
-    if (lower.includes('ticari')) return 'ticari'; // Service tarafında kamyon+tir+kamyonet olarak ele alınacak
+    if (lower.includes('ticari')) return 'ticari';
 
-    return lower; // Bilinmeyen bir şeyse olduğu gibi gönder
+    // Hiçbiri değilse (örn: 'seyyar_sarj') olduğu gibi gönder
+    return lower; 
   }
 
   // IMPORT İÇİN TEMİZLİK (Excel'den geleni düzeltir)
   private cleanImportType(type: string): string {
     if (!type) return 'nakliye';
     const lower = type.toLowerCase();
+    
+    // Import sırasında yurt dışı tespiti (basit kontrol)
+    if (lower.includes('uluslar') || lower.includes('yurt') || lower.includes('global')) return 'yurt_disi_nakliye';
+
     if (lower.includes('seyyar')) return 'seyyar_sarj';
     if (lower.includes('istasyon')) return 'sarj_istasyonu';
     if (lower.includes('kamyonet')) return 'kamyonet';
