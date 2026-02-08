@@ -107,7 +107,7 @@ constructor(private readonly usersService: UsersService) {}
 
   // 🔥 ALGORİTMA: İsimden Yurt Dışı ve Yanlış Veri Tespiti 🔥
   private analyzeServiceType(originalType: string, name: string): string {
-    const nameLower = name.toLowerCase('tr-TR');
+    const nameLower = name.toLocaleLowerCase('tr-TR');
 
     // 1. NEGATİF KELİMELER (Bunlar varsa asla nakliye yapma)
     const negatives = [
