@@ -12,7 +12,7 @@ import ChatWidget from '../components/ChatWidget';
 import ProviderPanel from '../components/provider/ProviderPanel';
 import AuthModal from '../components/AuthModal';
 
-// 👇 LOADER IMPORT 👇
+// Loader
 import ScanningLoader from '../components/ScanningLoader'; 
 
 // --- MODALLAR ---
@@ -21,7 +21,7 @@ import ProfileModal from '../components/ProfileModal';
 import ReportModal from '../components/ReportModal';
 import CustomerGuide from '../components/CustomerGuide';
 
-// Harita Bileşeni (SSR devre dışı)
+// Harita Bileşeni (SSR devre dışı - Client Side Only)
 const MapComponent = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => <ScanningLoader /> 
@@ -262,7 +262,7 @@ export default function Home() {
           loading={loadingDrivers}
           actionType={actionType} 
           
-          // 🔥 KRİTİK DÜZELTME: Üst butonlara basınca veri çeker 🔥
+          // 🔥 KRİTİK: Hem state'i değiştirir hem veriyi çeker
           onActionChange={handleFilterChange} 
           
           // Alt butonlara basınca veri çeker

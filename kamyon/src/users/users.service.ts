@@ -18,7 +18,7 @@ export class UsersService implements OnModuleInit {
     this.logger.log('🚀 Sistem Hazır: 10x Performans Motoru ve İndeksler Aktif.');
   }
 
-  // --- 1. VERİ OLUŞTURMA ---
+  // --- 1. VERİ OLUŞTURMA (İsim Temizleme Eklendi) ---
   async create(data: any) {
     try {
       let user = await this.userModel.findOne({ email: data.email }).lean();
@@ -41,9 +41,15 @@ export class UsersService implements OnModuleInit {
           ? { type: 'Point', coordinates: [parseFloat(data.lng), parseFloat(data.lat)] }
           : null;
 
+      // 🔥 İSİM TEMİZLEME: Parantez içindeki (Kamyon), (Vinç) vb. siler.
+      let cleanFirstName = data.firstName;
+      if (cleanFirstName) {
+         cleanFirstName = cleanFirstName.replace(/\s*\(.*?\)\s*/g, '').trim(); 
+      }
+
       const profileData = {
         user: user['_id'],
-        firstName: data.firstName,
+        firstName: cleanFirstName, // Temizlenmiş isim
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
         address: data.address,
@@ -72,34 +78,33 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 2. HIZLI YAKINDAKİLER SORGUSU (DEVASA ÇAP & LİMİT) ---
+  // --- 2. HIZLI YAKINDAKİLER SORGUSU ---
   async findNearby(lat: number, lng: number, type?: string) {
     const query: any = { isActive: true };
 
-    // 🔥 KATEGORİ AYRIŞTIRMASI DÜZELTİLDİ
     if (type) {
       if (type === 'sarj') {
-        // Şarj için hem istasyon hem seyyar
+        // Şarj: İstasyon ve Seyyar HEPSİ
         query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
       } 
       else if (type === 'kurtarici') {
-        // Sadece kurtarıcı ve oto kurtarma (Vinç YOK)
-        query.serviceType = { $in: ['kurtarici', 'oto_kurtarma'] };
+        // 🔥 DÜZELTME: Artık 'vinc' de bu gruba dahil!
+        query.serviceType = { $in: ['kurtarici', 'oto_kurtarma', 'vinc'] };
       } 
       else if (type === 'vinc') {
-        // Sadece Vinç
+        // Sadece Vinç (Özel filtreleme için)
         query.serviceType = 'vinc';
       }
       else if (type === 'nakliye') {
-        // 🔥 DÜZELTME BURADA YAPILDI: Artık Tır, Kamyon ve Kamyonet de "Nakliye" grubunda geliyor.
+        // Nakliye: Tır, Kamyon, Evden Eve HEPSİ
         query.serviceType = { $in: ['nakliye', 'evden_eve', 'evden_eve_nakliyat', 'kamyon', 'tir', 'kamyonet'] };
       } 
       else if (type === 'ticari') {
-        // Sadece Ticari Araçlar
+        // Sadece Ticari
         query.serviceType = { $in: ['kamyon', 'tir', 'kamyonet'] };
       } 
       else {
-        // Spesifik bir şey geldiyse (örn: 'tir') direkt onu ara
+        // Spesifik tip (örn: 'sarj_istasyonu' tek başına istenirse)
         query.serviceType = type;
       }
     }
@@ -109,13 +114,11 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          // 🔥 5.000 KM
           $maxDistance: 5000000 
         }
       }
     })
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    // 🔥 LİMİT 10.000
     .limit(10000) 
     .lean()
     .exec();

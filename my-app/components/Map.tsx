@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { 
   Truck, Zap, BatteryCharging, Wrench, 
-  Construction, Home, Star, CalendarCheck
+  Construction, Home, Star, CalendarCheck, CarFront
 } from 'lucide-react';
 
 // --- 1. TİPLER ---
@@ -42,21 +42,33 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. RENK VE İKON YAPILANDIRMASI ---
+// --- 2. RENK VE İKON YAPILANDIRMASI (GÜNCELLENDİ) ---
 const SERVICE_CONFIG: any = {
-  kurtarici: { color: '#dc2626', Icon: Wrench },
-  vinc: { color: '#991b1b', Icon: Construction },
-  nakliye: { color: '#9333ea', Icon: Home },
-  kamyon: { color: '#ca8a04', Icon: Truck },
-  tir: { color: '#ca8a04', Icon: Truck },
-  kamyonet: { color: '#ca8a04', Icon: Truck },
-  sarj_istasyonu: { color: '#2563eb', Icon: Zap },
-  seyyar_sarj: { color: '#0891b2', Icon: BatteryCharging },
+  // KURTARICI GRUBU
+  kurtarici: { color: '#dc2626', Icon: Wrench },        // Kırmızı
+  oto_kurtarma: { color: '#dc2626', Icon: CarFront },   // Kırmızı
+  vinc: { color: '#7f1d1d', Icon: Construction },       // Bordo (Koyu Kırmızı)
+
+  // NAKLİYE GRUBU (Hepsi Mor)
+  nakliye: { color: '#9333ea', Icon: Home },            // Mor
+  evden_eve: { color: '#9333ea', Icon: Home },          // Mor
+  kamyon: { color: '#9333ea', Icon: Truck },            // Mor (Sarı Kalktı)
+  tir: { color: '#9333ea', Icon: Truck },               // Mor
+  kamyonet: { color: '#9333ea', Icon: Truck },          // Mor
+  ticari: { color: '#9333ea', Icon: Truck },            // Mor
+
+  // ŞARJ GRUBU
+  sarj_istasyonu: { color: '#2563eb', Icon: Zap },            // Mavi
+  seyyar_sarj: { color: '#06b6d4', Icon: BatteryCharging },   // Cyan (Turkuaz)
+  sarj: { color: '#2563eb', Icon: Zap },                      // Fallback Mavi
+
+  // DİĞER
   other: { color: '#6b7280', Icon: Truck }
 };
 
 // --- 3. DİNAMİK İKON TASARIMI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
+  // Tip eşleşmezse varsayılanı kullan
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
   
   // İkon Boyutları (Hafifçe büyütüldü)
@@ -218,11 +230,12 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           <MarkerClusterGroup 
             key={type}
             iconCreateFunction={(cluster) => createClusterIcon(cluster, type)}
-            // 🔥 PERFORMANS VE GÖRÜNÜM AYARLARI 🔥
-            maxClusterRadius={80} // Daha geniş alandakileri topla
+            // 🔥 PERFORMANS VE GÖRÜNÜM AYARLARI (GÜNCELLENDİ) 🔥
+            // 80'den 40'a düşürüldü. Artık daha az gruplanacak, daha çok pin görünecek.
+            maxClusterRadius={40} 
             showCoverageOnHover={false}
             spiderfyOnMaxZoom={true}
-            chunkedLoading={true} // Kasmayı önler (Parçalı Yükleme)
+            chunkedLoading={true} // Kasmayı önler
           >
             {groupedDrivers[type].map((driver: Driver) => {
               const lng = driver.location.coordinates[0];
