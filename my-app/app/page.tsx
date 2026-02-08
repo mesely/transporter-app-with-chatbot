@@ -12,7 +12,7 @@ import ChatWidget from '../components/ChatWidget';
 import ProviderPanel from '../components/provider/ProviderPanel';
 import AuthModal from '../components/AuthModal';
 
-// 👇 YENİ LOADER IMPORT 👇
+// 👇 LOADER IMPORT 👇
 import ScanningLoader from '../components/ScanningLoader'; 
 
 // --- MODALLAR ---
@@ -31,7 +31,6 @@ const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 const FALLBACK_LAT = 38.4237; 
 const FALLBACK_LNG = 27.1428;
 
-// 🛠️ PERFORMANS: Veri Normalizasyonu
 const normalizeDriverData = (data: any[]) => {
   if (!Array.isArray(data)) return [];
   return data.map(d => ({
@@ -58,7 +57,7 @@ export default function Home() {
   const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]); 
   const [loadingDrivers, setLoadingDrivers] = useState(true); 
   
-  // 👇 İLK YÜKLEME RADAR STATE'İ 👇
+  // 👇 İLK YÜKLEME STATE'İ 👇
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   // 🎯 AKSİYON VE SENKRONİZASYON
@@ -101,15 +100,19 @@ export default function Home() {
     }
   }, []);
 
-  // VERİ ÇEKME
-  const fetchDrivers = useCallback((lat: number, lng: number, type?: string) => {
-    setLoadingDrivers(true);
+  // 🔥 GÜÇLENDİRİLMİŞ VERİ ÇEKME (SESSİZ MOD DESTEKLİ) 🔥
+  const fetchDrivers = useCallback((lat: number, lng: number, type?: string, isBackground: boolean = false) => {
+    
+    // Eğer kategori değişimi ise (isBackground=false), kullanıcıya yükleniyor göster.
+    // Eğer harita kaydırma ise (isBackground=true), sessizce hallet.
+    if (!isBackground) {
+        setLoadingDrivers(true);
+    }
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // URL'ye limit eklemeye gerek yok, backend zaten 3000 çekiyor.
     const url = new URL(`${API_URL}/users/nearby`);
     url.searchParams.append('lat', lat.toString());
     url.searchParams.append('lng', lng.toString());
@@ -127,10 +130,7 @@ export default function Home() {
       })
       .finally(() => {
         setLoadingDrivers(false);
-        // Radarı 1.5 sn sonra kapat
-        setTimeout(() => {
-           setIsFirstLoad(false);
-        }, 1500);
+        setTimeout(() => { setIsFirstLoad(false); }, 1500);
       });
   }, []);
 
@@ -141,33 +141,42 @@ export default function Home() {
         (pos) => {
           const { latitude, longitude } = pos.coords;
           setSearchCoords([latitude, longitude]);
-          fetchDrivers(latitude, longitude, actionType);
+          fetchDrivers(latitude, longitude, actionType, false);
         },
         () => {
           setSearchCoords([FALLBACK_LAT, FALLBACK_LNG]);
-          fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType);
+          fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType, false);
         },
         { timeout: 10000, enableHighAccuracy: false }
       );
     } else {
-      fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType);
+      fetchDrivers(FALLBACK_LAT, FALLBACK_LNG, actionType, false);
     }
   }, []); 
 
   // --- HANDLER'LAR ---
 
+  // 🔥 FİLTRE DEĞİŞİMİ (Üst butonlara basınca burası çalışır)
   const handleFilterChange = (type: string) => {
     setActionType(type);
     setActiveDriverId(null);
+    
+    // Eski verileri temizle ki kullanıcı karışıklık yaşamasın
+    setFilteredDrivers([]); 
+    setLoadingDrivers(true);
+
     if (searchCoords) {
-      fetchDrivers(searchCoords[0], searchCoords[1], type);
+      // false = Loading göstererek çek
+      fetchDrivers(searchCoords[0], searchCoords[1], type, false);
     }
   };
 
+  // 🔥 HARİTA HAREKETİ (Sessiz güncelleme)
   const handleMapMove = (lat: number, lng: number) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      fetchDrivers(lat, lng, actionType);
+      // true = Loading GÖSTERME (Arka planda sessizce çek)
+      fetchDrivers(lat, lng, actionType, true);
     }, 500);
   };
 
@@ -223,7 +232,7 @@ export default function Home() {
         activeDriverId={activeDriverId} 
         onSelectDriver={setActiveDriverId} 
         onMapMove={handleMapMove} 
-        // 🔥 KRİTİK: Boşluğa basınca paneli kapatmak için seçimi kaldır
+        // 🔥 Boşluğa tıklayınca paneli kapatır
         onMapClick={() => setActiveDriverId(null)} 
       />
       
@@ -252,20 +261,23 @@ export default function Home() {
           drivers={filteredDrivers} 
           loading={loadingDrivers}
           actionType={actionType} 
-          onActionChange={setActionType}
+          
+          // 🔥 KRİTİK DÜZELTME: Üst butonlara basınca veri çeker 🔥
+          onActionChange={handleFilterChange} 
+          
+          // Alt butonlara basınca veri çeker
           onFilterApply={handleFilterChange} 
-          onSearchLocation={(lat, lng) => {
-            setSearchCoords([lat, lng]);
-            fetchDrivers(lat, lng, actionType);
+          
+          // Konum arayınca sessiz güncelleme yapar (true)
+          onSearchLocation={(lat, lng) => { 
+              setSearchCoords([lat, lng]); 
+              fetchDrivers(lat, lng, actionType, true); 
           }}
+          
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId} 
           onStartOrder={handleStartOrder}
-          onReset={() => {
-            setActionType('');
-            handleFilterChange('');
-            setActiveDriverId(null);
-          }}
+          onReset={() => { handleFilterChange(''); }}
         />
       )}
 

@@ -187,16 +187,15 @@ export class DataService {
         const meta = this.getEnhancedMetadata(type, il, ilce);
         const placeName = place.displayName?.text;
         let phone = place.nationalPhoneNumber?.replace(/\D/g, '') || `05${Math.floor(30 + Math.random() * 20)}${Math.floor(1000000 + Math.random() * 9000000)}`;
-        const email = `${placeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8)}_${Math.floor(Math.random() * 99)}@transporter.app`;
+        const email = `${placeName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8)}_${Math.floor(Math.random() * 9999)}@transporter.app`;
 
-        // UsersService.create'e tam paket gönderiyoruz
         await this.usersService.create({
           email,
           password: '123',
           role: 'provider',
           isActive: true,
           firstName: `${placeName} (${tag})`,
-          lastName: 'Lojistik',
+          lastName: 'Hizmetleri',
           phoneNumber: phone.startsWith('0') ? phone : '0' + phone,
           serviceType: type,
           address: this.cleanAddress(place.formattedAddress),
@@ -206,7 +205,7 @@ export class DataService {
           rating: place.rating || 0,
           location: {
             type: 'Point',
-            coordinates: [place.location.longitude, place.location.latitude] // MongoDB Standardı: [Boylam, Enlem]
+            coordinates: [place.location.longitude, place.location.latitude]
           }
         } as any);
       }
@@ -218,13 +217,18 @@ export class DataService {
   }
 
   async populateTurkeyData() {
-    this.logger.log("🚛 Veri Entegrasyonu Başlatıldı...");
+    this.logger.log("⚡️ EK KAYNAK TARAMASI BAŞLATILDI: Şarj, Mobil Şarj ve Kamyon Garajları aranıyor...");
+    
+    // 🔥 SADECE İSTENEN 3 KATEGORİ 🔥
     const categories = [
-      { q: 'Oto Çekici', t: 'kurtarici', tag: 'Çekici' },
-      { q: 'Kiralık Vinç', t: 'vinc', tag: 'Vinç' },
-      { q: 'Evden Eve Nakliyat', t: 'nakliye', tag: 'Nakliye' },
-      { q: 'Kamyon Lojistik', t: 'kamyon', tag: 'Kamyon' },
-      { q: 'Tır Nakliye', t: 'tir', tag: 'TIR' }
+      // 1. Şarj İstasyonları
+      { q: 'Elektrikli Araç Şarj İstasyonu', t: 'sarj_istasyonu', tag: 'İstasyon' },
+      
+      // 2. Mobil Şarj (Yol Yardım üzerinden bulunur)
+      { q: 'Oto Elektrik Yol Yardım', t: 'seyyar_sarj', tag: 'Mobil Şarj' },
+
+      // 3. Kamyon (Garaj ve Nakliyeciler Sitesi üzerinden bulunur)
+      { q: 'Kamyon Garajı Nakliyeciler Sitesi', t: 'kamyon', tag: 'Kamyon' }
     ];
 
     let totalSaved = 0;
@@ -233,20 +237,18 @@ export class DataService {
       for (const cat of categories) {
         const count = await this.fetchPlaceFromGoogle(cat.q, cat.t, item.il, item.ilce, cat.tag, limit);
         totalSaved += count;
-        // Hız sınırlamasına takılmamak için mikro gecikme
+        // Hız limiti aşmamak için bekleme
         await new Promise(r => setTimeout(r, 150)); 
       }
-      this.logger.log(`✅ ${item.ilce} / ${item.il} işlendi.`);
+      this.logger.log(`✅ ${item.ilce} / ${item.il} tarandı. Eklenen: ${totalSaved}`);
     }
     return { status: 'SUCCESS', totalAdded: totalSaved };
   }
 
   async getDbStats() {
-    // Hem User hem Profile bilgilerini topluca çekiyoruz
     const allUsers: any[] = await this.usersService.findAll();
     
     const stats = allUsers.reduce((acc, user) => {
-      // serviceType verisini hem ana dökümanda hem de profile içinde arıyoruz
       const type = user.serviceType || (user.profile && user.profile.serviceType) || 'belirsiz';
       acc[type] = (acc[type] || 0) + 1;
       return acc;

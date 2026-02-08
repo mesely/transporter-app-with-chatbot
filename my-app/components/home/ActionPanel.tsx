@@ -55,10 +55,7 @@ export default function ActionPanel({
   const [showTicariRow, setShowTicariRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
 
-  // Lazy Loading
   const [visibleItems, setVisibleItems] = useState(20);
-
-  // Filtreler
   const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
   
@@ -67,18 +64,7 @@ export default function ActionPanel({
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // 1. OTOMATİK ŞEHİR SEÇİMİ (Veri ilk geldiğinde)
-  useEffect(() => {
-    if (safeDrivers.length > 0 && !selectedCity && !hasAutoSelectedCity.current) {
-      const nearestCity = safeDrivers[0].city;
-      if (nearestCity && CITIES.some(c => c.toLowerCase() === nearestCity.toLowerCase())) {
-        setSelectedCity(nearestCity.toUpperCase());
-        hasAutoSelectedCity.current = true;
-      }
-    }
-  }, [safeDrivers, selectedCity]);
-
-  // 2. HARİTA ODAKLAMA
+  // 1. HARİTA İLE SENKRONİZASYON
   useEffect(() => {
     if (activeDriverId) {
       setIsExpanded(true);
@@ -91,7 +77,7 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // 3. KATEGORİ SEÇİMİ VE PANEL AÇILMASI
+  // 2. KATEGORİ SEÇİMİ VE PANEL AÇMA
   useEffect(() => {
     setVisibleItems(20);
 
@@ -136,25 +122,15 @@ export default function ActionPanel({
 
   useEffect(() => {
     findMyLocation();
-    fetch(`${API_URL}/tariffs`)
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setTariffs(data); })
-      .catch(err => console.error(err));
+    fetch(`${API_URL}/tariffs`).then(res => res.json()).then(data => { if (Array.isArray(data)) setTariffs(data); });
   }, []);
 
-  // 4. PANEL SÜRÜKLEME (DRAG)
   const handleDragStart = (y: number) => { dragStartY.current = y; };
   const handleDragMove = (y: number) => {
     if (dragStartY.current === null) return;
     const diff = dragStartY.current - y;
-    if (diff > 50) { 
-        if (!isExpanded) { setIsExpanded(true); dragStartY.current = y; } 
-        else if (!isFullHeight) { setIsFullHeight(true); }
-    }
-    if (diff < -50) { 
-        if (isFullHeight) { setIsFullHeight(false); dragStartY.current = y; } 
-        else if (isExpanded) { setIsExpanded(false); }
-    }
+    if (diff > 50) { if (!isExpanded) { setIsExpanded(true); dragStartY.current = y; } else if (!isFullHeight) { setIsFullHeight(true); } }
+    if (diff < -50) { if (isFullHeight) { setIsFullHeight(false); dragStartY.current = y; } else if (isExpanded) { setIsExpanded(false); } }
   };
 
   const getPricing = (driver: Driver) => {
@@ -166,11 +142,11 @@ export default function ActionPanel({
     return { total: min ? Math.max(calculated, min).toFixed(0) : calculated.toFixed(0), opening, unit, min };
   };
 
-  // 🔥 5. KATI FİLTRELEME MANTIĞI (SORUNLARI ÇÖZEN YER) 🔥
+  // 🔥 DÜZELTİLEN FİLTRELEME MANTIĞI 🔥
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
 
-    // İL FİLTRESİ
+    // 1. Şehir Filtresi (Kullanıcı seçerse)
     if (selectedCity) {
       list = list.filter(d => 
         d.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr') ||
@@ -178,54 +154,45 @@ export default function ActionPanel({
       );
     }
 
-    // KATEGORİ FİLTRESİ
+    // 2. Kategori Filtresi
     if (actionType) {
-        // A. NAKLİYE (Evden Eve) -> Kamyon/Tır GÖSTERME
-        if (actionType === 'nakliye' || actionType === 'evden_eve') {
-            list = list.filter(d => {
-                const type = d.serviceType || '';
-                return (type.includes('nakliye') || type.includes('evden')) && 
-                       !type.includes('kamyon') && !type.includes('tir') && !type.includes('kamyonet');
-            });
+        
+        // A. NAKLİYE (Genel) -> Hepsini Göster (Kamyon + Evden Eve)
+        // Burada eskiden filtreleme vardı, sildik. Artık 'nakliye' ise hepsi geçiyor.
+        
+        // B. EVDEN EVE (Özel) -> Kamyonları Gizle
+        if (actionType === 'evden_eve') {
+             list = list.filter(d => !d.serviceType?.includes('kamyon') && !d.serviceType?.includes('tir') && !d.serviceType?.includes('kamyonet'));
         }
-        // B. VİNÇ -> Oto Kurtarma GÖSTERME
+        
+        // C. TİCARİ/KAMYON/TIR (Özel) -> Evden eveyi gizle (Genelde gerekmez ama garanti olsun)
+        else if (['kamyon', 'tir', 'kamyonet'].includes(actionType)) {
+             list = list.filter(d => d.serviceType?.includes(actionType));
+        }
+
+        // D. VİNÇ (Özel) -> Oto Kurtarmayı gizle
         else if (actionType === 'vinc') {
-            list = list.filter(d => d.serviceType === 'vinc');
+             list = list.filter(d => d.serviceType === 'vinc');
         }
-        // C. OTO KURTARMA -> Vinç GÖSTERME
-        else if (actionType === 'kurtarici' || actionType === 'oto_kurtarma') {
-            list = list.filter(d => (d.serviceType?.includes('kurtarici') || d.serviceType?.includes('oto_kurtarma')) && !d.serviceType?.includes('vinc'));
+        
+        // E. OTO KURTARMA (Özel) -> Vinci gizle
+        else if (actionType === 'oto_kurtarma') {
+             list = list.filter(d => !d.serviceType?.includes('vinc'));
         }
-        // D. TİCARİLER
-        else if (['kamyon', 'tir', 'kamyonet', 'ticari'].some(t => actionType === t)) {
-            if (actionType === 'ticari') {
-                 // Ticari genel kategori, kamyon/tir/kamyonet hepsi gelsin
-                 list = list.filter(d => ['kamyon', 'tir', 'kamyonet'].some(t => d.serviceType?.includes(t)));
-            } else {
-                 // Sadece seçileni getir (Sadece tır, sadece kamyon)
-                 list = list.filter(d => d.serviceType?.includes(actionType));
-            }
-        }
-        // E. ŞARJ
-        else if (actionType.includes('sarj')) {
-             if (actionType === 'sarj') {
-                list = list.filter(d => d.serviceType?.includes('sarj'));
-             } else {
-                list = list.filter(d => d.serviceType === actionType);
-             }
-        }
+        
+        // Diğer durumlar (Genel butonlar: nakliye, kurtarici, sarj) için
+        // Backend zaten doğru karma veriyi yolladığı için listeyi olduğu gibi bırakıyoruz.
     }
 
-    // SIRALAMA
+    // Sıralama
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       return a.distance - b.distance;
     });
     
     return list;
-  }, [safeDrivers, sortMode, selectedCity, tariffs, actionType]);
+  }, [safeDrivers, sortMode, selectedCity, tariffs, actionType]); 
 
-  // SCROLL HANDLER
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop <= clientHeight + 300) {
@@ -236,7 +203,6 @@ export default function ActionPanel({
   };
 
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
-
   let heightClass = 'h-36';
   if (isFullHeight) heightClass = 'h-[90vh]';
   else if (isExpanded) heightClass = 'h-[55vh]';
@@ -249,13 +215,9 @@ export default function ActionPanel({
       onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
       onTouchMove={(e) => handleDragMove(e.touches[0].clientY)}
       onTouchEnd={() => { dragStartY.current = null; }}
-      className={`fixed inset-x-0 bottom-0 z-[400] transition-all duration-500 ease-out rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
+      className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 ease-out rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/5 backdrop-blur-sm border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pt-2 overflow-visible`}
     >
-      <div onClick={() => {
-          if(isFullHeight) setIsFullHeight(false);
-          else if(isExpanded) setIsExpanded(false);
-          else setIsExpanded(true);
-      }} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50">
+      <div onClick={() => { if(isFullHeight) setIsFullHeight(false); else if(isExpanded) setIsExpanded(false); else setIsExpanded(true); }} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50">
         <div className="w-20 h-1.5 bg-white/40 rounded-full shadow-sm"></div>
       </div>
 
@@ -275,13 +237,13 @@ export default function ActionPanel({
         <div className="space-y-3 shrink-0 mb-4">
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
-              <button onClick={() => onFilterApply('kurtarici')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'kurtarici' ? 'bg-red-800 ring-2 ring-red-400' : 'bg-red-600'}`}>Oto Kurtarma</button>
+              <button onClick={() => onFilterApply('oto_kurtarma')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'oto_kurtarma' ? 'bg-red-800 ring-2 ring-red-400' : 'bg-red-600'}`}>Oto Kurtarma</button>
               <button onClick={() => onFilterApply('vinc')} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'vinc' ? 'bg-red-900 ring-2 ring-red-400' : 'bg-red-700'}`}>Vinç</button>
             </div>
           )}
           {showShipRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-1">
-              <button onClick={() => {setShowTicariRow(false); onFilterApply('nakliye');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'nakliye' && !showTicariRow ? 'bg-purple-900 ring-2 ring-purple-400' : 'bg-purple-600'}`}>Evden Eve</button>
+              <button onClick={() => {setShowTicariRow(false); onFilterApply('evden_eve');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${actionType === 'evden_eve' ? 'bg-purple-900 ring-2 ring-purple-400' : 'bg-purple-600'}`}>Evden Eve</button>
               <button onClick={() => {setShowTicariRow(true); onFilterApply('ticari');}} className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg ${showTicariRow ? 'bg-yellow-600 shadow-inner' : 'bg-yellow-500'}`}>Ticari Araç</button>
             </div>
           )}
@@ -300,6 +262,7 @@ export default function ActionPanel({
           )}
         </div>
 
+        {/* Filtre ve Sıralama */}
         {isExpanded && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-1 shrink-0">
               <div className="relative shrink-0">
@@ -317,6 +280,7 @@ export default function ActionPanel({
           </div>
         )}
 
+        {/* Liste */}
         <div className="flex-1 overflow-y-auto pb-40 custom-scrollbar" onScroll={handleScroll}>
           {loading ? (
              <div className="flex flex-col items-center py-20 text-gray-400 font-black uppercase text-[10px] tracking-widest animate-pulse"><Loader2 size={32} className="animate-spin mb-2" />Sana En Yakınlar Bulunuyor...</div>
@@ -368,6 +332,7 @@ export default function ActionPanel({
           {visibleItems < displayDrivers.length && <div className="py-4 text-center text-[10px] text-gray-400 font-bold animate-pulse">Daha Fazla Yükleniyor...</div>}
         </div>
       </div>
+
     </div>
   );
 }

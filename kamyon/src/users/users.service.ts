@@ -76,7 +76,7 @@ export class UsersService implements OnModuleInit {
   async findNearby(lat: number, lng: number, type?: string) {
     const query: any = { isActive: true };
 
-    // 🔥 KATEGORİ AYRIŞTIRMASI (Backend tarafında da filtreyi sıkılaştırıyoruz)
+    // 🔥 KATEGORİ AYRIŞTIRMASI DÜZELTİLDİ
     if (type) {
       if (type === 'sarj') {
         // Şarj için hem istasyon hem seyyar
@@ -91,8 +91,8 @@ export class UsersService implements OnModuleInit {
         query.serviceType = 'vinc';
       }
       else if (type === 'nakliye') {
-        // Sadece Nakliye ve Evden Eve (Tır/Kamyon YOK)
-        query.serviceType = { $in: ['nakliye', 'evden_eve', 'evden_eve_nakliyat'] };
+        // 🔥 DÜZELTME BURADA YAPILDI: Artık Tır, Kamyon ve Kamyonet de "Nakliye" grubunda geliyor.
+        query.serviceType = { $in: ['nakliye', 'evden_eve', 'evden_eve_nakliyat', 'kamyon', 'tir', 'kamyonet'] };
       } 
       else if (type === 'ticari') {
         // Sadece Ticari Araçlar
@@ -109,13 +109,13 @@ export class UsersService implements OnModuleInit {
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [lng, lat] },
-          // 🔥 5.000 KM (Tüm Türkiye + Avrupa'nın Yarısı)
+          // 🔥 5.000 KM
           $maxDistance: 5000000 
         }
       }
     })
     .select('_id firstName lastName location serviceType rating phoneNumber address city openingFee pricePerUnit minAmount vehicleType reservationUrl')
-    // 🔥 LİMİT 10.000 (Tüm datayı çeksin, Frontend filtrelesin)
+    // 🔥 LİMİT 10.000
     .limit(10000) 
     .lean()
     .exec();

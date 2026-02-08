@@ -39,5 +39,4 @@ export class Profile extends Document {
 isActive: boolean;
 }
 
-export const ProfileSchema = SchemaFactory.createForClass(Profile);
-ProfileSchema.index({ location: '2dsphere' });
+export const ProfileSchema = SchemaFactory.createForClass(Profile)
