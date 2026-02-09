@@ -7,45 +7,48 @@ import * as XLSX from 'xlsx';
 @Controller('users')
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
+
   constructor(private readonly usersService: UsersService) {}
 
-  // --- 1. STANDART CRUD İŞLEMLERİ (MEVCUT) ---
+  // --- 1. KULLANICI OLUŞTURMA (TEKİL) ---
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
-  // --- 2. AKILLI HARİTA VE LİSTELEME (GÜNCELLENDİ) ---
+  // --- 2. AKILLI HARİTA & LİSTELEME ENDPOINT'İ ---
   @Get('nearby')
   async findNearby(
     @Query('lat') lat: string, 
     @Query('lng') lng: string, 
     @Query('type') type: string,
-    @Query('zoom') zoom: string, // 🔥 YENİ: Harita Zoom Seviyesi
-    @Query('mode') mode: string  // 🔥 YENİ: Liste Modu ('list' veya boş)
+    @Query('zoom') zoom: string, // Harita uzaklık seviyesi
+    @Query('mode') mode: string  // 'list' ise karma liste döner
   ) {
+    // Varsayılan Koordinatlar (Veri gelmezse çökmemesi için)
     const latitude = parseFloat(lat || '38.4237');
     const longitude = parseFloat(lng || '27.1428');
     const zoomLevel = zoom ? parseInt(zoom) : 15;
 
-    // A) LİSTE MODU: Sonsuz kaydırma için (ActionPanel)
-    // Her türden eşit sayıda (örn: 5) veri getirerek karma bir liste oluşturur.
+    // A) LİSTE MODU (ActionPanel - Infinite Scroll)
+    // Listeyi kaydırırken sadece kamyonlar doluşmasın diye her türden 5'er tane getirir.
     if (mode === 'list') {
       return this.usersService.findDiverseList(latitude, longitude, 5);
     }
 
-    // B) AKILLI HARİTA MODU: Zoom seviyesi düşükse (uzaksa)
-    // Haritayı ızgaralara böler ve her bölgeden her türden 1 tane getirir.
+    // B) AKILLI HARİTA MODU (Zoom Out yapınca)
+    // Zoom seviyesi 14'ten küçükse (uzaksa), haritayı karelere böler ve her kareden 1 temsilci getirir.
     if (zoom && zoomLevel < 14) {
       return this.usersService.findSmartMapData(latitude, longitude, zoomLevel);
     }
 
-    // C) STANDART MOD: Yakın zoom veya normal arama (MEVCUT MANTIK)
+    // C) STANDART MOD (Zoom In yapınca veya Filtre seçince)
+    // Yakındayken veya özel bir tür (örn: 'vinç') seçiliyken normal arama yapar.
     const searchType = this.normalizeServiceType(type);
     return this.usersService.findNearby(latitude, longitude, searchType);
   }
 
-  // --- 3. DİĞER ENDPOINTLER (MEVCUT - KORUNDU) ---
+  // --- 3. DİĞER STANDART ENDPOINTLER (MEVCUT) ---
   @Get('all')
   async findAllFiltered(@Query('city') city?: string, @Query('type') type?: string) {
     return this.usersService.findFiltered(city, type);
@@ -61,7 +64,7 @@ export class UsersController {
     return this.usersService.deleteOne(id);
   }
 
-  // --- 4. EXCEL IMPORT (MEVCUT - KORUNDU) ---
+  // --- 4. EXCEL IMPORT (MEVCUT) ---
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importUsers(@UploadedFile() file: any) {
@@ -89,12 +92,11 @@ export class UsersController {
     return { status: 'SUCCESS', count };
   }
 
-  // --- 5. YARDIMCI FONKSİYONLAR (MEVCUT - KORUNDU) ---
+  // --- 5. YARDIMCI FONKSİYONLAR ---
   private normalizeServiceType(type: string): string {
     if (!type) return '';
     const lower = type.toLowerCase().trim();
-    // Frontend'den gelen genel kategorileri Backend'in anlayacağı dile çevirir
-    if (lower.includes('yurt') || lower === 'yurt_disi_nakliye') return 'nakliye'; // Servis içinde alt kırılım yapılıyor
+    if (lower.includes('yurt') || lower === 'yurt_disi_nakliye') return 'nakliye';
     if (lower.includes('şarj') || lower.includes('sarj')) return 'sarj';
     if (lower.includes('vinc') || lower.includes('vinç')) return 'kurtarici';
     if (lower.includes('kurtar')) return 'kurtarici';
