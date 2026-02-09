@@ -4,7 +4,8 @@ import {
   Truck, Zap, Star, MapPin, Wrench, 
   ChevronDown, LocateFixed, Loader2, 
   MessageCircle, Phone, Navigation,
-  Globe, CarFront, Anchor, Home 
+  Globe, CarFront, Anchor, Home, 
+  Package, Container // Yeni ikonlar eklendi
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
@@ -61,10 +62,12 @@ export default function ActionPanel({
   const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
+  
+  // Alt Satır Kontrolleri
   const [showTowRow, setShowTowRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
-  
-  // --- YENİ: Başlangıçta 5 veri göster, scroll yaptıkça 5'er artır ---
+  const [showDomesticRow, setShowDomesticRow] = useState(false); // 🔥 YENİ: Yurt İçi detay satırı
+
   const [visibleItems, setVisibleItems] = useState(5); 
   const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
@@ -74,7 +77,6 @@ export default function ActionPanel({
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Aktif sürücü değişince scroll yap
   useEffect(() => {
     if (activeDriverId) {
       if (panelState === 0) setPanelState(1);
@@ -84,24 +86,32 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // Filtre değişince listeyi başa sar ve sayacı sıfırla
+  // Filtreler değişince UI ayarla
   useEffect(() => {
-    setVisibleItems(5); // Resetleyince ilk 5 tanesi gelsin
+    setVisibleItems(5);
     if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
 
     if (!actionType) {
-        setShowTowRow(false); setShowChargeRow(false);
+        setShowTowRow(false); setShowChargeRow(false); setShowDomesticRow(false);
         setPanelState(0);
         return;
     }
     if (panelState === 0) setPanelState(1);
 
+    // Ana kategori kontrolleri
     if (['kurtarici', 'vinc', 'oto_kurtarma'].some(t => actionType.includes(t))) {
-        setShowTowRow(true); setShowChargeRow(false);
-    } else if (['nakliye', 'kamyon', 'tir', 'yurt_disi'].some(t => actionType.includes(t))) {
+        setShowTowRow(true); setShowChargeRow(false); setShowDomesticRow(false);
+    } 
+    // Nakliye grubu seçildiyse (ama yurt dışı değilse)
+    else if (['nakliye', 'kamyon', 'tir', 'yurt_disi', 'kamyonet'].some(t => actionType.includes(t))) {
         setShowTowRow(false); setShowChargeRow(false);
-    } else if (['sarj', 'sarj_istasyonu', 'seyyar_sarj'].some(t => actionType.includes(t))) {
-        setShowChargeRow(true); setShowTowRow(false);
+        // Eğer Yurt dışı seçildiyse yurt içi satırını kapat
+        if (actionType === 'yurt_disi') {
+            setShowDomesticRow(false);
+        }
+    } 
+    else if (['sarj', 'sarj_istasyonu', 'seyyar_sarj'].some(t => actionType.includes(t))) {
+        setShowChargeRow(true); setShowTowRow(false); setShowDomesticRow(false);
     }
   }, [actionType, selectedCity]); 
 
@@ -160,32 +170,39 @@ export default function ActionPanel({
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
   };
 
-  // --- 🔥 AKILLI KARIŞTIRICI (Interleaved Sort) ---
-  // Backend'den veri nasıl gelirse gelsin, burada her türden eşit dağılım yapıyoruz.
+  // --- 🔥 GÜNCELLENMİŞ FİLTRELEME MANTIĞI ---
   const displayDrivers = useMemo(() => {
-    // 1. Filtreleme
     let list = [...safeDrivers];
     if (selectedCity) {
       list = list.filter(d => d.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
     
     if (actionType) {
+        // Özel Filtreler
         if (actionType === 'yurt_disi') { list = list.filter(d => d.serviceType === 'yurt_disi_nakliye'); }
         else if (actionType === 'vinc') { list = list.filter(d => d.serviceType === 'vinc'); }
         else if (actionType === 'oto_kurtarma') { list = list.filter(d => d.serviceType === 'oto_kurtarma'); }
         else if (actionType === 'sarj_istasyonu') { list = list.filter(d => d.serviceType === 'sarj_istasyonu'); }
         else if (actionType === 'seyyar_sarj') { list = list.filter(d => d.serviceType === 'seyyar_sarj'); }
-        // Ana gruplarda (nakliye, kurtarici) hepsi kalsın, aşağıda karıştıracağız.
+        
+        // 🔥 YENİ: Yurt İçi Alt Kırılımları
+        else if (actionType === 'nakliye') { list = list.filter(d => d.serviceType === 'nakliye'); }
+        else if (actionType === 'tir') { list = list.filter(d => d.serviceType === 'tir'); }
+        else if (actionType === 'kamyon') { list = list.filter(d => d.serviceType === 'kamyon'); }
+        else if (actionType === 'kamyonet') { list = list.filter(d => d.serviceType === 'kamyonet'); }
+        
+        // Genel Nakliye (Eğer 'nakliye' seçiliyse hepsi gelir)
+        else if (actionType === 'nakliye') {
+           list = list.filter(d => ['nakliye', 'kamyon', 'tir', 'kamyonet'].includes(d.serviceType || ''));
+        }
     }
 
-    // 2. Sıralama (Puana veya Mesafeye göre)
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       return a.distance - b.distance;
     });
 
-    // 3. FERMUAR MANTIĞI: Türlere göre grupla ve sırayla seç
-    // [Kamyon, Tır, Çekici, Kamyon, Tır, Çekici...] şeklinde dizer.
+    // Fermuar (Mixer) Mantığı
     const groups: { [key: string]: Driver[] } = {};
     list.forEach(driver => {
       const type = driver.serviceType || 'other';
@@ -199,9 +216,7 @@ export default function ActionPanel({
 
     for (let i = 0; i < maxLength; i++) {
       groupKeys.forEach(key => {
-        if (groups[key][i]) {
-          mixedList.push(groups[key][i]);
-        }
+        if (groups[key][i]) mixedList.push(groups[key][i]);
       });
     }
 
@@ -209,13 +224,10 @@ export default function ActionPanel({
 
   }, [safeDrivers, sortMode, selectedCity, actionType]); 
 
-  // --- 🔥 SONSUZ KAYDIRMA (Scroll Event) ---
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Listenin sonuna 100px kala yeni verileri yükle
     if (scrollHeight - scrollTop <= clientHeight + 100) {
       if (visibleItems < displayDrivers.length) {
-        // 5 tane daha ekle
         setVisibleItems(prev => prev + 5);
       }
     }
@@ -235,7 +247,6 @@ export default function ActionPanel({
       onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
       className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
     >
-      {/* DRAG HANDLE */}
       <div 
         onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 0)} 
         className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50 hover:opacity-80 transition-opacity"
@@ -247,21 +258,23 @@ export default function ActionPanel({
         
         {/* --- 1. ANA KATEGORİLER --- */}
         <div className="flex gap-3 shrink-0 mb-4">
-          <button onClick={() => { setPanelState(1); setShowChargeRow(false); setShowTowRow(!showTowRow); onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${showTowRow ? 'bg-red-600 text-white scale-105 shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
+          <button onClick={() => { setPanelState(1); setShowChargeRow(false); setShowTowRow(!showTowRow); setShowDomesticRow(false); onActionChange('kurtarici'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${showTowRow ? 'bg-red-600 text-white scale-105 shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
             <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
           
-          <button onClick={() => { setPanelState(1); setShowTowRow(false); setShowChargeRow(false); onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${actionType === 'nakliye' || actionType === 'yurt_disi' ? 'bg-purple-600 text-white scale-105 shadow-purple-500/30' : 'bg-white/80 text-purple-600 border border-white/40'}`}>
+          <button onClick={() => { setPanelState(1); setShowTowRow(false); setShowChargeRow(false); setShowDomesticRow(false); onActionChange('nakliye'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${actionType === 'nakliye' || actionType === 'yurt_disi' || showDomesticRow ? 'bg-purple-600 text-white scale-105 shadow-purple-500/30' : 'bg-white/80 text-purple-600 border border-white/40'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
           
-          <button onClick={() => { setPanelState(1); setShowTowRow(false); setShowChargeRow(!showChargeRow); onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${showChargeRow ? 'bg-blue-600 text-white scale-105 shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
+          <button onClick={() => { setPanelState(1); setShowTowRow(false); setShowChargeRow(!showChargeRow); setShowDomesticRow(false); onActionChange('sarj'); }} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${showChargeRow ? 'bg-blue-600 text-white scale-105 shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
             <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Şarj</span>
           </button>
         </div>
 
         {/* --- 2. ALT FİLTRELER --- */}
         <div className="space-y-3 shrink-0 mb-2 transition-all duration-300">
+          
+          {/* KURTARICI ALT SEÇENEKLERİ */}
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
               <button onClick={() => onFilterApply('oto_kurtarma')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white ring-2 ring-red-400' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
@@ -269,13 +282,43 @@ export default function ActionPanel({
             </div>
           )}
 
-          {(actionType === 'nakliye' || actionType === 'yurt_disi') && (
+          {/* NAKLİYE: YURT İÇİ / YURT DIŞI SEÇİMİ */}
+          {(['nakliye', 'yurt_disi', 'tir', 'kamyon', 'kamyonet'].some(t => actionType === t) || showDomesticRow) && (
              <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-                <button onClick={() => onFilterApply('nakliye')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'nakliye' ? 'bg-purple-700 text-white ring-2 ring-purple-300' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}><Truck size={14}/> Yurt İçi</button>
-                <button onClick={() => onFilterApply('yurt_disi')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'yurt_disi' ? 'bg-indigo-800 text-white ring-2 ring-indigo-300' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={14}/> Yurt Dışı</button>
+                <button 
+                  onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); }} // Tıklayınca altını aç ve hepsini göster
+                  className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType !== 'yurt_disi' ? 'bg-purple-700 text-white ring-2 ring-purple-300' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}
+                >
+                  <Truck size={14}/> Yurt İçi
+                </button>
+                <button 
+                  onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi'); }} 
+                  className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'yurt_disi' ? 'bg-indigo-800 text-white ring-2 ring-indigo-300' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}
+                >
+                  <Globe size={14}/> Yurt Dışı
+                </button>
              </div>
           )}
 
+          {/* 🔥 YENİ: YURT İÇİ DETAYLARI (Evden Eve, Tır, Kamyon, Kamyonet) */}
+          {showDomesticRow && actionType !== 'yurt_disi' && (
+            <div className="grid grid-cols-4 gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
+               <button onClick={() => onFilterApply('nakliye')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'nakliye' ? 'bg-purple-800 text-white ring-1 ring-purple-400' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
+                 <Home size={14}/> Evden Eve
+               </button>
+               <button onClick={() => onFilterApply('tir')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'tir' ? 'bg-purple-800 text-white ring-1 ring-purple-400' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
+                 <Truck size={14}/> Tır
+               </button>
+               <button onClick={() => onFilterApply('kamyon')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'kamyon' ? 'bg-purple-800 text-white ring-1 ring-purple-400' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
+                 <Container size={14}/> Kamyon
+               </button>
+               <button onClick={() => onFilterApply('kamyonet')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'kamyonet' ? 'bg-purple-800 text-white ring-1 ring-purple-400' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
+                 <Package size={14}/> Kamyonet
+               </button>
+            </div>
+          )}
+
+          {/* ŞARJ SEÇENEKLERİ */}
           {showChargeRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
               <button onClick={() => onFilterApply('sarj_istasyonu')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
@@ -302,7 +345,7 @@ export default function ActionPanel({
           </div>
         )}
 
-        {/* --- 4. SÜRÜCÜ LİSTESİ (INFINITE SCROLL - 5 by 5) --- */}
+        {/* --- 4. SÜRÜCÜ LİSTESİ --- */}
         <div 
             ref={listContainerRef}
             onScroll={handleScroll}
@@ -333,7 +376,10 @@ export default function ActionPanel({
                 else if (type === 'vinc') { iconBg = 'bg-red-900'; IconComponent = Anchor; }
                 else if (type === 'oto_kurtarma' || type.includes('kurtar')) { iconBg = 'bg-red-600'; IconComponent = CarFront; }
                 else if (type === 'yurt_disi_nakliye') { iconBg = 'bg-indigo-600'; IconComponent = Globe; }
-                else if (['nakliye', 'kamyon', 'tir'].some(t => type.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
+                else if (type === 'nakliye') { iconBg = 'bg-purple-500'; IconComponent = Home; }
+                else if (type === 'tir') { iconBg = 'bg-purple-800'; IconComponent = Truck; }
+                else if (type === 'kamyonet') { iconBg = 'bg-purple-400'; IconComponent = Package; }
+                else if (['nakliye', 'kamyon'].some(t => type.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
 
                 return (
                 <div 
@@ -388,7 +434,6 @@ export default function ActionPanel({
                 );
             })}
             
-            {/* Yükleniyor Göstergesi (Listenin en altında ve veri varsa) */}
             {visibleItems < displayDrivers.length && (
                <div className="w-full py-4 flex justify-center">
                   <Loader2 className="animate-spin text-gray-400" size={24} />
