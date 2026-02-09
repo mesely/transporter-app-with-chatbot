@@ -12,6 +12,7 @@
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
     "@capacitor/ios": "^8.0.2",
+    "@nestjs/serve-static": "^5.0.4",
     "clsx": "^2.1.1",
     "framer-motion": "^11.0.0",
     "leaflet": "^1.9.4",
