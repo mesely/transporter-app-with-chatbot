@@ -4,7 +4,7 @@ import {
   Truck, Zap, Star, MapPin, Wrench, 
   ChevronDown, LocateFixed, Loader2, 
   MessageCircle, Phone, Navigation,
-  Globe, CarFront, Anchor 
+  Globe, CarFront, Anchor, Home 
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
@@ -64,8 +64,8 @@ export default function ActionPanel({
   const [showTowRow, setShowTowRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
   
-  // --- YENİ EKLENEN STATE'LER ---
-  const [visibleItems, setVisibleItems] = useState(15); // Başlangıçta 15 tane göster (her türden karışık gelsin diye)
+  // --- YENİ: Başlangıçta 5 veri göster, scroll yaptıkça 5'er artır ---
+  const [visibleItems, setVisibleItems] = useState(5); 
   const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
   
@@ -84,9 +84,9 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // Filtre değişince görünür öğe sayısını sıfırla
+  // Filtre değişince listeyi başa sar ve sayacı sıfırla
   useEffect(() => {
-    setVisibleItems(15);
+    setVisibleItems(5); // Resetleyince ilk 5 tanesi gelsin
     if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
 
     if (!actionType) {
@@ -103,7 +103,7 @@ export default function ActionPanel({
     } else if (['sarj', 'sarj_istasyonu', 'seyyar_sarj'].some(t => actionType.includes(t))) {
         setShowChargeRow(true); setShowTowRow(false);
     }
-  }, [actionType, selectedCity]); // Şehir değişince de resetle
+  }, [actionType, selectedCity]); 
 
   const findMyLocation = () => {
     setIsLocating(true);
@@ -160,34 +160,32 @@ export default function ActionPanel({
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
   };
 
-  // --- AKILLI SIRALAMA MANTIĞI (INTERLEAVED SORT) ---
+  // --- 🔥 AKILLI KARIŞTIRICI (Interleaved Sort) ---
+  // Backend'den veri nasıl gelirse gelsin, burada her türden eşit dağılım yapıyoruz.
   const displayDrivers = useMemo(() => {
-    // 1. Önce Ham Filtreleme
+    // 1. Filtreleme
     let list = [...safeDrivers];
     if (selectedCity) {
       list = list.filter(d => d.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
     
-    // Ana aksiyon tipine göre filtrele
     if (actionType) {
         if (actionType === 'yurt_disi') { list = list.filter(d => d.serviceType === 'yurt_disi_nakliye'); }
         else if (actionType === 'vinc') { list = list.filter(d => d.serviceType === 'vinc'); }
         else if (actionType === 'oto_kurtarma') { list = list.filter(d => d.serviceType === 'oto_kurtarma'); }
         else if (actionType === 'sarj_istasyonu') { list = list.filter(d => d.serviceType === 'sarj_istasyonu'); }
         else if (actionType === 'seyyar_sarj') { list = list.filter(d => d.serviceType === 'seyyar_sarj'); }
-        // Ana gruplar (nakliye vb.) için hepsi zaten listede kalır, aşağıda gruplayacağız.
+        // Ana gruplarda (nakliye, kurtarici) hepsi kalsın, aşağıda karıştıracağız.
     }
 
-    // Mesafe veya Puana göre sırala (Gruplamadan önce en iyileri başa almak için)
+    // 2. Sıralama (Puana veya Mesafeye göre)
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       return a.distance - b.distance;
     });
 
-    // 2. Karma (Mixer) Algoritması: Her türden eşit dağılım yap
-    // Amaç: Listede [Kamyon, Tır, Kamyonet, Kamyon, Tır...] şeklinde gitmek.
-    
-    // Türlere göre grupla
+    // 3. FERMUAR MANTIĞI: Türlere göre grupla ve sırayla seç
+    // [Kamyon, Tır, Çekici, Kamyon, Tır, Çekici...] şeklinde dizer.
     const groups: { [key: string]: Driver[] } = {};
     list.forEach(driver => {
       const type = driver.serviceType || 'other';
@@ -199,7 +197,6 @@ export default function ActionPanel({
     const mixedList: Driver[] = [];
     const maxLength = Math.max(...groupKeys.map(k => groups[k].length));
 
-    // Fermuar yöntemiyle birleştir (Her türden sırayla 1 tane al)
     for (let i = 0; i < maxLength; i++) {
       groupKeys.forEach(key => {
         if (groups[key][i]) {
@@ -212,13 +209,13 @@ export default function ActionPanel({
 
   }, [safeDrivers, sortMode, selectedCity, actionType]); 
 
-  // --- INFINITE SCROLL HANDLER ---
+  // --- 🔥 SONSUZ KAYDIRMA (Scroll Event) ---
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Listenin sonuna yaklaşıldıysa (150px kala)
-    if (scrollHeight - scrollTop <= clientHeight + 150) {
-      // Eğer gösterilecek daha fazla veri varsa artır
+    // Listenin sonuna 100px kala yeni verileri yükle
+    if (scrollHeight - scrollTop <= clientHeight + 100) {
       if (visibleItems < displayDrivers.length) {
+        // 5 tane daha ekle
         setVisibleItems(prev => prev + 5);
       }
     }
@@ -305,7 +302,7 @@ export default function ActionPanel({
           </div>
         )}
 
-        {/* --- 4. SÜRÜCÜ LİSTESİ (INFINITE SCROLL) --- */}
+        {/* --- 4. SÜRÜCÜ LİSTESİ (INFINITE SCROLL - 5 by 5) --- */}
         <div 
             ref={listContainerRef}
             onScroll={handleScroll}
@@ -391,7 +388,7 @@ export default function ActionPanel({
                 );
             })}
             
-            {/* Yükleniyor Göstergesi (Listenin en altında) */}
+            {/* Yükleniyor Göstergesi (Listenin en altında ve veri varsa) */}
             {visibleItems < displayDrivers.length && (
                <div className="w-full py-4 flex justify-center">
                   <Loader2 className="animate-spin text-gray-400" size={24} />

@@ -16,9 +16,16 @@ export class UsersService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('🚀 Transporter Engine: Veri Motoru Aktif.');
+    
+    // İndeksleri garantiye alalım (Opsiyonel ama sağlıklı)
+    try {
+      await this.profileModel.collection.createIndex({ location: '2dsphere' });
+    } catch (e) {
+      // Zaten varsa hata vermesin
+    }
   }
 
-  // --- ESKİ CREATE VE DİĞER FONKSİYONLARIN AYNI KALDI ---
+  // --- 1. KAYIT İŞLEMİ (MEVCUT) ---
   async create(data: any) {
     try {
       let cleanFirstName = data.firstName;
@@ -88,54 +95,47 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 🔥 YENİ: AKILLI HARİTA OPTİMİZASYONU (Smart Clustering) 🔥 ---
-  // Bu fonksiyon haritayı ızgaralara böler (Sanal İlçe) ve her bölgeden her türden 1 tane getirir.
+  // --- 2. AKILLI HARİTA (Smart Map) - DÜZELTİLDİ ---
   async findSmartMapData(lat: number, lng: number, zoomLevel: number = 10) {
-    // Zoom seviyesine göre hassasiyet ayarı
-    // Zoom 10 (Uzak): 1 ondalık (Büyük bölge/İlçe bazlı)
-    // Zoom 14 (Yakın): 2 ondalık (Mahalle bazlı)
     const precision = zoomLevel < 12 ? 1 : 2; 
 
     return this.profileModel.aggregate([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [parseFloat(lng.toString()), parseFloat(lat.toString())] },
+          key: 'location', // 🔥 DÜZELTME: Hangi indeksi kullanacağını açıkça belirtiyoruz
           distanceField: 'distance',
-          maxDistance: 500000, // 500km çap
+          maxDistance: 500000, 
           spherical: true,
-          query: { isActive: true } // Sadece aktifler
+          query: { isActive: true } 
         }
       },
       {
         $group: {
           _id: {
-            // GRUPLAMA ANAHTARI: Servis Tipi + Koordinat Izgarası
             serviceType: "$serviceType",
-            // Koordinatları yuvarlayarak sanal "kareler" (ilçeler) oluşturuyoruz
             gridLat: { $round: [{ $arrayElemAt: ["$location.coordinates", 1] }, precision] },
             gridLng: { $round: [{ $arrayElemAt: ["$location.coordinates", 0] }, precision] }
           },
-          // Her kare (grid) içindeki EN YAKIN (veya puanı en yüksek) sürücüyü seç
           doc: { $first: "$$ROOT" } 
         }
       },
       {
-        $replaceRoot: { newRoot: "$doc" } // Belgeyi orijinal yapısına döndür
+        $replaceRoot: { newRoot: "$doc" } 
       },
       {
-        $sort: { distance: 1 } // Tekrar mesafeye göre sırala
+        $sort: { distance: 1 } 
       }
     ]).exec();
   }
 
-  // --- 🔥 YENİ: LİSTE İÇİN DENGELİ VERİ ÇEKME (Mixed Feed) 🔥 ---
-  // Bu fonksiyon listeyi kaydırdıkça her türden eşit sayıda veri gelmesini sağlar.
-  // Örn: 2 Çekici, 2 Tır, 2 Şarj şeklinde karma liste döner.
+  // --- 3. DENGELİ LİSTE (Mixed Feed) - DÜZELTİLDİ ---
   async findDiverseList(lat: number, lng: number, limitPerType: number = 5) {
     return this.profileModel.aggregate([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [parseFloat(lng.toString()), parseFloat(lat.toString())] },
+          key: 'location', // 🔥 DÜZELTME: Buraya da key eklendi
           distanceField: 'distance',
           maxDistance: 500000,
           spherical: true,
@@ -143,34 +143,33 @@ export class UsersService implements OnModuleInit {
         }
       },
       {
-        $sort: { distance: 1 } // En yakınlar önce
+        $sort: { distance: 1 }
       },
       {
         $group: {
-          _id: "$serviceType", // Türlerine göre ayır
-          drivers: { $push: "$$ROOT" } // Listeye ekle
+          _id: "$serviceType", 
+          drivers: { $push: "$$ROOT" } 
         }
       },
       {
         $project: {
-          drivers: { $slice: ["$drivers", limitPerType] } // Her türden sadece ilk N taneyi al
+          drivers: { $slice: ["$drivers", limitPerType] } 
         }
       },
       {
-        $unwind: "$drivers" // Listeyi tekrar düzleştir
+        $unwind: "$drivers" 
       },
       {
-        $replaceRoot: { newRoot: "$drivers" } // Orijinal formata dön
+        $replaceRoot: { newRoot: "$drivers" } 
       },
       {
-        $sort: { distance: 1 } // Sonuçları tekrar mesafeye göre diz (Karma liste oluşur)
+        $sort: { distance: 1 } 
       }
     ]).exec();
   }
 
-  // --- MEVCUT ESKİ FONKSİYONLAR (Geriye uyumluluk için korundu) ---
+  // --- 4. STANDART ARAMA (MEVCUT) ---
   async findNearby(lat: number, lng: number, type?: string) {
-    // Eğer Frontend yeni "smart" parametresi göndermiyorsa burası çalışır
     const query: any = { isActive: true };
     if (type) {
         if (type === 'sarj') query.serviceType = { $in: ['sarj_istasyonu', 'seyyar_sarj'] };
@@ -181,7 +180,7 @@ export class UsersService implements OnModuleInit {
     return this.profileModel.find({
       ...query,
       location: { $near: { $geometry: { type: 'Point', coordinates: [lng, lat] }, $maxDistance: 5000000 } }
-    }).limit(500).lean().exec(); // Limit ekledim güvenlik için
+    }).limit(500).lean().exec(); 
   }
 
   async findFiltered(city?: string, type?: string) {

@@ -34,11 +34,11 @@ interface MapProps {
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   activeDriverId: string | null;
   onSelectDriver: (id: string | null) => void;
-  onMapMove?: (lat: number, lng: number) => void;
+  onMapMove?: (lat: number, lng: number, zoom: number) => void; // Zoom bilgisini de yukarı taşıyalım
   onMapClick?: () => void;
 }
 
-// --- 2. ÖZGÜN SERVİS YAPILANDIRMASI ---
+// --- 2. ÖZGÜN SERVİS YAPILANDIRMASI (AYNI KALDI) ---
 const SERVICE_CONFIG: any = {
   // KURTARICI GRUBU
   kurtarici: { color: '#dc2626', Icon: CarFront },        
@@ -62,10 +62,9 @@ const SERVICE_CONFIG: any = {
   other: { color: '#6b7280', Icon: Truck }
 };
 
-// --- 3. DİNAMİK İKON TASARIMI ---
+// --- 3. DİNAMİK İKON TASARIMI (AYNI KALDI) ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  // Zoom seviyesine göre ikon boyutu, ancak çok küçülmemesi için min değer korundu
   const baseSize = Math.max(28, Math.min(55, isActive ? zoom * 2.8 : zoom * 2.2)); 
   const innerSize = baseSize * 0.55;
 
@@ -102,19 +101,27 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
 // --- 4. HARİTA KONTROLLERİ ---
 function MapEvents({ onZoomChange, onMapMove, onMapClick }: { 
   onZoomChange: (z: number) => void, 
-  onMapMove?: (lat: number, lng: number) => void,
+  onMapMove?: (lat: number, lng: number, zoom: number) => void,
   onMapClick?: () => void 
 }) {
   const map = useMapEvents({
-    zoomend: () => onZoomChange(map.getZoom()),
+    zoomend: () => {
+      const z = map.getZoom();
+      onZoomChange(z);
+      // Zoom bittiğinde de backend'e haber verelim ki yeni veri çeksin
+      if (onMapMove) {
+        const center = map.getCenter();
+        onMapMove(center.lat, center.lng, z);
+      }
+    },
     moveend: () => {
       if (onMapMove) {
         const center = map.getCenter();
-        onMapMove(center.lat, center.lng);
+        const z = map.getZoom();
+        onMapMove(center.lat, center.lng, z);
       }
     },
     click: (e) => {
-      // Sadece harita zeminine tıklanırsa tetikle (markerlara tıklayınca değil)
       if (e.originalEvent.target === map.getContainer() || (e.originalEvent.target as any).classList.contains('leaflet-container')) {
         if (onMapClick) onMapClick();
       }
@@ -146,56 +153,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     if (driver) return [driver.location.coordinates[1], driver.location.coordinates[0]] as [number, number];
     return null;
   }, [activeDriverId, drivers]);
-
-  // --- AKILLI GRUPLAMA ALGORİTMASI ---
-  // Zoom yapıldıkça her bölgeden (grid) her türden (serviceType) sadece 1 tane gösterir.
-  const visibleDrivers = useMemo(() => {
-    // 1. Zoom seviyesi 14 ve üzerindeyse (çok yakınsa) filtreleme yapma, hepsini göster.
-    if (currentZoom >= 14) {
-      return drivers;
-    }
-
-    const displayedDrivers: Driver[] = [];
-    const processedKeys = new Set<string>();
-
-    // 2. Zoom seviyesine göre hassasiyet (grid boyutu) belirle
-    // Zoom küçüldükçe (uzaklaştıkça) precision azalır, grid büyür.
-    // 12-13 zoom: ~1km kareler, <10 zoom: ~10km kareler
-    const precision = currentZoom < 10 ? 1 : 2;
-
-    // Önce aktif sürücüyü mutlaka ekle
-    if (activeDriverId) {
-      const activeD = drivers.find(d => d._id === activeDriverId);
-      if (activeD) {
-        displayedDrivers.push(activeD);
-        // Aktif sürücünün grid anahtarını kaydet ki aynısından bir tane daha eklemesin
-        const latKey = activeD.location.coordinates[1].toFixed(precision);
-        const lngKey = activeD.location.coordinates[0].toFixed(precision);
-        const uniqueKey = `${latKey}-${lngKey}-${activeD.serviceType}`;
-        processedKeys.add(uniqueKey);
-      }
-    }
-
-    drivers.forEach((driver) => {
-      // Aktif sürücüyü zaten ekledik, geç
-      if (driver._id === activeDriverId) return;
-
-      const latKey = driver.location.coordinates[1].toFixed(precision);
-      const lngKey = driver.location.coordinates[0].toFixed(precision);
-      
-      // ANAHTAR: Bölge Koordinatı + Servis Tipi
-      // Örnek: "38.42-27.14-kamyon" -> Bu bölgedeki bu türden sadece bir tane alacağız.
-      const uniqueKey = `${latKey}-${lngKey}-${driver.serviceType}`;
-
-      if (!processedKeys.has(uniqueKey)) {
-        processedKeys.add(uniqueKey);
-        displayedDrivers.push(driver);
-      }
-    });
-
-    return displayedDrivers;
-
-  }, [drivers, currentZoom, activeDriverId]);
 
   return (
     <div className="absolute inset-0 w-full h-full z-0 bg-gray-100">
@@ -230,8 +187,11 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           </Marker>
         )}
 
-        {/* Sürücü Pinleri - ARTIK visibleDrivers ÜZERİNDEN DÖNÜYOR */}
-        {visibleDrivers.map((driver: Driver) => {
+        {/* 🔥 DİKKAT: Client-Side (Tarayıcı) filtrelemesi kaldırıldı.
+            Artık 'drivers' prop'u ne geliyorsa direkt onu basıyoruz.
+            Gruplama ve filtreleme işi tamamen Backend'deki 'findSmartMapData' tarafından yapılıyor.
+        */}
+        {drivers.map((driver: Driver) => {
           const lng = driver.location.coordinates[0];
           const lat = driver.location.coordinates[1];
           const isActive = activeDriverId === driver._id;
