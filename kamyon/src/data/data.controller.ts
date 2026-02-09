@@ -40,4 +40,10 @@ export class DataController {
   async getStats() {
     return this.dataService.getDbStats();
   }
+
+  @Post('fix-categories')
+  @HttpCode(200)
+  async fixCategories() {
+    return this.dataService.fixExistingCategories();
+  }
 }
