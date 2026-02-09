@@ -72,7 +72,7 @@ export class DataService {
   { il: 'Şırnak', ilce: 'Silopi' }, { il: 'Şırnak', ilce: 'Uludere' }, { il: 'Şırnak', ilce: 'İdil' }, { il: 'Şırnak', ilce: 'Şırnak Merkez' }
 ];
   usersService: any;
-onstructor() {}
+constructor() {}
 
   // 🔥 YENİ: SMART ENRICHMENT & FIXER (Güncellendi) 🔥
   async processAndSave(data: any) {
