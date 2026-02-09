@@ -5,7 +5,7 @@ import {
   CheckCircle2, Phone, MapPin, Truck, 
   Loader2, ShieldCheck, X, Anchor, CarFront, 
   Zap, Navigation, Plus, Globe, Home, Package, Container,
-  Snowflake, Box, Layers, Archive, Check, Edit3, Settings2
+  Snowflake, Box, Layers, Archive, Check, Settings2, Wallet
 } from 'lucide-react';
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
@@ -67,7 +67,6 @@ const SERVICE_OPTIONS = [
   { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'cyan', subs: [] },
 ];
 
-// Renk Sınıfı Yardımcısı
 const getColorClasses = (colorName: string, isSelected: boolean, isSub: boolean = false) => {
   const base = {
     red:    isSelected ? 'bg-red-600 text-white border-red-600' : 'bg-red-50 text-red-600 border-red-100',
@@ -99,13 +98,17 @@ const getColorClasses = (colorName: string, isSelected: boolean, isSub: boolean 
 export default function ProfilePage() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   
+  const [priceError, setPriceError] = useState('');
+
   const [formData, setFormData] = useState({
     firstName: '', lastName: 'Hizmetleri', email: '', phoneNumber: '',
-    serviceTypes: [] as string[], city: 'İzmir', address: '', routes: '', filterTags: [] as string[]
+    serviceTypes: [] as string[], city: 'İzmir', address: '', routes: '', 
+    filterTags: [] as string[],
+    pricePerUnit: ''
   });
 
   useEffect(() => {
@@ -113,7 +116,7 @@ export default function ProfilePage() {
     if (saved) setIsRegistered(true);
   }, []);
 
-  // --- ANA HİZMET SEÇİMİ (Toggle) ---
+  // --- ANA HİZMET SEÇİMİ ---
   const toggleService = (serviceId: string) => {
     setFormData(prev => {
       const isSelected = prev.serviceTypes.includes(serviceId);
@@ -121,24 +124,21 @@ export default function ProfilePage() {
       let newTags = [...prev.filterTags];
 
       if (isSelected) {
-        // Çıkarıyorsak (Deselect)
         newTypes = prev.serviceTypes.filter(id => id !== serviceId);
-        // Bu hizmete ait seçili alt etiketleri de temizle
+        // Seçim kaldırılırsa alt etiketleri de temizle
         const serviceConfig = SERVICE_OPTIONS.find(s => s.id === serviceId);
         if (serviceConfig && serviceConfig.subs.length > 0) {
           const subIds = serviceConfig.subs.map(sub => sub.id);
           newTags = newTags.filter(tag => !subIds.includes(tag));
         }
       } else {
-        // Ekliyorsak (Select)
         newTypes = [...prev.serviceTypes, serviceId];
       }
-
       return { ...prev, serviceTypes: newTypes, filterTags: newTags };
     });
   };
 
-  // --- ALT SEÇENEK SEÇİMİ (Çoklu) ---
+  // --- ALT SEÇENEK SEÇİMİ ---
   const toggleSubOption = (subId: string) => {
     setFormData(prev => {
       const isSelected = prev.filterTags.includes(subId);
@@ -149,20 +149,37 @@ export default function ProfilePage() {
     });
   };
 
-  // --- KLASÖR AÇMA (Düzenle Butonu) ---
+  // Düzenle butonu için (Event bubbling engellenmeli)
   const openFolder = (e: React.MouseEvent, serviceId: string) => {
-    e.stopPropagation(); // Ana kartın toggle olmasını engelle
+    e.stopPropagation(); 
     setActiveFolder(serviceId);
   };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+      setPriceError('');
+      setFormData({ ...formData, pricePerUnit: val });
+    } else {
+      setPriceError('Sadece sayısal değer giriniz!');
+    }
+  };
+
+  const isChargingService = formData.serviceTypes.some(id => ['sarj_istasyonu', 'seyyar_sarj'].includes(id));
 
   const handleRegister = async () => {
     if (!agreed) return alert("Lütfen hizmet sözleşmesini onaylayın.");
     if (!formData.firstName || !formData.phoneNumber || !formData.email) return alert("Eksik bilgi!");
     if (formData.serviceTypes.length === 0) return alert("En az bir hizmet türü seçmelisiniz.");
+    if (!formData.pricePerUnit) return alert("Lütfen bir fiyat belirtin.");
 
     setLoading(true);
     try {
-      const payload = { ...formData, serviceType: formData.serviceTypes[0], allServiceTypes: formData.serviceTypes };
+      const payload = { 
+          ...formData, 
+          serviceType: formData.serviceTypes[0], 
+          allServiceTypes: formData.serviceTypes 
+      };
       const res = await fetch(`${API_URL}/users`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
@@ -226,7 +243,6 @@ export default function ProfilePage() {
                    const hasSubs = opt.subs.length > 0;
                    const colorClass = getColorClasses(opt.color, isSelected);
                    
-                   // Bu hizmet için seçili olan alt etiketleri bul
                    const activeSubLabels = opt.subs
                       .filter(sub => formData.filterTags.includes(sub.id))
                       .map(sub => sub.label);
@@ -234,7 +250,16 @@ export default function ProfilePage() {
                    return (
                      <div 
                         key={opt.id}
-                        onClick={() => toggleService(opt.id)}
+                        onClick={() => {
+                            // 🔥 YENİ MANTIK: Alt seçenek varsa ve SEÇİLİ DEĞİLSE -> Seç ve Aç
+                            if (hasSubs && !isSelected) {
+                                toggleService(opt.id); // Önce seç
+                                setActiveFolder(opt.id); // Sonra klasörü aç
+                            } else {
+                                // Diğer durumlarda normal seçim/kaldırma
+                                toggleService(opt.id);
+                            }
+                        }}
                         className={`
                             group relative flex flex-col items-center justify-between p-6 rounded-[2.5rem] border-2 cursor-pointer transition-all duration-300 min-h-[180px]
                             ${colorClass}
@@ -255,24 +280,24 @@ export default function ProfilePage() {
                             </span>
                         </div>
 
-                        {/* 🔥 SEÇİLİ ALT ÖZELLİKLER LİSTESİ (KART İÇİNDE) */}
+                        {/* 🔥 2 KAT BÜYÜK ETİKETLER */}
                         {isSelected && activeSubLabels.length > 0 && (
-                            <div className="w-full flex flex-wrap justify-center gap-1 mt-3 animate-in slide-in-from-bottom-2">
+                            <div className="w-full flex flex-wrap justify-center gap-1.5 mt-4 animate-in slide-in-from-bottom-2">
                                 {activeSubLabels.map(label => (
-                                    <span key={label} className="text-[7px] font-black bg-white/20 text-white px-2 py-1 rounded-md tracking-wider">
+                                    <span key={label} className="text-[11px] font-black bg-white text-black px-3 py-1.5 rounded-lg tracking-wider shadow-sm uppercase border border-black/10 scale-110">
                                         {label}
                                     </span>
                                 ))}
                             </div>
                         )}
                         
-                        {/* 🔥 DÜZENLE BUTONU (Sadece seçiliyse ve altı varsa) */}
+                        {/* 🔥 DÜZENLE BUTONU (Sadece seçiliyse ve altı varsa geri geldi) */}
                         {hasSubs && isSelected && (
                            <button 
                               onClick={(e) => openFolder(e, opt.id)}
-                              className="mt-3 w-full py-2 bg-white text-black text-[9px] font-black tracking-widest rounded-xl hover:bg-gray-100 shadow-md flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                              className="mt-3 w-full py-2 bg-black/10 hover:bg-black/20 text-white text-[9px] font-black tracking-widest rounded-xl shadow-none flex items-center justify-center gap-1 active:scale-95 transition-all"
                            >
-                              <Settings2 size={10} /> DÜZENLE
+                              <Settings2 size={12} /> DÜZENLE
                            </button>
                         )}
                      </div>
@@ -281,8 +306,11 @@ export default function ProfilePage() {
              </div>
           </section>
 
-          {/* 3. BÖLGE VE ADRES */}
+          {/* 3. BÖLGE VE FİYATLANDIRMA */}
           <section className="space-y-4">
+             <h3 className="text-[11px] font-black text-purple-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                <div className="w-6 h-0.5 bg-purple-600"></div> Bölge ve Fiyatlandırma
+             </h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl border border-gray-100 p-1 flex items-center shadow-sm">
                    <MapPin className="ml-4 text-gray-300" size={18} />
@@ -290,6 +318,24 @@ export default function ProfilePage() {
                       {TURKEY_CITIES.map(city => <option key={city} value={city}>{city}</option>)}
                    </select>
                 </div>
+
+                {/* Fiyat Girişi */}
+                <div className="relative">
+                    <div className={`bg-white rounded-2xl border p-1 flex items-center shadow-sm ${priceError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-100'}`}>
+                        <Wallet className={`ml-4 ${priceError ? 'text-red-500' : 'text-gray-300'}`} size={18} />
+                        <input 
+                            placeholder={isChargingService ? "KW ÜCRETİ" : "KM BAŞINA FİYAT"} 
+                            type="number"
+                            inputMode="decimal"
+                            value={formData.pricePerUnit}
+                            onChange={handlePriceChange}
+                            className="w-full bg-transparent p-4 font-black text-[10px] uppercase outline-none"
+                        />
+                        <span className="mr-4 text-[10px] font-black text-gray-400 select-none">(TL)</span>
+                    </div>
+                    {priceError && <p className="absolute -bottom-5 left-2 text-[9px] font-bold text-red-500 animate-pulse">{priceError}</p>}
+                </div>
+
                 <input placeholder="HİZMET VERDİĞİNİZ ROTALAR" onChange={e => setFormData({...formData, routes: e.target.value})} className="w-full bg-white border border-gray-100 rounded-2xl p-5 font-bold text-[10px] outline-none shadow-sm"/>
                 <textarea placeholder="TAM ADRES" onChange={e => setFormData({...formData, address: e.target.value})} className="w-full bg-white border border-gray-100 rounded-2xl p-5 font-bold text-xs outline-none shadow-sm md:col-span-2 h-20 resize-none"/>
              </div>
@@ -306,8 +352,8 @@ export default function ProfilePage() {
 
              <button 
                 onClick={handleRegister} 
-                disabled={loading || !agreed} 
-                className={`w-full max-w-md py-7 rounded-[2.5rem] font-black uppercase text-xs tracking-[0.4em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4 ${agreed ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                disabled={loading || !agreed || !!priceError} 
+                className={`w-full max-w-md py-7 rounded-[2.5rem] font-black uppercase text-xs tracking-[0.4em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4 ${agreed && !priceError ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
              >
                 {loading ? <Loader2 className="animate-spin" size={20}/> : <Plus size={20} />} 
                 KAYDI TAMAMLA
@@ -315,19 +361,15 @@ export default function ProfilePage() {
           </section>
         </div>
 
-        {/* --- 🔥 iOS TARZI KLASÖR MODAL (Sadece Düzenle'ye basınca) --- */}
+        {/* --- iOS TARZI KLASÖR MODAL --- */}
         {activeFolder && currentFolderConfig && (
             <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4">
-                {/* Backdrop */}
                 <div 
                     className="absolute inset-0 bg-gray-900/60 backdrop-blur-xl transition-opacity"
                     onClick={() => setActiveFolder(null)}
                 ></div>
 
-                {/* Klasör Kutusu */}
                 <div className="relative w-full sm:max-w-2xl bg-[#f2f2f7] rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10 duration-300 flex flex-col max-h-[85vh]">
-                    
-                    {/* Header */}
                     <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-300/50">
                         <div className="flex items-center gap-4">
                             <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-white shadow-xl bg-${currentFolderConfig.color}-600`}>
@@ -343,7 +385,6 @@ export default function ProfilePage() {
                         </button>
                     </div>
 
-                    {/* DEVASA ALT BUTONLAR */}
                     <div className="grid grid-cols-2 gap-4 overflow-y-auto custom-scrollbar p-2">
                         {currentFolderConfig.subs.map(sub => {
                             const isSelected = formData.filterTags.includes(sub.id);
@@ -375,7 +416,6 @@ export default function ProfilePage() {
                         })}
                     </div>
 
-                    {/* Alt Kısım: Tamam Butonu */}
                     <div className="mt-8 pt-4">
                         <button 
                             onClick={() => setActiveFolder(null)}
