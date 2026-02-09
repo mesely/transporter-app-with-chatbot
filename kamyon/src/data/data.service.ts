@@ -275,52 +275,58 @@ constructor() {}
     return { total: allUsers.length, distribution: stats };
   }
 
-  // 🛠 MEVCUT VERİYİ DÜZELTME ROBOTU (Google Yok, Sadece DB)
+  // 🛠 GÜVENLİ MOD: VERİTABANI DÜZELTME ROBOTU
   async fixExistingCategories() {
     this.logger.log("🧹 Veritabanı Temizliği Başladı...");
     
-    // 1. Tüm kullanıcıları çek
     const allUsers: any[] = await this.usersService.findAll();
     let stationCount = 0;
     let batteryCount = 0;
+    let errorCount = 0;
 
     for (const user of allUsers) {
-      // Sadece 'seyyar_sarj' olanlara odaklan (Hatalı olanlar bunlar)
-      if (user.serviceType === 'seyyar_sarj') {
-        const nameLower = user.firstName.toLowerCase();
-        let needsUpdate = false;
-        let updateData: any = {};
+      try {
+        // Hata Önleyici: Eğer serviceType veya isim yoksa o satırı atla
+        if (!user.serviceType || !user.firstName) continue;
 
-        // SENARYO A: Şarj İstasyonu Olanlar (ZES, Trugo, İstasyon vb.)
-        const stationKeywords = ['istasyon', 'zes', 'eşarj', 'esarj', 'voltrun', 'trugo', 'togg', 'sharz', 'beefull'];
-        if (stationKeywords.some(k => nameLower.includes(k))) {
-          updateData.serviceType = 'sarj_istasyonu';
-          // Varsa etiketlerini koru, yoksa yeni ekle
-          const currentTags = user.filterTags || [];
-          if (!currentTags.includes('hızlı_şarj')) {
-             updateData.filterTags = [...currentTags, 'hızlı_şarj'];
+        if (user.serviceType === 'seyyar_sarj') {
+          // Güvenli küçültme
+          const nameLower = (user.firstName || '').toLocaleLowerCase('tr-TR');
+          let needsUpdate = false;
+          let updateData: any = {};
+
+          // SENARYO A: Şarj İstasyonları
+          const stationKeywords = ['istasyon', 'zes', 'eşarj', 'esarj', 'voltrun', 'trugo', 'togg', 'sharz', 'beefull', 'astor', 'şarj'];
+          if (stationKeywords.some(k => nameLower.includes(k))) {
+            updateData.serviceType = 'sarj_istasyonu';
+            const currentTags = user.filterTags || [];
+            if (!currentTags.includes('hızlı_şarj')) {
+               updateData.filterTags = [...currentTags, 'hızlı_şarj'];
+            }
+            needsUpdate = true;
+            stationCount++;
           }
-          needsUpdate = true;
-          stationCount++;
-        }
 
-        // SENARYO B: Akücü Olanlar (Akü, Battery -> Oto Kurtarma + Tag)
-        const batteryKeywords = ['akü', 'aku', 'battery', 'varta', 'mutlu', 'inci', 'yiğit', 'enerji'];
-        if (batteryKeywords.some(k => nameLower.includes(k))) {
-          updateData.serviceType = 'oto_kurtarma';
-          // 'akü_takviye' etiketini yapıştır
-          const currentTags = user.filterTags || [];
-          if (!currentTags.includes('akü_takviye')) {
-             updateData.filterTags = [...currentTags, 'akü_takviye'];
+          // SENARYO B: Akücüler
+          const batteryKeywords = ['akü', 'aku', 'battery', 'varta', 'mutlu', 'inci', 'yiğit', 'enerji', 'elektrik'];
+          if (batteryKeywords.some(k => nameLower.includes(k))) {
+            updateData.serviceType = 'oto_kurtarma';
+            const currentTags = user.filterTags || [];
+            if (!currentTags.includes('akü_takviye')) {
+               updateData.filterTags = [...currentTags, 'akü_takviye'];
+            }
+            needsUpdate = true;
+            batteryCount++;
           }
-          needsUpdate = true;
-          batteryCount++;
-        }
 
-        // Eğer değişiklik gerekiyorsa veritabanını güncelle
-        if (needsUpdate) {
-          await this.usersService.updateOne(user._id, updateData);
+          if (needsUpdate) {
+            await this.usersService.updateOne(user._id, updateData);
+          }
         }
+      } catch (e) {
+        // Tek bir satır hatalıysa tüm işlemi durdurma, logla ve devam et
+        this.logger.error(`Veri düzeltme hatası (ID: ${user._id}): ${e.message}`);
+        errorCount++;
       }
     }
 
@@ -328,7 +334,8 @@ constructor() {}
       status: 'SUCCESS',
       message: 'Temizlik Tamamlandı.',
       movedToStation: stationCount,
-      movedToRescue: batteryCount
+      movedToRescue: batteryCount,
+      skippedErrors: errorCount
     };
   }
 }
