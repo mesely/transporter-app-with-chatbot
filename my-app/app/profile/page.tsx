@@ -16,9 +16,9 @@ const TURKEY_CITIES = [
 
 // --- HİZMET YAPILANDIRMASI ---
 const SERVICE_OPTIONS = [
-  { id: 'oto_kurtarma', label: 'OTO KURTARMA', icon: CarFront, color: 'red', subs: [] },
-  { id: 'vinc', label: 'VİNÇ HİZMETİ', icon: Anchor, color: 'rose', subs: [] },
-  { id: 'yurt_disi_nakliye', label: 'ULUSLARARASI', icon: Globe, color: 'indigo', subs: [] },
+  { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'red', subs: [] },
+  { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'rose', subs: [] },
+  { id: 'yurt_disi_nakliye', label: 'GLOBAL', icon: Globe, color: 'indigo', subs: [] },
   
   // 🔥 TIR
   { 
@@ -37,7 +37,7 @@ const SERVICE_OPTIONS = [
   // 🔥 KAMYON
   { 
     id: 'kamyon', 
-    label: 'TİCARİ KAMYON', 
+    label: 'KAMYON', 
     icon: Truck, 
     color: 'purple',
     subs: [
@@ -149,7 +149,6 @@ export default function ProfilePage() {
     });
   };
 
-  // Düzenle butonu için (Event bubbling engellenmeli)
   const openFolder = (e: React.MouseEvent, serviceId: string) => {
     e.stopPropagation(); 
     setActiveFolder(serviceId);
@@ -251,19 +250,19 @@ export default function ProfilePage() {
                      <div 
                         key={opt.id}
                         onClick={() => {
-                            // 🔥 YENİ MANTIK: Alt seçenek varsa ve SEÇİLİ DEĞİLSE -> Seç ve Aç
+                            // 🔥 YENİ MANTIK: Tıklandığında önce SEÇ, sonra alt seçenek varsa AÇ
                             if (hasSubs && !isSelected) {
-                                toggleService(opt.id); // Önce seç
-                                setActiveFolder(opt.id); // Sonra klasörü aç
+                                toggleService(opt.id); // Seç
+                                setActiveFolder(opt.id); // Aç
                             } else {
-                                // Diğer durumlarda normal seçim/kaldırma
-                                toggleService(opt.id);
+                                toggleService(opt.id); // Normal Seç/Kaldır
                             }
                         }}
+                        // 🔥 TASARIM: scale-95 ile %5 küçüldü
                         className={`
-                            group relative flex flex-col items-center justify-between p-6 rounded-[2.5rem] border-2 cursor-pointer transition-all duration-300 min-h-[180px]
+                            group relative flex flex-col items-center justify-between p-4 rounded-[2rem] border-2 cursor-pointer transition-all duration-300 min-h-[220px] scale-95
                             ${colorClass}
-                            ${isSelected ? 'shadow-xl scale-[1.03] z-10' : 'hover:scale-[1.02]'}
+                            ${isSelected ? 'shadow-xl z-10' : 'hover:scale-[0.98]'}
                         `}
                      >
                         {/* Seçili İkonu */}
@@ -273,14 +272,17 @@ export default function ProfilePage() {
                             </div>
                         )}
 
-                        <div className="flex flex-col items-center justify-center flex-1">
-                            <opt.icon size={36} className={`mb-3 ${isSelected ? 'text-white' : ''}`} />
-                            <span className="text-[10px] font-black uppercase tracking-tighter text-center leading-none">
+                        <div className="flex flex-col items-center justify-center flex-1 w-full">
+                            {/* 🔥 İKON: 2.5 Kat Büyük (size=80) */}
+                            <opt.icon size={80} strokeWidth={1.2} className={`mb-4 transition-transform duration-300 group-hover:scale-110 ${isSelected ? 'text-white' : ''}`} />
+                            
+                            {/* 🔥 YAZI: 2.5 Kat Büyük (text-2xl) */}
+                            <span className="text-2xl font-black uppercase tracking-tighter text-center leading-none">
                                 {opt.label}
                             </span>
                         </div>
 
-                        {/* 🔥 2 KAT BÜYÜK ETİKETLER */}
+                        {/* 🔥 ETİKETLER: 2 Kat Büyük */}
                         {isSelected && activeSubLabels.length > 0 && (
                             <div className="w-full flex flex-wrap justify-center gap-1.5 mt-4 animate-in slide-in-from-bottom-2">
                                 {activeSubLabels.map(label => (
@@ -291,13 +293,13 @@ export default function ProfilePage() {
                             </div>
                         )}
                         
-                        {/* 🔥 DÜZENLE BUTONU (Sadece seçiliyse ve altı varsa geri geldi) */}
+                        {/* DÜZENLE BUTONU (Seçiliyse) */}
                         {hasSubs && isSelected && (
                            <button 
                               onClick={(e) => openFolder(e, opt.id)}
-                              className="mt-3 w-full py-2 bg-black/10 hover:bg-black/20 text-white text-[9px] font-black tracking-widest rounded-xl shadow-none flex items-center justify-center gap-1 active:scale-95 transition-all"
+                              className="mt-3 w-full py-3 bg-black/10 hover:bg-black/20 text-white text-[10px] font-black tracking-widest rounded-xl shadow-none flex items-center justify-center gap-1 active:scale-95 transition-all"
                            >
-                              <Settings2 size={12} /> DÜZENLE
+                              <Settings2 size={14} /> DÜZENLE
                            </button>
                         )}
                      </div>
