@@ -38,7 +38,7 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. ÖZGÜN SERVİS YAPILANDIRMASI (ACTION PANEL İLE %100 UYUMLU) ---
+// --- 2. ÖZGÜN SERVİS YAPILANDIRMASI ---
 const SERVICE_CONFIG: any = {
   // KURTARICI GRUBU
   kurtarici: { color: '#dc2626', Icon: CarFront },        
@@ -65,6 +65,7 @@ const SERVICE_CONFIG: any = {
 // --- 3. DİNAMİK İKON TASARIMI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
+  // Zoom seviyesine göre ikon boyutu, ancak çok küçülmemesi için min değer korundu
   const baseSize = Math.max(28, Math.min(55, isActive ? zoom * 2.8 : zoom * 2.2)); 
   const innerSize = baseSize * 0.55;
 
@@ -113,6 +114,7 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: {
       }
     },
     click: (e) => {
+      // Sadece harita zeminine tıklanırsa tetikle (markerlara tıklayınca değil)
       if (e.originalEvent.target === map.getContainer() || (e.originalEvent.target as any).classList.contains('leaflet-container')) {
         if (onMapClick) onMapClick();
       }
@@ -144,6 +146,56 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     if (driver) return [driver.location.coordinates[1], driver.location.coordinates[0]] as [number, number];
     return null;
   }, [activeDriverId, drivers]);
+
+  // --- AKILLI GRUPLAMA ALGORİTMASI ---
+  // Zoom yapıldıkça her bölgeden (grid) her türden (serviceType) sadece 1 tane gösterir.
+  const visibleDrivers = useMemo(() => {
+    // 1. Zoom seviyesi 14 ve üzerindeyse (çok yakınsa) filtreleme yapma, hepsini göster.
+    if (currentZoom >= 14) {
+      return drivers;
+    }
+
+    const displayedDrivers: Driver[] = [];
+    const processedKeys = new Set<string>();
+
+    // 2. Zoom seviyesine göre hassasiyet (grid boyutu) belirle
+    // Zoom küçüldükçe (uzaklaştıkça) precision azalır, grid büyür.
+    // 12-13 zoom: ~1km kareler, <10 zoom: ~10km kareler
+    const precision = currentZoom < 10 ? 1 : 2;
+
+    // Önce aktif sürücüyü mutlaka ekle
+    if (activeDriverId) {
+      const activeD = drivers.find(d => d._id === activeDriverId);
+      if (activeD) {
+        displayedDrivers.push(activeD);
+        // Aktif sürücünün grid anahtarını kaydet ki aynısından bir tane daha eklemesin
+        const latKey = activeD.location.coordinates[1].toFixed(precision);
+        const lngKey = activeD.location.coordinates[0].toFixed(precision);
+        const uniqueKey = `${latKey}-${lngKey}-${activeD.serviceType}`;
+        processedKeys.add(uniqueKey);
+      }
+    }
+
+    drivers.forEach((driver) => {
+      // Aktif sürücüyü zaten ekledik, geç
+      if (driver._id === activeDriverId) return;
+
+      const latKey = driver.location.coordinates[1].toFixed(precision);
+      const lngKey = driver.location.coordinates[0].toFixed(precision);
+      
+      // ANAHTAR: Bölge Koordinatı + Servis Tipi
+      // Örnek: "38.42-27.14-kamyon" -> Bu bölgedeki bu türden sadece bir tane alacağız.
+      const uniqueKey = `${latKey}-${lngKey}-${driver.serviceType}`;
+
+      if (!processedKeys.has(uniqueKey)) {
+        processedKeys.add(uniqueKey);
+        displayedDrivers.push(driver);
+      }
+    });
+
+    return displayedDrivers;
+
+  }, [drivers, currentZoom, activeDriverId]);
 
   return (
     <div className="absolute inset-0 w-full h-full z-0 bg-gray-100">
@@ -178,8 +230,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           </Marker>
         )}
 
-        {/* Sürücü Pinleri */}
-        {drivers.map((driver: Driver) => {
+        {/* Sürücü Pinleri - ARTIK visibleDrivers ÜZERİNDEN DÖNÜYOR */}
+        {visibleDrivers.map((driver: Driver) => {
           const lng = driver.location.coordinates[0];
           const lat = driver.location.coordinates[1];
           const isActive = activeDriverId === driver._id;
@@ -218,12 +270,12 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     </div>
                   </div>
 
-                  {/* 🔥 AKSİYON BUTONLARI: TIKLANDIĞI AN HER ŞEYİ KAPATIR 🔥 */}
+                  {/* AKSİYON BUTONLARI */}
                   <div className="flex gap-2 pt-3 border-t border-gray-100">
                     {isCharge ? (
                       <button 
                         onClick={() => {
-                            onSelectDriver(null); // Popup'ı Kapat
+                            onSelectDriver(null); 
                             if (driver.reservationUrl) window.open(driver.reservationUrl, '_blank');
                         }} 
                         className={`w-full py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 transition-all ${driver.reservationUrl ? 'bg-blue-600 text-white shadow-lg active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
@@ -235,7 +287,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                         <button 
                             onClick={() => { 
                                 onStartOrder(driver, 'call'); 
-                                onSelectDriver(null); // Popup'ı Kapat
+                                onSelectDriver(null); 
                                 window.location.href = `tel:${driver.phoneNumber}`; 
                             }} 
                             className="flex-1 bg-black text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg"
@@ -245,7 +297,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                         <button 
                             onClick={() => { 
                                 onStartOrder(driver, 'message'); 
-                                onSelectDriver(null); // Popup'ı Kapat
+                                onSelectDriver(null); 
                                 window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`, '_blank'); 
                             }} 
                             className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg"
