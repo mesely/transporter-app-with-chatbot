@@ -17,13 +17,13 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('🚀 Transporter Engine (V2): Yeni Veri Motoru Aktif.');
+    this.logger.log('🚀 Transporter Engine (V3 - Max Range): Veri Motoru Aktif.');
     try {
       await this.providerModel.collection.createIndex({ location: '2dsphere' });
     } catch (e) {}
   }
 
-  // --- 1. CREATE (YENİ KAYIT) ---
+  // --- 1. CREATE ---
   async create(data: any) {
     try {
       const cleanName = (data.firstName || data.businessName || '').trim();
@@ -81,7 +81,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 2. FIND NEARBY (ANA HARİTA VE LİSTE) ---
+  // --- 2. FIND NEARBY (TURBO RANGE) ---
   async findNearby(lat: number, lng: number, rawType?: string, zoom?: number) {
     const query: any = {};
     
@@ -96,8 +96,13 @@ export class UsersService implements OnModuleInit {
         }
     }
 
-    // Zoom uzaksa menzili çok geniş tut (Tüm Türkiye)
-    const maxDist = 2000000; // 2000 km
+    // 🔥 MAX DISTANCE ARTIK 15.000 KM (Tüm Kıtalar)
+    // Zoom seviyesine göre limit belirle. Eğer çok zoom out (uzak) ise limiti patlat.
+    const maxDist = 15000000; 
+    
+    // 🔥 LİMİT ARTIK 1000 (Yakındaki 200 kişiye takılmasın diye)
+    // Zoom uzaksa (Tüm Türkiye bakılıyorsa) limiti yüksek tutuyoruz.
+    const limit = (zoom && zoom < 10) ? 1000 : 300;
 
     return this.providerModel.find({
       ...query,
@@ -108,12 +113,12 @@ export class UsersService implements OnModuleInit {
         } 
       }
     })
-    .limit(150)
+    .limit(limit) // Limiti artırdık!
     .lean()
     .exec(); 
   }
 
-  // --- 3. 🔥 FIND DIVERSE LIST (KARIŞIK LİSTE - EKSİK OLAN KISIM) ---
+  // --- 3. FIND DIVERSE LIST (KARMA LİSTE) ---
   async findDiverseList(lat: number, lng: number, limitPerType: number = 5) {
     return this.providerModel.aggregate([
       {
@@ -121,42 +126,40 @@ export class UsersService implements OnModuleInit {
           near: { type: 'Point', coordinates: [lng, lat] },
           key: 'location',
           distanceField: 'distance',
-          maxDistance: 2000000, 
+          maxDistance: 15000000, // 🔥 15.000 KM
           spherical: true
         }
       },
       { $sort: { distance: 1 } },
-      // Hizmet türüne göre grupla (Örn: Her türden en yakınları al)
       {
         $group: {
           _id: "$service.mainType", 
           drivers: { $push: "$$ROOT" } 
         }
       },
-      // Her gruptan sadece 5 tane al
       { $project: { drivers: { $slice: ["$drivers", limitPerType] } } },
-      // Grupları tekrar listeye çevir (Flatten)
       { $unwind: "$drivers" },
       { $replaceRoot: { newRoot: "$drivers" } },
-      // Tekrar mesafeye göre sırala
       { $sort: { distance: 1 } }
     ]).exec();
   }
 
   // --- 4. AKILLI HARİTA (SMART MAP) ---
-  async findSmartMapData(lat: number, lng: number) {
+  async findSmartMapData(lat: number, lng: number, zoomLevel: number = 10) {
     return this.providerModel.aggregate([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [lng, lat] },
           key: 'location',
           distanceField: 'distance',
-          maxDistance: 2000000,
+          maxDistance: 15000000, // 🔥 15.000 KM
           spherical: true
         }
       },
       {
         $group: {
+          // Basit bir gruplama yapıp tekil verileri döndürüyoruz
+          // İleride gridleme buraya eklenebilir
           _id: "$service.mainType", 
           doc: { $first: "$$ROOT" } 
         }
@@ -166,12 +169,11 @@ export class UsersService implements OnModuleInit {
   }
 
   // --- 5. YARDIMCI METHODLAR ---
-  
   async findFiltered(city?: string, type?: string) {
     const query: any = {};
     if (city && city !== 'Tümü') query['address.city'] = city;
     if (type && type !== 'Tümü') query['service.mainType'] = this.mapToEnum(type);
-    return this.providerModel.find(query).sort({ createdAt: -1 }).limit(100).lean().exec();
+    return this.providerModel.find(query).sort({ createdAt: -1 }).limit(200).lean().exec();
   }
 
   async updateOne(id: string, data: any) {
@@ -187,7 +189,6 @@ export class UsersService implements OnModuleInit {
     return null;
   }
 
-  // --- ENUM MAPPER ---
   private mapToEnum(type: string): string {
     if (!type) return 'KURTARICI';
     const t = type.toLowerCase();
