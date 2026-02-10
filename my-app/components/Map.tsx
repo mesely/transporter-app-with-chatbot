@@ -13,10 +13,10 @@ import {
   CalendarCheck, CarFront, Globe, Home, Navigation, Phone, MessageCircle, Package 
 } from 'lucide-react';
 
-// --- 1. TİPLER (YENİ DB UYUMLU) ---
+// --- 1. TİPLER (DB VE FRONTEND UYUMLU) ---
 interface Driver {
   _id: string;
-  businessName: string; // Yeni DB
+  businessName: string; 
   distance?: number;
   phoneNumber?: string;
   rating?: number;
@@ -25,14 +25,20 @@ interface Driver {
   };
   reservationUrl?: string;
   
-  // Hizmet Tipi (Nested)
+  // 🔥 KÜMELEME İÇİN KRİTİK: ŞEHİR BİLGİSİ
+  address?: {
+    city?: string;
+    district?: string;
+  };
+
+  // HİZMET TİPLERİ
   service?: {
     mainType: string;
     subType: string; // 'istasyon', 'MOBIL_UNIT', 'vinc' vs.
     tags: string[];
   };
 
-  // Frontend Kümeleme için geçici alanlar
+  // FRONTEND STATE
   isCluster?: boolean;
   count?: number;
   expansionZoom?: number;
@@ -49,7 +55,7 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. SERVİS RENK VE İKON YAPILANDIRMASI (DB VALUE EŞLEŞTİRMESİ) ---
+// --- 2. SERVİS RENK VE İKON YAPILANDIRMASI (DB VALUES) ---
 const SERVICE_CONFIG: any = {
   // KURTARICI GRUBU
   kurtarici: { color: '#dc2626', Icon: CarFront },        
@@ -61,17 +67,18 @@ const SERVICE_CONFIG: any = {
   evden_eve: { color: '#9333ea', Icon: Home },           
   kamyon: { color: '#9333ea', Icon: Truck },             
   tir: { color: '#9333ea', Icon: Truck }, 
-  kamyonet: { color: '#a855f7', Icon: Package }, // Ekstra
+  kamyonet: { color: '#a855f7', Icon: Package },
   yurt_disi_nakliye: { color: '#4338ca', Icon: Globe },  
+  yurt_disi: { color: '#4338ca', Icon: Globe }, 
   
-  // ŞARJ GRUBU (DB'deki 'istasyon' ve 'MOBIL_UNIT' değerlerine dikkat)
+  // ŞARJ GRUBU (DB Değerleri)
   sarj_istasyonu: { color: '#2563eb', Icon: Navigation },
   istasyon: { color: '#2563eb', Icon: Navigation },      // 🔥 DB Value
   
   seyyar_sarj: { color: '#06b6d4', Icon: Zap }, 
   MOBIL_UNIT: { color: '#06b6d4', Icon: Zap },           // 🔥 DB Value
   
-  sarj: { color: '#2563eb', Icon: Navigation },               
+  sarj: { color: '#2563eb', Icon: Navigation }, 
   
   // DİĞER
   other: { color: '#6b7280', Icon: Truck }
@@ -81,10 +88,8 @@ const SERVICE_CONFIG: any = {
 
 // A) TEKİL ARAÇ İKONU
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
-  // DB'den gelen type (örn: 'istasyon') config'de yoksa 'other' kullan
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
   
-  // Zoom'a göre boyut (Uzaklaştıkça küçülür ama kaybolmaz)
   const baseSize = Math.max(30, Math.min(55, isActive ? zoom * 3 : zoom * 2.5)); 
   const innerSize = baseSize * 0.55;
 
@@ -118,10 +123,11 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
   });
 };
 
-// B) KÜME (CLUSTER) İKONU - RENKLİ VE İKONLU
+// B) KÜME (CLUSTER) İKONU
 const createClusterIcon = (count: number, type: string) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const size = 36 + (Math.min(count, 100) / 100) * 24; // Sayı arttıkça büyüyen balon
+  // Balon boyutu çok aşırı büyümesin
+  const size = 36 + (Math.min(count, 200) / 200) * 20; 
 
   const iconHtml = renderToStaticMarkup(
     <config.Icon size={size * 0.4} color="white" strokeWidth={3} />
@@ -147,7 +153,7 @@ const createClusterIcon = (count: number, type: string) => {
         <div style="margin-bottom: -3px;">${iconHtml}</div>
         
         <div style="
-          font-family: 'Inter', sans-serif;
+          font-family: sans-serif;
           font-weight: 900;
           font-size: ${size * 0.3}px;
           color: white;
@@ -218,11 +224,11 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     return null;
   }, [activeDriverId, drivers]);
 
-  // 🔥 CLUSTERING (KÜMELEME) ALGORİTMASI - AGRESİF & RENKLİ
+  // 🔥 GELİŞMİŞ "ŞEHİR DUYARLI" KÜMELEME
   const visibleMarkers = useMemo(() => {
     if (!drivers || drivers.length === 0) return [];
 
-    // Zoom 12 ve üzeri ise (çok yakınsa) kümeleme yapma, hepsini göster
+    // Zoom 12 ve üzeri ise (Mahalle detayında) kümeleme yapma
     if (currentZoom >= 12) {
       return drivers.map(d => ({ ...d, isCluster: false }));
     }
@@ -230,10 +236,11 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     const clusters: Driver[] = [];
     const processedIndices = new Set<number>();
     
-    // Zoom uzaklaştıkça (değer azaldıkça) threshold çok daha hızlı artmalı.
-    // Örn Zoom 5: 120 / 32 = 3.75 derece (Tüm Marmara'yı toplayabilir)
-    // Örn Zoom 10: 120 / 1024 = 0.1 derece (İlçe bazlı)
-    const threshold = 120 / Math.pow(2, currentZoom); 
+    // 🔥 Threshold Formülü:
+    // Önceki kodda 180 idi, çok büyüktü. 50'ye düşürdük.
+    // Zoom 5 (Ülke): 50 / 32 = 1.5 Derece (~150km). Bölgesel toplar.
+    // Zoom 8 (Bölge): 50 / 256 = 0.2 Derece (~20km).
+    const threshold = 50 / Math.pow(2, currentZoom); 
 
     drivers.forEach((driver, index) => {
       // Aktif seçili sürücüyü asla kümeye sokma
@@ -250,13 +257,21 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
       // Grup liderinin tipi (Renk için)
       const groupSubType = driver.service?.subType || 'other';
+      // Grup liderinin şehri (Şehir kontrolü için)
+      const groupCity = driver.address?.city;
 
       for (let i = index + 1; i < drivers.length; i++) {
         if (processedIndices.has(i)) continue;
         const other = drivers[i];
         
-        if (other._id === activeDriverId) continue; // Aktif olanı atla
+        if (other._id === activeDriverId) continue;
         if (!other.location) continue;
+
+        // 🔥 KRİTİK KONTROL: FARKLI ŞEHİRLER ASLA BİRLEŞEMEZ
+        // Eğer veride şehir bilgisi varsa ve farklıysa, mesafeye bakmaksızın birleştirme.
+        if (groupCity && other.address?.city && groupCity !== other.address.city) {
+            continue; 
+        }
 
         const dLat = Math.abs(driver.location.coordinates[1] - other.location.coordinates[1]);
         const dLng = Math.abs(driver.location.coordinates[0] - other.location.coordinates[0]);
@@ -272,7 +287,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           _id: `cluster-${index}`,
           businessName: 'Küme',
           location: driver.location, 
-          clusterServiceType: groupSubType, // 🔥 RENK İÇİN
+          clusterServiceType: groupSubType, // Renk için
           isCluster: true,
           count: clusterGroup.length,
           expansionZoom: currentZoom + 3 
@@ -306,6 +321,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
         />
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
+        {/* Konum Pini */}
         {searchCoords && (
           <Marker position={searchCoords} icon={
             L.divIcon({
@@ -318,6 +334,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           </Marker>
         )}
 
+        {/* Markerlar */}
         {visibleMarkers.map((item: Driver) => {
           const lat = item.location?.coordinates[1];
           const lng = item.location?.coordinates[0];
@@ -330,7 +347,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                <Marker
                  key={item._id}
                  position={[lat, lng]}
-                 // 🔥 type bilgisini doğru gönderiyoruz
                  icon={createClusterIcon(item.count || 0, item.clusterServiceType || 'other')}
                  eventHandlers={{
                    click: (e) => {
@@ -344,6 +360,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           // B) TEKİL GÖRÜNÜM
           const isActive = activeDriverId === item._id;
           const subType = item.service?.subType || 'other';
+          
+          // 🔥 DB ile Uyumlu Şarj Kontrolü
           const isStation = subType === 'istasyon' || subType === 'sarj_istasyonu';
           const displayName = item.businessName || 'İsimsiz İşletme';
 
@@ -368,12 +386,9 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                         {subType === 'yurt_disi_nakliye' ? 'YURT DIŞI' : subType.replace('_', ' ').toUpperCase()}
                       </span>
                     </div>
-                    
-                    {/* 🔥 İŞLETME ADI */}
                     <div className="font-black text-sm text-gray-900 uppercase leading-tight">
                       {displayName}
                     </div>
-                    
                     <div className="flex items-center gap-0.5 mt-1.5">
                       {[1, 2, 3, 4, 5].map((s) => (
                         <Star key={s} size={10} className={`${s <= (item.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} />

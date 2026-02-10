@@ -120,4 +120,8 @@ export class UsersController {
     this.logger.log(`Import Tamamlandı. ${count} kayıt eklendi.`);
     return { status: 'SUCCESS', message: `${count} adet kayıt başarıyla içeri aktarıldı.` };
   }
+  @Get('types')
+  async getTypes() {
+    return this.usersService.getServiceTypes();
+  }
 }

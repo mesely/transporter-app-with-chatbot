@@ -17,7 +17,7 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('🚀 Transporter Engine (V3 - Max Range): Veri Motoru Aktif.');
+    this.logger.log('🚀 Transporter Engine (V4 - Analytics & Clustering): Hazır.');
     try {
       await this.providerModel.collection.createIndex({ location: '2dsphere' });
     } catch (e) {}
@@ -34,19 +34,13 @@ export class UsersService implements OnModuleInit {
       if (!user) {
         const hashedPassword = await bcrypt.hash(data.password || '123456', 10);
         user = await new this.userModel({
-          email: email,
-          password: hashedPassword,
-          role: 'provider',
-          isActive: true
+          email: email, password: hashedPassword, role: 'provider', isActive: true
         }).save();
       }
 
       let coords: [number, number] = [27.1428, 38.4237];
-      if (data.location?.coordinates) {
-        coords = data.location.coordinates;
-      } else if (data.lng && data.lat) {
-        coords = [parseFloat(data.lng), parseFloat(data.lat)];
-      }
+      if (data.location?.coordinates) coords = data.location.coordinates;
+      else if (data.lng && data.lat) coords = [parseFloat(data.lng), parseFloat(data.lat)];
 
       const providerData = {
         user: user._id,
@@ -70,39 +64,44 @@ export class UsersService implements OnModuleInit {
       };
 
       return this.providerModel.findOneAndUpdate(
-        { user: user._id },
-        providerData,
-        { upsert: true, new: true }
+        { user: user._id }, providerData, { upsert: true, new: true }
       );
-
-    } catch (error) {
-      this.logger.error(`Kayıt Hatası: ${error.message}`);
-      return null;
-    }
+    } catch (error) { return null; }
   }
 
-  // --- 2. FIND NEARBY (TURBO RANGE) ---
+  // --- 2. FIND NEARBY (TURBO LIMIT) ---
   async findNearby(lat: number, lng: number, rawType?: string, zoom?: number) {
     const query: any = {};
-    
+    const safeZoom = zoom || 15;
+
     if (rawType) {
         const type = rawType.toLowerCase();
         const mainEnum = this.mapToEnum(type);
 
+        // Ana Gruplar
         if (['nakliye', 'sarj', 'kurtarici', 'kurtarıcı', 'genel'].includes(type)) {
              query['service.mainType'] = mainEnum;
-        } else {
-             query['service.subType'] = type;
+        } 
+        // Özel Alt Tipler
+        else {
+             if(type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
+             else if(type === 'seyyar_sarj') query['service.subType'] = 'MOBIL_UNIT';
+             else if(type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
+             else query['service.subType'] = type;
         }
     }
 
-    // 🔥 MAX DISTANCE ARTIK 15.000 KM (Tüm Kıtalar)
-    // Zoom seviyesine göre limit belirle. Eğer çok zoom out (uzak) ise limiti patlat.
-    const maxDist = 15000000; 
-    
-    // 🔥 LİMİT ARTIK 1000 (Yakındaki 200 kişiye takılmasın diye)
-    // Zoom uzaksa (Tüm Türkiye bakılıyorsa) limiti yüksek tutuyoruz.
-    const limit = (zoom && zoom < 10) ? 1000 : 300;
+    // Zoom Uzaksa (Tüm Türkiye) Limiti Aç
+    let limit = 150;
+    let maxDist = 500000; 
+
+    if (safeZoom < 9) { 
+        limit = 3000; // 🔥 3000 Kayıt (Tüm illeri kapsasın)
+        maxDist = 10000000; // 10.000 KM
+    } else if (safeZoom < 12) {
+        limit = 500;
+        maxDist = 1000000; 
+    }
 
     return this.providerModel.find({
       ...query,
@@ -113,12 +112,28 @@ export class UsersService implements OnModuleInit {
         } 
       }
     })
-    .limit(limit) // Limiti artırdık!
+    .select('businessName location service pricing address phoneNumber rating') 
+    .limit(limit) 
     .lean()
     .exec(); 
   }
 
-  // --- 3. FIND DIVERSE LIST (KARMA LİSTE) ---
+  // --- 3. 🔥 ANALİZ METODU: DB'DEKİ TÜM TİPLERİ GETİR ---
+  // Bunu bir endpoint'e bağla ve dönen JSON'a bak.
+  async getServiceTypes() {
+    return this.providerModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          allMainTypes: { $addToSet: "$service.mainType" }, // Tüm benzersiz Ana Tipler
+          allSubTypes: { $addToSet: "$service.subType" },   // Tüm benzersiz Alt Tipler
+          totalDocs: { $sum: 1 }
+        }
+      }
+    ]).exec();
+  }
+
+  // --- 4. KARIŞIK LİSTE ---
   async findDiverseList(lat: number, lng: number, limitPerType: number = 5) {
     return this.providerModel.aggregate([
       {
@@ -126,7 +141,7 @@ export class UsersService implements OnModuleInit {
           near: { type: 'Point', coordinates: [lng, lat] },
           key: 'location',
           distanceField: 'distance',
-          maxDistance: 15000000, // 🔥 15.000 KM
+          maxDistance: 5000000, 
           spherical: true
         }
       },
@@ -139,27 +154,24 @@ export class UsersService implements OnModuleInit {
       },
       { $project: { drivers: { $slice: ["$drivers", limitPerType] } } },
       { $unwind: "$drivers" },
-      { $replaceRoot: { newRoot: "$drivers" } },
-      { $sort: { distance: 1 } }
+      { $replaceRoot: { newRoot: "$drivers" } }
     ]).exec();
   }
 
-  // --- 4. AKILLI HARİTA (SMART MAP) ---
-  async findSmartMapData(lat: number, lng: number, zoomLevel: number = 10) {
+  // --- 5. SMART MAP ---
+  async findSmartMapData(lat: number, lng: number) {
     return this.providerModel.aggregate([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [lng, lat] },
           key: 'location',
           distanceField: 'distance',
-          maxDistance: 15000000, // 🔥 15.000 KM
+          maxDistance: 5000000,
           spherical: true
         }
       },
       {
         $group: {
-          // Basit bir gruplama yapıp tekil verileri döndürüyoruz
-          // İleride gridleme buraya eklenebilir
           _id: "$service.mainType", 
           doc: { $first: "$$ROOT" } 
         }
@@ -168,12 +180,12 @@ export class UsersService implements OnModuleInit {
     ]).exec();
   }
 
-  // --- 5. YARDIMCI METHODLAR ---
+  // --- YARDIMCI METHODLAR ---
   async findFiltered(city?: string, type?: string) {
     const query: any = {};
     if (city && city !== 'Tümü') query['address.city'] = city;
     if (type && type !== 'Tümü') query['service.mainType'] = this.mapToEnum(type);
-    return this.providerModel.find(query).sort({ createdAt: -1 }).limit(200).lean().exec();
+    return this.providerModel.find(query).sort({ createdAt: -1 }).limit(100).lean().exec();
   }
 
   async updateOne(id: string, data: any) {
@@ -189,14 +201,12 @@ export class UsersService implements OnModuleInit {
     return null;
   }
 
+  // MAPPER
   private mapToEnum(type: string): string {
     if (!type) return 'KURTARICI';
     const t = type.toLowerCase();
-
     if (t.includes('nakli') || t.includes('kamyon') || t.includes('tir') || t.includes('evden') || t.includes('yurt')) return 'NAKLIYE';
     if (t.includes('sarj') || t.includes('şarj') || t.includes('istasyon') || t.includes('mobil')) return 'SARJ';
-    if (t.includes('kurtar') || t.includes('oto') || t.includes('vinç') || t.includes('vinc')) return 'KURTARICI';
-
     return 'KURTARICI';
   }
 }

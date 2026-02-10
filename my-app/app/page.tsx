@@ -2,14 +2,14 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation'; // 🔥 Router eklendi
-import { MessageCircle } from 'lucide-react';  
+import { useRouter } from 'next/navigation'; 
+import { MessageCircle, X } from 'lucide-react';  
 
 // BİLEŞEN IMPORTLARI
 import TopBar from '../components/home/TopBar';         
 import ActionPanel from '../components/home/ActionPanel';
 
-// Haritayı Client-Side render ediyoruz
+// Haritayı Client-Side render ediyoruz (SSR Hatası almamak için)
 const Map = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => (
@@ -20,7 +20,7 @@ const Map = dynamic(() => import('../components/Map'), {
 });
 
 // 🔥 YENİ DB YAPISINA TAM UYUMLU DRIVER TİPİ
-// (ActionPanel ve Map bileşenleriyle birebir aynı olmalı)
+// (Map.tsx ve ActionPanel.tsx ile birebir aynı olmalı)
 interface Driver {
   _id: string;
   businessName: string;
@@ -49,7 +49,7 @@ interface Driver {
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 
 export default function Home() {
-  const router = useRouter(); // 🔥 Navigasyon için
+  const router = useRouter(); 
 
   // --- STATE YÖNETİMİ ---
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -60,14 +60,19 @@ export default function Home() {
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici'); 
   
+  // 🔥 ZOOM SEVİYESİ (Menzil kontrolü için kritik)
+  const [mapZoom, setMapZoom] = useState<number>(13); 
+  
   // UI State
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // --- 1. VERİ ÇEKME FONKSİYONU ---
-  const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
+  const fetchDrivers = useCallback(async (lat: number, lng: number, type: string, zoom: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=15`);
+      // Backend'e zoom bilgisini de gönderiyoruz. 
+      // Backend: if (zoom < 8) Limit = 3000, MaxDistance = 15000km
+      const res = await fetch(`${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=${zoom}`);
       const data = await res.json();
       
       if (Array.isArray(data)) {
@@ -85,22 +90,33 @@ export default function Home() {
 
   // --- 2. HANDLERS ---
 
-  // Konum Değişince
+  // A) Konum Değişince (ActionPanel'den veya GPS'ten)
   const handleSearchLocation = (lat: number, lng: number) => {
     setSearchCoords([lat, lng]);
-    fetchDrivers(lat, lng, actionType);
+    // Konum değişince mevcut zoom seviyesiyle yeniden çek
+    fetchDrivers(lat, lng, actionType, mapZoom);
   };
 
-  // Filtre Değişince
+  // B) Filtre Değişince (ActionPanel'den)
   const handleFilterApply = (type: string) => {
     setActionType(type);
-    // Konum varsa veriyi yenile
+    // Konum varsa veriyi yenile (Zoom bilgisini de katarak)
     if (searchCoords) {
-      fetchDrivers(searchCoords[0], searchCoords[1], type);
+      fetchDrivers(searchCoords[0], searchCoords[1], type, mapZoom);
+    } else {
+      // Eğer henüz konum seçilmediyse varsayılan bir lokasyonla veya
+      // kullanıcının o anki GPS konumuyla (ActionPanel içinde bulunur) tetiklenir.
     }
   };
 
-  // Sipariş Başlatma
+  // C) Harita Hareketi ve Zoom (Map Bileşeninden Gelir)
+  const handleMapMove = (lat: number, lng: number, zoom: number) => {
+    setMapZoom(zoom); // Zoom seviyesini güncelle
+    // İstersen burada "Bu alanda ara" butonu koyup fetchDrivers çağırabilirsin.
+    // Şimdilik sadece state güncelliyoruz ki sonraki filtrelemede doğru zoom gitsin.
+  };
+
+  // D) Sipariş Başlatma
   const handleStartOrder = (driver: Driver, method: 'call' | 'message') => {
     console.log(`Sipariş: ${driver.businessName} - Yöntem: ${method}`);
   };
@@ -123,6 +139,7 @@ export default function Home() {
           onStartOrder={handleStartOrder}
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId}
+          onMapMove={handleMapMove} // 🔥 Zoom takibi için
           onMapClick={() => setActiveDriverId(null)}
         />
       </div>

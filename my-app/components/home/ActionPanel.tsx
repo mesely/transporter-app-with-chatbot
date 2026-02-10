@@ -18,30 +18,28 @@ const CITIES = [
 const DEFAULT_LAT = 38.4237; 
 const DEFAULT_LNG = 27.1428;
 
-// 🔥 YENİ DB YAPISINA TAM UYUMLU INTERFACE
+// 🔥 DB ÇIKTISINA GÖRE GÜNCELLENMİŞ TİP TANIMI
 interface Driver {
   _id: string;
-  businessName: string; // İşletme Adı
-  distance: number;     // Backend'den gelen mesafe (Metre cinsinden)
+  businessName: string; 
+  distance: number;
   phoneNumber?: string;
   rating?: number;
   location?: { coordinates: [number, number] };
   
-  // Adres Bilgisi
   address?: {
     city?: string;
-    district?: string; // İlçe eklendi
+    district?: string;
     fullText?: string;
   };
   
-  // Hizmet Detayları
   service?: {
     mainType: string; // 'KURTARICI', 'NAKLIYE', 'SARJ'
-    subType: string;  // 'vinc', 'tir', 'mobil_unit', 'SARJ'
+    // DB'deki kesin değerler: 'istasyon', 'MOBIL_UNIT', 'yurt_disi_nakliye' vs.
+    subType: string;  
     tags: string[];
   };
   
-  // Fiyatlandırma
   pricing?: {
     openingFee: number;
     pricePerUnit: number;
@@ -82,17 +80,15 @@ export default function ActionPanel({
   activeDriverId, onSelectDriver
 }: ActionPanelProps) {
   
-  // --- STATE YÖNETİMİ ---
   const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   
-  // Alt Menü Görünürlükleri
+  // Alt Menü Kontrolleri
   const [showTowRow, setShowTowRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
   const [showDomesticRow, setShowDomesticRow] = useState(false);
 
-  // Listeleme Ayarları
   const [visibleItems, setVisibleItems] = useState(5); 
   const [sortMode, setSortMode] = useState<'distance' | 'rating' | 'price_asc' | 'price_desc'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
@@ -102,7 +98,7 @@ export default function ActionPanel({
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Haritadan Sürücü Seçilince Panele Kaydır
+  // Seçilen sürücüye odaklan
   useEffect(() => {
     if (activeDriverId) {
       if (panelState === 0) setPanelState(1);
@@ -112,7 +108,7 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // 2. Ana Kategori Tıklamaları
+  // BUTON TIKLAMA VE PANEL YÖNETİMİ
   const handleMainCategoryClick = (category: 'kurtarici' | 'nakliye' | 'sarj') => {
     setPanelState(1);
     setVisibleItems(5); 
@@ -130,7 +126,7 @@ export default function ActionPanel({
     }
   };
 
-  // 3. Konum Bulma
+  // Konum Bulma
   const findMyLocation = () => {
     setIsLocating(true);
     if (navigator.geolocation) {
@@ -140,7 +136,7 @@ export default function ActionPanel({
           setIsLocating(false);
         },
         () => {
-          onSearchLocation(DEFAULT_LAT, DEFAULT_LNG); // Fallback İzmir
+          onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
           setIsLocating(false);
         },
         { enableHighAccuracy: true, timeout: 8000 }
@@ -153,7 +149,6 @@ export default function ActionPanel({
     fetch(`${API_URL}/tariffs`).then(res => res.json()).then(data => { if (Array.isArray(data)) setTariffs(data); });
   }, []);
 
-  // 4. Panel Sürükleme Mantığı
   const handleDragStart = (y: number) => { dragStartY.current = y; };
   const handleDragEnd = (y: number) => {
     if (dragStartY.current === null) return;
@@ -171,99 +166,91 @@ export default function ActionPanel({
     dragStartY.current = null;
   };
 
-  // 5. Fiyat Hesaplama
+  // Fiyat Hesaplama
   const getPricing = (driver: Driver) => {
     const subType = driver.service?.subType;
     const matched = tariffs.find(t => t.serviceType === subType);
-    
     const opening = driver.pricing?.openingFee ?? matched?.openingFee ?? 350;
     const unit = driver.pricing?.pricePerUnit ?? matched?.pricePerUnit ?? 40;
-    
-    // Mesafe yoksa 1 km varsay (0 hatasını önlemek için)
     const distKm = (driver.distance || 0) / 1000; 
     const calculated = opening + (Math.max(1, distKm) * unit);
-    
-    return { 
-        total: calculated, 
-        displayTotal: calculated.toFixed(0), 
-        opening, 
-        unit 
-    };
+    return { total: calculated, displayTotal: calculated.toFixed(0), opening, unit };
   };
 
-  // 6. Google Maps Aç
+  // Rota Açma
   const openGoogleMaps = (e: React.MouseEvent, driver: Driver) => {
     e.stopPropagation();
     const lat = driver.location?.coordinates[1];
     const lng = driver.location?.coordinates[0];
-    if (lat && lng) {
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
-    }
+    if (lat && lng) window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
   };
 
-  // 🔥🔥🔥 GELİŞMİŞ FİLTRELEME MOTORU (YENİ DB UYUMLU) 🔥🔥🔥
+  // 🔥🔥🔥 DB UYUMLU FİLTRELEME MOTORU 🔥🔥🔥
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
 
-    // A) ŞEHİR FİLTRESİ
+    // 1. Şehir Filtresi
     if (selectedCity) {
       list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
     
-    // B) KATEGORİ FİLTRESİ
+    // 2. Kategori Filtresi
     if (actionType) {
-        const type = actionType.toLowerCase();
+        const type = actionType; // Frontend'den gelen 'actionType' stringi
 
-        // 1. YURT DIŞI
+        // --- ÖZEL BUTON EŞLEŞTİRMELERİ ---
+        
+        // Yurt Dışı -> DB: 'yurt_disi_nakliye'
         if (type === 'yurt_disi') { 
             list = list.filter(d => d.service?.subType === 'yurt_disi_nakliye'); 
         }
-        // 2. VİNÇ
+        // Oto Kurtarma -> DB: 'oto_kurtarma'
+        else if (type === 'oto_kurtarma') { 
+            list = list.filter(d => d.service?.subType === 'oto_kurtarma'); 
+        }
+        // Vinç -> DB: 'vinc'
         else if (type === 'vinc') { 
             list = list.filter(d => d.service?.subType === 'vinc'); 
         }
-        // 3. OTO KURTARMA
-        else if (type === 'kurtarici') { 
-            list = list.filter(d => d.service?.subType === 'kurtarici'); 
-        }
-        // 4. ŞARJ İSTASYONU
-        else if (type === 'sarj') { 
+        // Şarj İstasyonu -> DB: 'istasyon' (Önemli!)
+        else if (type === 'sarj_istasyonu') { 
             list = list.filter(d => d.service?.subType === 'istasyon'); 
         }
-        // 5. MOBİL ŞARJ
-        else if (type === 'sarj') { 
-            list = list.filter(d =>  d.service?.subType === 'MOBIL_UNIT'); 
-        }
-        // 6. KURTARICI (GENEL)
-        else if (type === 'kurtarici') {
-            list = list.filter(d => d.service?.mainType === 'KURTARICI');
-        }
-        // 7. ŞARJ (GENEL)
-        else if (type === 'sarj') {
-            list = list.filter(d => d.service?.mainType === 'SARJ');
+        // Mobil Şarj -> DB: 'MOBIL_UNIT' (Önemli!)
+        else if (type === 'seyyar_sarj') { 
+            list = list.filter(d => d.service?.subType === 'MOBIL_UNIT'); 
         }
         
-        // 8. NAKLİYE GRUBU (En Karmaşığı)
-        else if (['nakliye', 'tir', 'kamyon', 'kamyonet'].includes(type)) { 
-            if (type === 'nakliye') {
-                 // "Tümü" seçildiyse: MainType Nakliye olanları veya SubType'ı nakliye ailesinden olanları getir
-                 list = list.filter(d => 
-                    d.service?.mainType === 'NAKLIYE' || 
-                    ['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve', 'yurt_disi'].includes(d.service?.subType || '')
-                 );
-            } else {
-                 // Sadece "Tır" veya sadece "Kamyon"
-                 list = list.filter(d => d.service?.subType === type);
-            }
+        // --- NAKLİYE ALT TİPLERİ ---
+        else if (['tir', 'kamyon', 'kamyonet'].includes(type)) {
+            list = list.filter(d => d.service?.subType === type);
+        }
+
+        // --- ANA KATEGORİLER (MainType) ---
+        
+        else if (type === 'kurtarici') {
+            // Ana butona basınca tüm KURTARICI mainType'lar gelsin
+            list = list.filter(d => d.service?.mainType === 'KURTARICI');
+        }
+        else if (type === 'sarj') {
+            // Ana butona basınca tüm SARJ mainType'lar gelsin
+            list = list.filter(d => d.service?.mainType === 'SARJ');
+        }
+        else if (type === 'nakliye') {
+            // Ana butona basınca Yurt Dışı HARİÇ diğer nakliyeler gelsin mi? 
+            // Genelde "Nakliye" butonuna basınca hepsini (MainType=NAKLIYE) görmek isteriz.
+            // Ama alt menüde "Yurt İçi" default seçiliyse sadece yurt içi gelir.
+            // Burada basitlik adına MainType = NAKLIYE olanları getiriyoruz.
+            list = list.filter(d => d.service?.mainType === 'NAKLIYE');
         }
     }
 
-    // C) SIRALAMA
+    // 3. Sıralama
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       if (sortMode === 'price_asc') return getPricing(a).total - getPricing(b).total;
       if (sortMode === 'price_desc') return getPricing(b).total - getPricing(a).total;
-      return (a.distance || 0) - (b.distance || 0); // Default: Yakınlık
+      return (a.distance || 0) - (b.distance || 0); // Default: En Yakın
     });
 
     return list;
@@ -274,20 +261,23 @@ export default function ActionPanel({
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop <= clientHeight + 50) {
-      if (visibleItems < displayDrivers.length) {
-        setVisibleItems(prev => prev + 5);
-      }
+      if (visibleItems < displayDrivers.length) setVisibleItems(prev => prev + 5);
     }
   }, [visibleItems, displayDrivers.length]);
 
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
   
-  // Panel Yüksekliği
   let heightClass = 'h-36'; 
   if (panelState === 1) heightClass = 'h-[55vh]'; 
   if (panelState === 2) heightClass = 'h-[92vh]'; 
 
-  // Sıralama Etiketi
+  const cycleSortMode = () => {
+      if (sortMode === 'distance') setSortMode('rating');
+      else if (sortMode === 'rating') setSortMode('price_asc');
+      else if (sortMode === 'price_asc') setSortMode('price_desc');
+      else setSortMode('distance');
+  };
+
   const getSortLabel = () => {
       switch(sortMode) {
           case 'distance': return 'YAKIN';
@@ -298,13 +288,6 @@ export default function ActionPanel({
       }
   };
 
-  const cycleSortMode = () => {
-      if (sortMode === 'distance') setSortMode('rating');
-      else if (sortMode === 'rating') setSortMode('price_asc');
-      else if (sortMode === 'price_asc') setSortMode('price_desc');
-      else setSortMode('distance');
-  };
-
   return (
     <div 
       onMouseDown={(e) => handleDragStart(e.clientY)}
@@ -313,7 +296,7 @@ export default function ActionPanel({
       onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
       className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
     >
-      {/* DRAG HANDLE */}
+      {/* DRAG BAR */}
       <div 
         onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 0)} 
         className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50 hover:opacity-80 transition-opacity"
@@ -350,13 +333,15 @@ export default function ActionPanel({
         {/* --- 2. ALT FİLTRELER --- */}
         <div className="space-y-3 shrink-0 mb-2 transition-all duration-300">
           
+          {/* KURTARICI ALT MENÜ */}
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-              <button onClick={() => { onFilterApply('kurtarici'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'kurtarici' ? 'bg-red-800 text-white ring-2 ring-red-400' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
+              <button onClick={() => { onFilterApply('oto_kurtarma'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white ring-2 ring-red-400' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
               <button onClick={() => { onFilterApply('vinc'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white ring-2 ring-red-400' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> Vinç</button>
             </div>
           )}
 
+          {/* NAKLİYE ANA SEÇİM (YURT İÇİ / YURT DIŞI) */}
           {(['nakliye', 'yurt_disi', 'tir', 'kamyon', 'kamyonet'].some(t => actionType === t) || showDomesticRow) && (
              <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
                 <button 
@@ -374,6 +359,7 @@ export default function ActionPanel({
              </div>
           )}
 
+          {/* NAKLİYE -> YURT İÇİ ALT MENÜSÜ */}
           {showDomesticRow && actionType !== 'yurt_disi' && (
             <div className="grid grid-cols-4 gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
                <button onClick={() => { onFilterApply('nakliye'); setVisibleItems(5); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'nakliye' ? 'bg-purple-800 text-white ring-1 ring-purple-400' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
@@ -391,10 +377,11 @@ export default function ActionPanel({
             </div>
           )}
 
+          {/* ŞARJ ALT MENÜ */}
           {showChargeRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-              <button onClick={() => { onFilterApply('SARJ'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'SARJ' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
-              <button onClick={() => { onFilterApply('SARJ'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'SARJ' ? 'bg-cyan-600 text-white ring-2 ring-cyan-300' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}><Zap size={14}/> Mobil Şarj</button>
+              <button onClick={() => { onFilterApply('sarj_istasyonu'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
+              <button onClick={() => { onFilterApply('seyyar_sarj'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white ring-2 ring-cyan-300' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}><Zap size={14}/> Mobil Şarj</button>
             </div>
           )}
         </div>
@@ -446,18 +433,18 @@ export default function ActionPanel({
                 const isSelected = activeDriverId === driver._id;
                 const pricing = getPricing(driver);
                 const subType = driver.service?.subType || '';
-                const isStation = subType === 'istasyon';
                 
-                // İKON VE RENK BELİRLEME
+                // İkon ve Renk Seçimi (DB Uyumlu)
+                const isStation = subType === 'istasyon';
                 let iconBg = 'bg-gray-600'; 
                 let IconComponent = Truck;
 
-                if (subType === 'SARJ') { iconBg = 'bg-blue-600'; IconComponent = Navigation; }
-                else if (subType === 'seyyar_sarj' || subType === 'MOBIL_UNIT') { iconBg = 'bg-cyan-500'; IconComponent = Zap; }
+                if (subType === 'istasyon') { iconBg = 'bg-blue-600'; IconComponent = Navigation; }
+                else if (subType === 'MOBIL_UNIT') { iconBg = 'bg-cyan-500'; IconComponent = Zap; }
                 else if (subType === 'vinc') { iconBg = 'bg-red-900'; IconComponent = Anchor; }
-                else if (subType === 'kurtarici' || subType === 'kurtarici') { iconBg = 'bg-red-600'; IconComponent = CarFront; }
+                else if (subType === 'oto_kurtarma' || subType === 'kurtarici') { iconBg = 'bg-red-600'; IconComponent = CarFront; }
                 else if (subType === 'yurt_disi_nakliye') { iconBg = 'bg-indigo-600'; IconComponent = Globe; }
-                else if (subType === 'nakliye') { iconBg = 'bg-purple-500'; IconComponent = Home; }
+                else if (subType === 'nakliye' || subType === 'evden_eve') { iconBg = 'bg-purple-500'; IconComponent = Home; }
                 else if (subType === 'tir') { iconBg = 'bg-purple-800'; IconComponent = Truck; }
                 else if (subType === 'kamyonet') { iconBg = 'bg-purple-400'; IconComponent = Package; }
                 else if (['nakliye', 'kamyon'].some(t => subType.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
@@ -483,7 +470,6 @@ export default function ActionPanel({
                             </span>
                         </h4>
                         
-                        {/* 🔥 İLÇE VE ŞEHİR BİLGİSİ 🔥 */}
                         <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate">
                             <MapPin size={10} className="text-green-500" /> 
                             {driver.address?.district ? `${driver.address.district} / ` : ''}{driver.address?.city || 'Merkez'}
@@ -510,7 +496,6 @@ export default function ActionPanel({
                             <MapIcon size={16} /> HARİTADA GİT (ROTA)
                         </button>
 
-                        {/* 🔥 ŞARJ İSTASYONU İSE ARAMA BUTONLARINI GİZLE 🔥 */}
                         {!isStation && (
                         <div className="flex gap-2">
                             <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
