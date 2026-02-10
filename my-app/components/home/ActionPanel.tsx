@@ -498,4 +498,25 @@ export default function ActionPanel({
 
                         {!isStation && (
                         <div className="flex gap-2">
-                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center ju
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button>
+                        </div>
+                        )}
+                    </div>
+                    )}
+                </div>
+                );
+            })}
+            
+            {visibleItems < displayDrivers.length && (
+               <div className="w-full py-4 flex justify-center">
+                  <Loader2 className="animate-spin text-gray-400" size={24} />
+               </div>
+            )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

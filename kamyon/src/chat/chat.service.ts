@@ -1,140 +1,258 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import * as bcrypt from 'bcrypt';
-import { NewUser, NewUserDocument } from '../data/schemas/new-user.schema';
-import { NewProvider, NewProviderDocument } from '../data/schemas/new-provider.schema';
+import { Injectable, Logger } from '@nestjs/common';
+import { Mistral } from '@mistralai/mistralai';
+import { UsersService } from '../users/users.service';
+import { TariffsService } from '../tariffs/tariffs.service';
+
+/**
+ * AI'ın Düşünce Yapısı (Structured Output)
+ */
+interface AIThoughtProcess {
+  thought: string;          // Adım adım düşünme süreci (CoT)
+  intent: 'search_driver' | 'calculate_price' | 'get_tariff' | 'general_chat' | 'clarification_needed';
+  confidence: number;       // 0.0 - 1.0 arası emin olma durumu
+  entities: {
+    serviceType?: string;   // 'kurtarici', 'nakliye', 'vinc' vs.
+    location?: string;
+    amount?: number;
+    unit?: string;
+  };
+  missing_info?: string[];  // Eksik olan bilgiler (örn: 'Hangi araç lazım?')
+  search_keywords?: string[]; // Vektör araması için anahtar kelimeler
+}
 
 @Injectable()
-export class UsersService implements OnModuleInit {
-  private readonly logger = new Logger(UsersService.name);
+export class ChatService {
+  private client: Mistral;
+  private readonly logger = new Logger(ChatService.name);
+
+  // 🔥 GELİŞMİŞ FEW-SHOT PROMPT (EĞİTİM VERİSİ)
+  private readonly REASONING_PROMPT = `
+    Sen Transporter uygulamasının 'Bilişsel Karar Mekanizması'sın.
+    Görevin: Kullanıcı mesajını analiz et, eksik bilgiyi tespit et ve JSON formatında çıktı ver.
+
+    KURALLAR:
+    1. "thought" alanında adım adım düşün. (Chain of Thought)
+    2. Eğer kullanıcı belirsiz konuşuyorsa (örn: "araç lazım"), "intent": "clarification_needed" yap ve sor.
+    3. Eğer kullanıcı "aküm bitti", "lastik patladı" derse, bunu "search_keywords" alanında ['oto_kurtarma', 'lastik', 'akü'] olarak genişlet.
+    4. Sadece JSON formatında yanıt ver.
+
+    --- FEW-SHOT EXAMPLES (ÖRNEKLER) ---
+    User: "İzmirdeyim arabam bozuldu"
+    AI: {
+      "thought": "Kullanıcı arıza bildiriyor. Konum İzmir. Hizmet türü belirtmemiş ama 'bozuldu' dediği için çekici veya yol yardım lazım.",
+      "intent": "search_driver",
+      "confidence": 0.95,
+      "entities": { "location": "İzmir", "serviceType": "kurtarici" },
+      "search_keywords": ["oto_kurtarma", "çekici", "yol_yardım"]
+    }
+
+    User: "Fiyat ne kadar?"
+    AI: {
+      "thought": "Kullanıcı fiyat sordu ama neyin fiyatı? Nakliye mi, çekici mi? Bilgi eksik.",
+      "intent": "clarification_needed",
+      "confidence": 0.2,
+      "entities": {},
+      "missing_info": ["service_type"]
+    }
+
+    User: "Bornovadan İstanbula ev taşıycam kaç para tutar?"
+    AI: {
+      "thought": "Kullanıcı evden eve nakliye fiyatı istiyor. Mesafe hesaplama niyeti var.",
+      "intent": "calculate_price",
+      "confidence": 0.98,
+      "entities": { "serviceType": "nakliye", "unit": "km" },
+      "search_keywords": ["evden_eve", "nakliye", "kamyon"]
+    }
+    ------------------------------------
+  `;
 
   constructor(
-    @InjectModel(NewUser.name) private userModel: Model<NewUserDocument>,
-    @InjectModel(NewProvider.name) private providerModel: Model<NewProviderDocument>,
-  ) {}
-
-  async onModuleInit() {
-    this.logger.log('🚀 Transporter V7 (Query Fix Final): Hazır.');
-    try { await this.providerModel.collection.createIndex({ location: '2dsphere' }); } catch (e) {}
+    private readonly usersService: UsersService,
+    private readonly tariffsService: TariffsService
+  ) {
+    this.client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY || 'MISSING_KEY' });
   }
 
-  // --- 1. CREATE ---
-  async create(data: any) {
+  /**
+   * ANA SOHBET AKIŞI
+   */
+  async chat(message: string, history: any[], location?: { lat: number; lng: number }) {
     try {
-      const cleanName = (data.firstName || data.businessName || '').trim();
-      const rawPhone = data.phoneNumber ? String(data.phoneNumber).replace(/\D/g, '') : '';
-      const email = data.email || `provider_${rawPhone.slice(-10)}@transporter.app`;
+      // 1. ADIM: BİLİŞSEL ANALİZ (Cognitive Analysis Step)
+      // AI önce düşünüp karar veriyor, cevap yazmıyor.
+      const analysis = await this.analyzeIntentWithCoT(message, history);
+      
+      this.logger.log(`🧠 AI Düşüncesi: ${analysis.thought}`);
+      this.logger.log(`🎯 Tespit Edilen Niyet: ${analysis.intent} (Güven: ${analysis.confidence})`);
 
-      let user = await this.userModel.findOne({ email });
-      if (!user) {
-        const hashedPassword = await bcrypt.hash(data.password || '123456', 10);
-        user = await new this.userModel({ email, password: hashedPassword, role: 'provider', isActive: true }).save();
+      let systemResponse = "";
+      let foundData: any = null;
+      let dataType = 'text';
+
+      // 2. ADIM: EYLEM (Action Step)
+      
+      // SENARYO A: Yetersiz Bilgi / Teyit Gerekiyor
+      if (analysis.intent === 'clarification_needed' || analysis.confidence < 0.70) {
+        // AI doğrudan kullanıcıya soru sorsun
+        return { 
+          response: this.generateClarificationQuestion(analysis.missing_info), 
+          role: 'assistant' 
+        };
       }
 
-      let coords: [number, number] = [27.1428, 38.4237];
-      if (data.location?.coordinates) coords = data.location.coordinates;
-      else if (data.lng && data.lat) coords = [parseFloat(data.lng), parseFloat(data.lat)];
+      // SENARYO B: Araç Arama (Semantik/Vektör Simülasyonu)
+      if (analysis.intent === 'search_driver') {
+        const lat = location?.lat || 38.4237;
+        const lng = location?.lng || 27.1428;
 
-      const mappedMainType = this.mapToEnum(data.serviceType);
-
-      return this.providerModel.findOneAndUpdate(
-        { user: user._id },
-        {
-          user: user._id,
-          businessName: cleanName || 'İsimsiz',
-          phoneNumber: rawPhone,
-          address: { fullText: data.address || '', city: data.city || 'Bilinmiyor', district: data.district || 'Merkez' },
-          service: {
-            mainType: mappedMainType,
-            subType: data.serviceType || 'genel',
-            tags: data.filterTags || []
-          },
-          pricing: { openingFee: Number(data.openingFee) || 350, pricePerUnit: Number(data.pricePerUnit) || 40 },
-          location: { type: 'Point', coordinates: coords }
-        },
-        { upsert: true, new: true }
-      );
-    } catch (e) { return null; }
-  }
-
-  // --- 2. FIND NEARBY (FIXED QUERY) ---
-  async findNearby(lat: number, lng: number, rawType: string, zoom: number) {
-    // 1. Zoom ve Menzil Ayarı
-    const safeZoom = zoom ? Number(zoom) : 15;
-    let maxDist = 500000; // 500 km default
-    let limit = 200;
-
-    if (safeZoom < 8) {
-        maxDist = 20000000; // 20.000 KM (Dünya)
-        limit = 5000; // Tüm veriyi çek
-    } else if (safeZoom < 11) {
-        maxDist = 2000000; // 2000 KM
-        limit = 1000;
-    }
-
-    // 2. SORGUNUN KURULUMU (Query Object)
-    // MongoDB'de $near kullanırken, diğer filtreler de aynı objede olmalı.
-    const query: any = {
-        location: {
-            $near: {
-                $geometry: { type: 'Point', coordinates: [lng, lat] },
-                $maxDistance: maxDist
-            }
-        }
-    };
-
-    // 3. TÜR FİLTRESİ (Kesin Eşleşme)
-    if (rawType) {
-        const type = rawType.toLowerCase();
+        // Vektör Araması Simülasyonu:
+        // AI'ın ürettiği "search_keywords" (örn: ['lastik', 'yardım']) ile veritabanındaki tag'leri eşleştiriyoruz.
+        const drivers = await this.usersService.findNearby(lat, lng, analysis.entities.serviceType, 15);
         
-        // Ana Kategori Araması
-        if (['nakliye', 'sarj', 'kurtarici', 'kurtarıcı'].includes(type)) {
-            // mapToEnum fonksiyonu doğru ENUM'u döndürür (Örn: 'kurtarici' -> 'KURTARICI')
-            query['service.mainType'] = this.mapToEnum(type);
-        } 
-        // Alt Kategori Araması
-        else {
-            // Frontend -> DB Mapping
-            if (type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
-            else if (type === 'seyyar_sarj') query['service.subType'] = 'MOBIL_UNIT';
-            else if (type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
-            else if (type === 'vinc') query['service.subType'] = 'vinc';
-            else if (type === 'oto_kurtarma') query['service.subType'] = 'oto_kurtarma';
-            // Diğerleri için esnek arama (tir, kamyon vs.)
-            else query['service.subType'] = new RegExp(type, 'i');
+        // Semantic Filter: Gelen sürücülerin tag'leri ile AI keywordlerini karşılaştır
+        // (Basit bir re-ranking algoritması)
+        const rankedDrivers = this.semanticReRank(drivers, analysis.search_keywords);
+
+        if (rankedDrivers.length > 0) {
+          foundData = rankedDrivers.slice(0, 5); // En alakalı 5 tanesi
+          dataType = 'drivers_map';
+          systemResponse = `Bölgenizde ihtiyacınıza en uygun ${rankedDrivers.length} araç buldum. Haritada görebilirsiniz.`;
+        } else {
+          systemResponse = "Şu an bölgenizde tam eşleşen bir araç bulamadım ancak çevre bölgeleri tarıyorum.";
         }
+      }
+
+      // SENARYO C: Fiyat Hesaplama
+      if (analysis.intent === 'calculate_price') {
+        const type = analysis.entities.serviceType || 'kurtarici';
+        const tariff = await this.tariffsService.findByType(type) || { openingFee: 350, pricePerUnit: 30, unit: 'km' };
+        
+        // Miktar yoksa sor
+        if (!analysis.entities.amount) {
+           return { 
+             response: `${tariff.unit === 'km' ? 'Mesafe' : 'Süre'} bilgisini de yazarsanız net fiyat çıkarabilirim. (Örn: 100 km)`, 
+             role: 'assistant' 
+           };
+        }
+
+        const total = tariff.openingFee + (analysis.entities.amount * tariff.pricePerUnit);
+        
+        foundData = {
+          service: type.toUpperCase(),
+          amount: analysis.entities.amount,
+          unit: tariff.unit,
+          total,
+          details: `${tariff.openingFee} TL Açılış + (${analysis.entities.amount}x${tariff.pricePerUnit})`
+        };
+        dataType = 'calculation_result';
+        systemResponse = `Hesaplamayı yaptım. Tahmini tutar: **${total} TL**`;
+      }
+
+      // SENARYO D: Tarife Bilgisi
+      if (analysis.intent === 'get_tariff') {
+        foundData = await this.tariffsService.findAll();
+        dataType = 'tariffs';
+        systemResponse = "Güncel piyasa koşullarına göre tarifelerimiz şöyledir:";
+      }
+
+      // SENARYO E: Genel Sohbet (AI Cevaplasın)
+      if (analysis.intent === 'general_chat') {
+        // Burada tekrar LLM'e gidip "Madlen" persona'sıyla cevap ürettiriyoruz.
+        const chatResponse = await this.client.chat.complete({
+          model: 'mistral-tiny',
+          messages: [
+            { role: 'system', content: "Sen Madlen'sin. Lojistik asistanısın. Kısa ve nazik cevap ver." },
+            ...history.slice(-3),
+            { role: 'user', content: message }
+          ] as any
+        });
+        systemResponse = (chatResponse.choices?.[0]?.message?.content as string) || "Anlaşıldı.";
+      }
+
+      // 3. ADIM: CEVAP PAKETLEME (Synthesis Step)
+      if (foundData) {
+        const packet = JSON.stringify({ type: dataType, data: foundData });
+        systemResponse += `||DATA||${packet}||DATA||`;
+      }
+
+      return { response: systemResponse, role: 'assistant' };
+
+    } catch (error) {
+      this.logger.error(`AI Motor Hatası: ${error.message}`);
+      return { response: "Bağlantıda anlık bir kopma oldu, lütfen tekrar deneyin.", role: 'assistant' };
     }
-
-    // 4. LOGLAMA (Ne aradığımızı görelim)
-    this.logger.log(`🔍 FIXED QUERY: ${JSON.stringify(query)} | Limit: ${limit}`);
-
-    return this.providerModel.find(query)
-        .select('businessName location service pricing address phoneNumber rating')
-        .limit(limit)
-        .lean()
-        .exec();
   }
 
-  // --- Diğerleri ---
-  async getServiceTypes() {
-    return this.providerModel.aggregate([{
-        $group: { _id: null, allMainTypes: { $addToSet: "$service.mainType" }, allSubTypes: { $addToSet: "$service.subType" }, totalDocs: { $sum: 1 } }
-    }]).exec();
-  }
-  
-  async findDiverseList(lat: number, lng: number, limit: number) { return []; }
-  async findSmartMapData(lat: number, lng: number) { return []; }
-  async findFiltered(city?, type?) { return []; }
-  async updateOne(id, data) { return this.providerModel.findByIdAndUpdate(id, data, { new: true }); }
-  async deleteOne(id) { return this.providerModel.findByIdAndDelete(id); }
+  // --- YARDIMCI FONKSİYONLAR ---
 
-  private mapToEnum(type: string): string {
-    if (!type) return 'KURTARICI';
-    const t = type.toLowerCase();
-    if (t.includes('nakli') || t.includes('kamyon') || t.includes('tir') || t.includes('evden') || t.includes('yurt')) return 'NAKLIYE';
-    if (t.includes('sarj') || t.includes('şarj') || t.includes('istasyon') || t.includes('mobil')) return 'SARJ';
-    if (t.includes('kurtar') || t.includes('oto') || t.includes('vinç') || t.includes('vinc')) return 'KURTARICI';
-    return 'KURTARICI';
+  /**
+   * 🧠 BEYİN: Chain of Thought Analizi Yapar
+   */
+  private async analyzeIntentWithCoT(message: string, history: any[]): Promise<AIThoughtProcess> {
+    try {
+      const response = await this.client.chat.complete({
+        model: 'mistral-small', // Daha zeki model kullanıyoruz analiz için
+        messages: [
+          { role: 'system', content: this.REASONING_PROMPT },
+          ...history.slice(-2), // Sadece son bağlam
+          { role: 'user', content: `ANALİZ ET: "${message}"` }
+        ] as any,
+        responseFormat: { type: 'json_object' } // Zorunlu JSON modu
+      });
+
+      const content = response.choices?.[0]?.message?.content;
+      // JSON Parsing güvenliği
+      try {
+        return JSON.parse(content as string);
+      } catch (e) {
+        // AI JSON döndüremezse fallback
+        return { 
+          thought: "JSON hatası, manuel fallback.", 
+          intent: 'general_chat', 
+          confidence: 0.5, 
+          entities: {} 
+        };
+      }
+    } catch (e) {
+      return { thought: "API Hatası", intent: 'general_chat', confidence: 0, entities: {} };
+    }
+  }
+
+  /**
+   * 🔍 SEMANTIC RE-RANKING (Basit Vektör Simülasyonu)
+   * Veritabanından gelen 50 aracı, AI'ın belirlediği kelimelere göre puanlar ve sıralar.
+   */
+  private semanticReRank(drivers: any[], keywords: string[]): any[] {
+    if (!keywords || keywords.length === 0) return drivers;
+
+    return drivers.map(driver => {
+      let score = 0;
+      // Driver'ın verilerini birleştir (tags, isim, servis tipi)
+      const driverText = `${driver.service?.tags?.join(' ') || ''} ${driver.businessName} ${driver.service?.subType}`.toLowerCase();
+      
+      // Keyword eşleşmelerine puan ver
+      keywords.forEach(kw => {
+        if (driverText.includes(kw.toLowerCase())) score += 10;
+      });
+
+      // Rating bonusu
+      score += (driver.rating || 0); 
+
+      return { ...driver, score };
+    })
+    .sort((a, b) => b.score - a.score) // Puanı yüksek olanı başa al
+    .map(({ score, ...driver }) => driver); // Score alanını temizle ve dön
+  }
+
+  /**
+   * ❓ Soru Üretici
+   */
+  private generateClarificationQuestion(missingInfo: string[] | undefined): string {
+    if (!missingInfo || missingInfo.length === 0) return "Tam olarak nasıl yardımcı olabilirim?";
+    
+    if (missingInfo.includes('service_type')) return "Size yardımcı olabilmem için hangi hizmete ihtiyacınız olduğunu belirtir misiniz? (Örn: Çekici, Nakliye, Şarj)";
+    if (missingInfo.includes('amount')) return "Fiyat hesaplayabilmem için mesafe (km) veya süre bilgisini yazabilir misiniz?";
+    
+    return "Biraz daha detay verebilir misiniz?";
   }
 }

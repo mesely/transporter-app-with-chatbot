@@ -426,4 +426,19 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                                 onSelectDriver(null); 
                                 window.open(`https://wa.me/${item.phoneNumber?.replace(/\D/g, '')}`, '_blank'); 
                             }} 
-                            className="flex-1 bg-green-600 text-white py-3 rounded
+                            className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-2 active:scale-95 shadow-lg"
+                        >
+                            <MessageCircle size={14} /> WP
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
+}
