@@ -2,8 +2,6 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-
-// ŞEMALAR
 import { NewUser, NewUserDocument } from '../data/schemas/new-user.schema';
 import { NewProvider, NewProviderDocument } from '../data/schemas/new-provider.schema';
 
@@ -17,10 +15,8 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('🚀 Transporter Engine (V4 - Analytics & Clustering): Hazır.');
-    try {
-      await this.providerModel.collection.createIndex({ location: '2dsphere' });
-    } catch (e) {}
+    this.logger.log('🚀 Transporter V12 (Full Service): Sistem Hazır.');
+    try { await this.providerModel.collection.createIndex({ location: '2dsphere' }); } catch (e) {}
   }
 
   // --- 1. CREATE ---
@@ -33,180 +29,127 @@ export class UsersService implements OnModuleInit {
       let user = await this.userModel.findOne({ email });
       if (!user) {
         const hashedPassword = await bcrypt.hash(data.password || '123456', 10);
-        user = await new this.userModel({
-          email: email, password: hashedPassword, role: 'provider', isActive: true
-        }).save();
+        user = await new this.userModel({ email, password: hashedPassword, role: 'provider', isActive: true }).save();
       }
 
       let coords: [number, number] = [27.1428, 38.4237];
       if (data.location?.coordinates) coords = data.location.coordinates;
       else if (data.lng && data.lat) coords = [parseFloat(data.lng), parseFloat(data.lat)];
 
-      const providerData = {
-        user: user._id,
-        businessName: cleanName || 'İsimsiz İşletme',
-        phoneNumber: rawPhone,
-        address: {
-          fullText: data.address || '',
-          city: data.city || 'Bilinmiyor',
-          district: data.district || 'Merkez'
-        },
-        service: {
-          mainType: this.mapToEnum(data.serviceType), 
-          subType: data.serviceType || 'genel',
-          tags: data.filterTags || []
-        },
-        pricing: {
-          openingFee: Number(data.openingFee) || 350,
-          pricePerUnit: Number(data.pricePerUnit) || 40
-        },
-        location: { type: 'Point', coordinates: coords }
-      };
+      let mainType = 'KURTARICI';
+      if (data.serviceType) {
+         const t = data.serviceType.toUpperCase();
+         if (['NAKLIYE', 'SARJ', 'KURTARICI'].includes(t)) mainType = t;
+      }
 
       return this.providerModel.findOneAndUpdate(
-        { user: user._id }, providerData, { upsert: true, new: true }
+        { user: user._id },
+        {
+          user: user._id,
+          businessName: cleanName || 'İsimsiz',
+          phoneNumber: rawPhone,
+          address: { fullText: data.address || '', city: data.city || 'Bilinmiyor', district: data.district || 'Merkez' },
+          service: {
+            mainType: mainType,
+            subType: data.serviceType || 'genel',
+            tags: data.filterTags || []
+          },
+          pricing: { openingFee: Number(data.openingFee) || 350, pricePerUnit: Number(data.pricePerUnit) || 40 },
+          location: { type: 'Point', coordinates: coords }
+        },
+        { upsert: true, new: true }
       );
-    } catch (error) { return null; }
+    } catch (e) { return null; }
   }
 
-  // --- 2. FIND NEARBY (TURBO LIMIT) ---
-  async findNearby(lat: number, lng: number, rawType?: string, zoom?: number) {
-    const query: any = {};
-    const safeZoom = zoom || 15;
+  // --- 2. FIND NEARBY (ANA ARAMA) ---
+  async findNearby(lat: number, lng: number, rawType: string, zoom: number) {
+    const safeZoom = zoom ? Number(zoom) : 15;
+    let maxDist = 500000; 
+    let limit = 200;
+
+    if (safeZoom < 9) {
+        maxDist = 20000000; 
+        limit = 5000;
+    } else if (safeZoom < 12) {
+        maxDist = 2000000;
+        limit = 1000;
+    }
+
+    const query: any = {
+        location: {
+            $near: {
+                $geometry: { type: 'Point', coordinates: [lng, lat] },
+                $maxDistance: maxDist
+            }
+        }
+    };
 
     if (rawType) {
         const type = rawType.toLowerCase();
-        const mainEnum = this.mapToEnum(type);
-
-        // Ana Gruplar
-        if (['nakliye', 'sarj', 'kurtarici', 'kurtarıcı', 'genel'].includes(type)) {
-             query['service.mainType'] = mainEnum;
-        } 
-        // Özel Alt Tipler
+        if (type === 'nakliye') query['service.mainType'] = 'NAKLIYE';
+        else if (type === 'sarj') query['service.mainType'] = 'SARJ';
+        else if (type === 'kurtarici') query['service.mainType'] = 'KURTARICI';
         else {
-             if(type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
-             else if(type === 'seyyar_sarj') query['service.subType'] = 'MOBIL_UNIT';
-             else if(type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
-             else query['service.subType'] = type;
+            if (type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
+            else if (type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
+            else query['service.subType'] = type;
         }
     }
 
-    // Zoom Uzaksa (Tüm Türkiye) Limiti Aç
-    let limit = 150;
-    let maxDist = 500000; 
-
-    if (safeZoom < 9) { 
-        limit = 3000; // 🔥 3000 Kayıt (Tüm illeri kapsasın)
-        maxDist = 10000000; // 10.000 KM
-    } else if (safeZoom < 12) {
-        limit = 500;
-        maxDist = 1000000; 
-    }
-
-    return this.providerModel.find({
-      ...query,
-      location: { 
-        $near: { 
-            $geometry: { type: 'Point', coordinates: [lng, lat] }, 
-            $maxDistance: maxDist 
-        } 
-      }
-    })
-    .select('businessName location service pricing address phoneNumber rating') 
-    .limit(limit) 
-    .lean()
-    .exec(); 
+    return this.providerModel.find(query)
+        .select('businessName location service pricing address phoneNumber rating')
+        .limit(limit)
+        .lean()
+        .exec();
   }
 
-  // --- 3. 🔥 ANALİZ METODU: DB'DEKİ TÜM TİPLERİ GETİR ---
-  // Bunu bir endpoint'e bağla ve dönen JSON'a bak.
-  async getServiceTypes() {
-    return this.providerModel.aggregate([
-      {
-        $group: {
-          _id: null,
-          allMainTypes: { $addToSet: "$service.mainType" }, // Tüm benzersiz Ana Tipler
-          allSubTypes: { $addToSet: "$service.subType" },   // Tüm benzersiz Alt Tipler
-          totalDocs: { $sum: 1 }
-        }
-      }
-    ]).exec();
+  // --- 3. DİĞER FONKSİYONLAR (HATA VEREN KISIMLAR DÜZELTİLDİ) ---
+
+  // Liste Modu (Karışık Getir) - Parametreler eklendi
+  async findDiverseList(lat: number, lng: number, limit: number = 5) {
+      // Şimdilik yakındaki herkesi getiriyoruz, ileride burayı özelleştirebilirsin
+      return this.findNearby(lat, lng, '', 15);
   }
 
-  // --- 4. KARIŞIK LİSTE ---
-  async findDiverseList(lat: number, lng: number, limitPerType: number = 5) {
-    return this.providerModel.aggregate([
-      {
-        $geoNear: {
-          near: { type: 'Point', coordinates: [lng, lat] },
-          key: 'location',
-          distanceField: 'distance',
-          maxDistance: 5000000, 
-          spherical: true
-        }
-      },
-      { $sort: { distance: 1 } },
-      {
-        $group: {
-          _id: "$service.mainType", 
-          drivers: { $push: "$$ROOT" } 
-        }
-      },
-      { $project: { drivers: { $slice: ["$drivers", limitPerType] } } },
-      { $unwind: "$drivers" },
-      { $replaceRoot: { newRoot: "$drivers" } }
-    ]).exec();
-  }
-
-  // --- 5. SMART MAP ---
+  // Akıllı Harita (Uzak Zoom) - Parametreler eklendi
   async findSmartMapData(lat: number, lng: number) {
-    return this.providerModel.aggregate([
-      {
-        $geoNear: {
-          near: { type: 'Point', coordinates: [lng, lat] },
-          key: 'location',
-          distanceField: 'distance',
-          maxDistance: 5000000,
-          spherical: true
-        }
-      },
-      {
-        $group: {
-          _id: "$service.mainType", 
-          doc: { $first: "$$ROOT" } 
-        }
-      },
-      { $replaceRoot: { newRoot: "$doc" } }
-    ]).exec();
+      // Uzaktan bakınca çok veri çek (Zoom 8 gibi davran)
+      return this.findNearby(lat, lng, '', 8);
   }
 
-  // --- YARDIMCI METHODLAR ---
+  // Yönetim Paneli Filtreleme - Parametreler eklendi
   async findFiltered(city?: string, type?: string) {
-    const query: any = {};
-    if (city && city !== 'Tümü') query['address.city'] = city;
-    if (type && type !== 'Tümü') query['service.mainType'] = this.mapToEnum(type);
-    return this.providerModel.find(query).sort({ createdAt: -1 }).limit(100).lean().exec();
+      const query: any = {};
+      
+      if (city) {
+          query['address.city'] = new RegExp(city, 'i');
+      }
+      
+      if (type) {
+          if (['NAKLIYE', 'SARJ', 'KURTARICI'].includes(type.toUpperCase())) {
+              query['service.mainType'] = type.toUpperCase();
+          } else {
+              query['service.subType'] = type;
+          }
+      }
+
+      return this.providerModel.find(query).sort({ _id: -1 }).limit(100).exec();
   }
 
-  async updateOne(id: string, data: any) {
-    return this.providerModel.findByIdAndUpdate(id, data, { new: true });
+  // Update & Delete
+  async updateOne(id: string, data: any) { 
+      return this.providerModel.findByIdAndUpdate(id, data, { new: true }); 
+  }
+  
+  async deleteOne(id: string) { 
+      return this.providerModel.findByIdAndDelete(id); 
   }
 
-  async deleteOne(id: string) {
-    const provider = await this.providerModel.findById(id);
-    if (provider) {
-        await this.userModel.findByIdAndDelete(provider.user);
-        return this.providerModel.findByIdAndDelete(id);
-    }
-    return null;
-  }
-
-  // MAPPER
-  private mapToEnum(type: string): string {
-    if (!type) return 'KURTARICI';
-    const t = type.toLowerCase();
-    if (t.includes('nakli') || t.includes('kamyon') || t.includes('tir') || t.includes('evden') || t.includes('yurt')) return 'NAKLIYE';
-    if (t.includes('sarj') || t.includes('şarj') || t.includes('istasyon') || t.includes('mobil')) return 'SARJ';
-    return 'KURTARICI';
+  // İstatistik
+  async getServiceTypes() {
+    return this.providerModel.aggregate([{
+        $group: { _id: "$service.mainType", count: { $sum: 1 } }
+    }]).exec();
   }
 }

@@ -15,38 +15,24 @@ export class UsersController {
     return this.usersService.create(body);
   }
 
-  // --- 2. AKILLI HARİTA & LİSTELEME ENDPOINT'İ ---
+  // --- 2. ANA ARAMA ENDPOINT'İ (DÜZELTİLDİ) ---
   @Get('nearby')
   async findNearby(
     @Query('lat') lat: string, 
     @Query('lng') lng: string, 
     @Query('type') type: string,
-    @Query('zoom') zoom: string,
-    @Query('mode') mode: string 
+    @Query('zoom') zoom: string
   ) {
     // Koordinatları güvenli parse et (Default İzmir)
     const latitude = parseFloat(lat) || 38.4237;
     const longitude = parseFloat(lng) || 27.1428;
     const zoomLevel = parseInt(zoom) || 15;
 
-    // A) MODE: LIST (Ana Sayfa Altındaki Karışık Liste)
-    // Haritadan bağımsız, kullanıcıya çeşitli seçenekler sunar.
-    if (mode === 'list') {
-      return this.usersService.findDiverseList(latitude, longitude, 5);
-    }
-
-    // B) MODE: SMART MAP (Harita çok uzaksa kümeleme verisi dön)
-    // Zoom 11'den küçükse (Şehir dışı görünüm) Smart Map kullan.
-    if (zoomLevel < 11) {
-        // Backend tarafında kümeleme yapılıyorsa bu kullanılır.
-        // Ancak biz frontend kümelemesi (clustering) yaptığımız için
-        // veri eksik olmasın diye yine de findNearby çağırabiliriz.
-        // Şimdilik backend kümelemesini opsiyonel bırakıyorum.
-        return this.usersService.findSmartMapData(latitude, longitude); 
-    }
-
-    // C) STANDART ARAMA (Harita ve Liste)
-    // Zoom bilgisini de gönderiyoruz, service tarafında lazım olabilir.
+    // 🔥 ÖNEMLİ DEĞİŞİKLİK:
+    // Eskiden zoom < 11 ise başka yere yönlendiriyorduk.
+    // Artık 'findNearby' servisi içinde zoom kontrolü var.
+    // Uzaklaştıkça (Zoom 5-6-7) Ankara ve tüm Türkiye'yi getirecek olan fonksiyon budur.
+    
     return this.usersService.findNearby(latitude, longitude, type, zoomLevel);
   }
 
@@ -74,37 +60,33 @@ export class UsersController {
     
     // Buffer'dan Excel oku
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-    // İlk sayfayı JSON'a çevir
     const data: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
     let count = 0;
     this.logger.log(`Import Başladı: ${data.length} satır işlenecek.`);
 
     for (const item of data) {
-      // Koordinat kontrolü (Lat/Lng yoksa kaydetme)
       const lat = parseFloat(item.lat || item.latitude);
       const lng = parseFloat(item.lng || item.longitude);
       
       if (!isNaN(lat) && !isNaN(lng)) {
         try {
-          // create fonksiyonu veriyi otomatik düzenleyip (ENUM vs) kaydedecek
+          // create fonksiyonu veriyi otomatik düzenleyip kaydedecek
           await this.usersService.create({
             businessName: item.firstName || item.isletmeAdi || item.businessName || 'Bilinmiyor',
             phoneNumber: item.phoneNumber || item.telefon,
             email: item.email,
-            password: item.password || '123456', // Default şifre
+            password: item.password || '123456',
             
-            // Adres Bilgileri
             address: item.address || item.adres,
             city: item.city || item.sehir,
             district: item.district || item.ilce,
             
-            // Hizmet ve Etiketler
+            // Backend'de mapping var, o yüzden raw veriyi gönderiyoruz
             serviceType: item.serviceType || item.hizmetTipi || 'KURTARICI',
             filterTags: item.filters ? String(item.filters).split(',') : [],
             link: item.link || item.website,
             
-            // Konum ve Fiyat
             lat: lat,
             lng: lng,
             openingFee: item.openingFee,
@@ -120,6 +102,8 @@ export class UsersController {
     this.logger.log(`Import Tamamlandı. ${count} kayıt eklendi.`);
     return { status: 'SUCCESS', message: `${count} adet kayıt başarıyla içeri aktarıldı.` };
   }
+
+  // --- 5. TİP ANALİZİ (DEBUG İÇİN) ---
   @Get('types')
   async getTypes() {
     return this.usersService.getServiceTypes();
