@@ -5,7 +5,7 @@ import {
   ChevronDown, LocateFixed, Loader2, 
   MessageCircle, Phone, Navigation,
   Globe, CarFront, Anchor, Home, 
-  Package, Container, ArrowUpDown, Banknote
+  Package, Container, ArrowUpDown, Banknote, Map as MapIcon
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
@@ -18,26 +18,30 @@ const CITIES = [
 const DEFAULT_LAT = 38.4237; 
 const DEFAULT_LNG = 27.1428;
 
-// 🔥 YENİ VERİTABANI YAPISINA UYGUN INTERFACE 🔥
+// 🔥 YENİ DB YAPISINA TAM UYUMLU INTERFACE
 interface Driver {
   _id: string;
-  businessName: string; // Artık firstName yok, İşletme Adı var
-  distance: number;
+  businessName: string; // İşletme Adı
+  distance: number;     // Backend'den gelen mesafe (Metre cinsinden)
   phoneNumber?: string;
   rating?: number;
   location?: { coordinates: [number, number] };
   
-  // Yeni Nested Yapılar
+  // Adres Bilgisi
   address?: {
     city?: string;
-    district?: string;
+    district?: string; // İlçe eklendi
     fullText?: string;
   };
+  
+  // Hizmet Detayları
   service?: {
-    mainType: string; // KURTARICI, NAKLIYE, SARJ
-    subType: string;  // vinc, tir, mobil_unit vb.
+    mainType: string; // 'KURTARICI', 'NAKLIYE', 'SARJ'
+    subType: string;  // 'vinc', 'tir', 'mobil_unit', 'SARJ'
     tags: string[];
   };
+  
+  // Fiyatlandırma
   pricing?: {
     openingFee: number;
     pricePerUnit: number;
@@ -78,16 +82,17 @@ export default function ActionPanel({
   activeDriverId, onSelectDriver
 }: ActionPanelProps) {
   
+  // --- STATE YÖNETİMİ ---
   const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   
-  // Alt Satır Kontrolleri
+  // Alt Menü Görünürlükleri
   const [showTowRow, setShowTowRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
   const [showDomesticRow, setShowDomesticRow] = useState(false);
 
-  // Sonsuz Kaydırma ve Sıralama
+  // Listeleme Ayarları
   const [visibleItems, setVisibleItems] = useState(5); 
   const [sortMode, setSortMode] = useState<'distance' | 'rating' | 'price_asc' | 'price_desc'>('distance');
   const [selectedCity, setSelectedCity] = useState('');
@@ -97,7 +102,7 @@ export default function ActionPanel({
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Aktif sürücü değişince scrolle
+  // 1. Haritadan Sürücü Seçilince Panele Kaydır
   useEffect(() => {
     if (activeDriverId) {
       if (panelState === 0) setPanelState(1);
@@ -107,17 +112,17 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // Kategori butonlarına basınca UI yönetimi
+  // 2. Ana Kategori Tıklamaları
   const handleMainCategoryClick = (category: 'kurtarici' | 'nakliye' | 'sarj') => {
     setPanelState(1);
-    setVisibleItems(5); // Reset scroll
+    setVisibleItems(5); 
     if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
 
     if (category === 'kurtarici') {
         setShowTowRow(!showTowRow); setShowChargeRow(false); setShowDomesticRow(false);
         onActionChange('kurtarici');
     } else if (category === 'nakliye') {
-        setShowTowRow(false); setShowChargeRow(false); setShowDomesticRow(false);
+        setShowTowRow(false); setShowChargeRow(false); setShowDomesticRow(true);
         onActionChange('nakliye');
     } else if (category === 'sarj') {
         setShowTowRow(false); setShowChargeRow(!showChargeRow); setShowDomesticRow(false);
@@ -125,6 +130,7 @@ export default function ActionPanel({
     }
   };
 
+  // 3. Konum Bulma
   const findMyLocation = () => {
     setIsLocating(true);
     if (navigator.geolocation) {
@@ -134,7 +140,7 @@ export default function ActionPanel({
           setIsLocating(false);
         },
         () => {
-          onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+          onSearchLocation(DEFAULT_LAT, DEFAULT_LNG); // Fallback İzmir
           setIsLocating(false);
         },
         { enableHighAccuracy: true, timeout: 8000 }
@@ -147,8 +153,8 @@ export default function ActionPanel({
     fetch(`${API_URL}/tariffs`).then(res => res.json()).then(data => { if (Array.isArray(data)) setTariffs(data); });
   }, []);
 
+  // 4. Panel Sürükleme Mantığı
   const handleDragStart = (y: number) => { dragStartY.current = y; };
-  
   const handleDragEnd = (y: number) => {
     if (dragStartY.current === null) return;
     const diff = dragStartY.current - y; 
@@ -165,18 +171,17 @@ export default function ActionPanel({
     dragStartY.current = null;
   };
 
-  // 🔥 YENİ FİYAT HESAPLAMA (Nested Pricing'e Göre)
+  // 5. Fiyat Hesaplama
   const getPricing = (driver: Driver) => {
     const subType = driver.service?.subType;
     const matched = tariffs.find(t => t.serviceType === subType);
     
-    // Veritabanındaki 'pricing' objesinden al, yoksa tarifeden al
     const opening = driver.pricing?.openingFee ?? matched?.openingFee ?? 350;
     const unit = driver.pricing?.pricePerUnit ?? matched?.pricePerUnit ?? 40;
     
-    // Basit mesafe bazlı hesap (simülasyon için)
-    const distKm = driver.distance ? driver.distance / 1000 : 1; 
-    const calculated = opening + (distKm * unit);
+    // Mesafe yoksa 1 km varsay (0 hatasını önlemek için)
+    const distKm = (driver.distance || 0) / 1000; 
+    const calculated = opening + (Math.max(1, distKm) * unit);
     
     return { 
         total: calculated, 
@@ -186,71 +191,86 @@ export default function ActionPanel({
     };
   };
 
+  // 6. Google Maps Aç
   const openGoogleMaps = (e: React.MouseEvent, driver: Driver) => {
     e.stopPropagation();
     const lat = driver.location?.coordinates[1];
     const lng = driver.location?.coordinates[0];
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+    if (lat && lng) {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+    }
   };
 
-  // --- 🔥 GÜNCELLENMİŞ FİLTRELEME & SIRALAMA MANTIĞI (YENİ DB UYUMLU) ---
+  // 🔥🔥🔥 GELİŞMİŞ FİLTRELEME MOTORU (YENİ DB UYUMLU) 🔥🔥🔥
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
 
-    // 1. Şehir Filtresi (Adres objesinden)
+    // A) ŞEHİR FİLTRESİ
     if (selectedCity) {
       list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
     
-    // 2. Kategori Filtresi (Service objesinden)
+    // B) KATEGORİ FİLTRESİ
     if (actionType) {
-        // Özel Filtreler (SubType kontrolü)
-        if (actionType === 'yurt_disi') { list = list.filter(d => d.service?.subType === 'yurt_disi_nakliye'); }
-        else if (actionType === 'vinc') { list = list.filter(d => d.service?.subType === 'vinc'); }
-        else if (actionType === 'oto_kurtarma') { list = list.filter(d => d.service?.subType === 'oto_kurtarma'); }
-        else if (actionType === 'sarj_istasyonu') { list = list.filter(d => d.service?.subType === 'sarj_istasyonu'); }
-        else if (actionType === 'seyyar_sarj') { list = list.filter(d => d.service?.subType === 'seyyar_sarj' || d.service?.subType === 'MOBIL_UNIT'); }
-        
-        // Yurt İçi Alt Kırılımları
-        else if (['nakliye', 'tir', 'kamyon', 'kamyonet'].includes(actionType)) { 
-            if (actionType === 'nakliye') {
-                 // Genel Nakliye seçildiyse hepsini getir
-                 list = list.filter(d => ['nakliye', 'kamyon', 'tir', 'kamyonet'].includes(d.service?.subType || ''));
-            } else {
-                 // Spesifik (Tır vs)
-                 list = list.filter(d => d.service?.subType === actionType);
-            }
+        const type = actionType.toLowerCase();
+
+        // 1. YURT DIŞI
+        if (type === 'yurt_disi') { 
+            list = list.filter(d => d.service?.subType === 'yurt_disi_nakliye'); 
         }
-        
-        // Ana Kategori Seçimleri (MainType kontrolü)
-        else if (actionType === 'kurtarici') {
+        // 2. VİNÇ
+        else if (type === 'vinc') { 
+            list = list.filter(d => d.service?.subType === 'vinc'); 
+        }
+        // 3. OTO KURTARMA
+        else if (type === 'kurtarici') { 
+            list = list.filter(d => d.service?.subType === 'kurtarici'); 
+        }
+        // 4. ŞARJ İSTASYONU
+        else if (type === 'sarj') { 
+            list = list.filter(d => d.service?.subType === 'istasyon'); 
+        }
+        // 5. MOBİL ŞARJ
+        else if (type === 'sarj') { 
+            list = list.filter(d =>  d.service?.subType === 'MOBIL_UNIT'); 
+        }
+        // 6. KURTARICI (GENEL)
+        else if (type === 'kurtarici') {
             list = list.filter(d => d.service?.mainType === 'KURTARICI');
         }
-        else if (actionType === 'sarj') {
+        // 7. ŞARJ (GENEL)
+        else if (type === 'sarj') {
             list = list.filter(d => d.service?.mainType === 'SARJ');
+        }
+        
+        // 8. NAKLİYE GRUBU (En Karmaşığı)
+        else if (['nakliye', 'tir', 'kamyon', 'kamyonet'].includes(type)) { 
+            if (type === 'nakliye') {
+                 // "Tümü" seçildiyse: MainType Nakliye olanları veya SubType'ı nakliye ailesinden olanları getir
+                 list = list.filter(d => 
+                    d.service?.mainType === 'NAKLIYE' || 
+                    ['nakliye', 'kamyon', 'tir', 'kamyonet', 'evden_eve', 'yurt_disi'].includes(d.service?.subType || '')
+                 );
+            } else {
+                 // Sadece "Tır" veya sadece "Kamyon"
+                 list = list.filter(d => d.service?.subType === type);
+            }
         }
     }
 
-    // 3. Sıralama Mantığı
+    // C) SIRALAMA
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-      
-      if (sortMode === 'price_asc') {
-          return getPricing(a).total - getPricing(b).total;
-      }
-      
-      if (sortMode === 'price_desc') {
-          return getPricing(b).total - getPricing(a).total;
-      }
-
-      return a.distance - b.distance; // Default
+      if (sortMode === 'price_asc') return getPricing(a).total - getPricing(b).total;
+      if (sortMode === 'price_desc') return getPricing(b).total - getPricing(a).total;
+      return (a.distance || 0) - (b.distance || 0); // Default: Yakınlık
     });
 
     return list;
 
   }, [safeDrivers, sortMode, selectedCity, actionType]); 
 
-  // --- INFINITE SCROLL ---
+  // Infinite Scroll
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop <= clientHeight + 50) {
@@ -262,10 +282,12 @@ export default function ActionPanel({
 
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
   
+  // Panel Yüksekliği
   let heightClass = 'h-36'; 
   if (panelState === 1) heightClass = 'h-[55vh]'; 
   if (panelState === 2) heightClass = 'h-[92vh]'; 
 
+  // Sıralama Etiketi
   const getSortLabel = () => {
       switch(sortMode) {
           case 'distance': return 'YAKIN';
@@ -291,6 +313,7 @@ export default function ActionPanel({
       onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
       className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
     >
+      {/* DRAG HANDLE */}
       <div 
         onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 0)} 
         className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50 hover:opacity-80 transition-opacity"
@@ -300,7 +323,7 @@ export default function ActionPanel({
 
       <div className="px-6 pb-6 flex flex-col h-full overflow-hidden relative">
         
-        {/* --- 1. ANA KATEGORİ BUTONLARI --- */}
+        {/* --- 1. ANA KATEGORİLER --- */}
         <div className="flex gap-3 shrink-0 mb-4">
           <button 
             onClick={() => handleMainCategoryClick('kurtarici')} 
@@ -329,7 +352,7 @@ export default function ActionPanel({
           
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-              <button onClick={() => { onFilterApply('oto_kurtarma'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white ring-2 ring-red-400' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
+              <button onClick={() => { onFilterApply('kurtarici'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'kurtarici' ? 'bg-red-800 text-white ring-2 ring-red-400' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
               <button onClick={() => { onFilterApply('vinc'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white ring-2 ring-red-400' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> Vinç</button>
             </div>
           )}
@@ -370,13 +393,13 @@ export default function ActionPanel({
 
           {showChargeRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-              <button onClick={() => { onFilterApply('sarj_istasyonu'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
-              <button onClick={() => { onFilterApply('seyyar_sarj'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white ring-2 ring-cyan-300' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}><Zap size={14}/> Mobil Şarj</button>
+              <button onClick={() => { onFilterApply('SARJ'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'SARJ' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
+              <button onClick={() => { onFilterApply('SARJ'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'SARJ' ? 'bg-cyan-600 text-white ring-2 ring-cyan-300' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}><Zap size={14}/> Mobil Şarj</button>
             </div>
           )}
         </div>
 
-        {/* --- 3. BAR --- */}
+        {/* --- 3. FİLTRE & SIRALAMA BAR --- */}
         {panelState > 0 && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-2 shrink-0">
               <div className="relative shrink-0 group">
@@ -422,21 +445,22 @@ export default function ActionPanel({
             {renderedDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id;
                 const pricing = getPricing(driver);
-                // 🔥 YENİ DB YAPISI: subType kontrolü
-                const type = driver.service?.subType || '';
+                const subType = driver.service?.subType || '';
+                const isStation = subType === 'istasyon';
                 
+                // İKON VE RENK BELİRLEME
                 let iconBg = 'bg-gray-600'; 
                 let IconComponent = Truck;
 
-                if (type === 'sarj_istasyonu') { iconBg = 'bg-blue-600'; IconComponent = Navigation; }
-                else if (type === 'seyyar_sarj' || type === 'MOBIL_UNIT') { iconBg = 'bg-cyan-500'; IconComponent = Zap; }
-                else if (type === 'vinc') { iconBg = 'bg-red-900'; IconComponent = Anchor; }
-                else if (type === 'oto_kurtarma' || type.includes('kurtar')) { iconBg = 'bg-red-600'; IconComponent = CarFront; }
-                else if (type === 'yurt_disi_nakliye') { iconBg = 'bg-indigo-600'; IconComponent = Globe; }
-                else if (type === 'nakliye') { iconBg = 'bg-purple-500'; IconComponent = Home; }
-                else if (type === 'tir') { iconBg = 'bg-purple-800'; IconComponent = Truck; }
-                else if (type === 'kamyonet') { iconBg = 'bg-purple-400'; IconComponent = Package; }
-                else if (['nakliye', 'kamyon'].some(t => type.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
+                if (subType === 'SARJ') { iconBg = 'bg-blue-600'; IconComponent = Navigation; }
+                else if (subType === 'seyyar_sarj' || subType === 'MOBIL_UNIT') { iconBg = 'bg-cyan-500'; IconComponent = Zap; }
+                else if (subType === 'vinc') { iconBg = 'bg-red-900'; IconComponent = Anchor; }
+                else if (subType === 'kurtarici' || subType === 'kurtarici') { iconBg = 'bg-red-600'; IconComponent = CarFront; }
+                else if (subType === 'yurt_disi_nakliye') { iconBg = 'bg-indigo-600'; IconComponent = Globe; }
+                else if (subType === 'nakliye') { iconBg = 'bg-purple-500'; IconComponent = Home; }
+                else if (subType === 'tir') { iconBg = 'bg-purple-800'; IconComponent = Truck; }
+                else if (subType === 'kamyonet') { iconBg = 'bg-purple-400'; IconComponent = Package; }
+                else if (['nakliye', 'kamyon'].some(t => subType.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
 
                 return (
                 <div 
@@ -452,15 +476,18 @@ export default function ActionPanel({
                         </div>
                         <div className="min-w-0 flex-1">
                         <h4 className="font-black text-gray-900 text-sm uppercase truncate leading-tight">
-                            {/* 🔥 YENİ DB: businessName */}
                             {driver.businessName} 
                             <span className="flex items-center gap-1 mt-1">
                                 {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
                                 <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>
                             </span>
                         </h4>
-                        {/* 🔥 YENİ DB: address.city */}
-                        <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate"><MapPin size={10} className="text-green-500" /> {driver.address?.city || 'Merkez'}</div>
+                        
+                        {/* 🔥 İLÇE VE ŞEHİR BİLGİSİ 🔥 */}
+                        <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate">
+                            <MapPin size={10} className="text-green-500" /> 
+                            {driver.address?.district ? `${driver.address.district} / ` : ''}{driver.address?.city || 'Merkez'}
+                        </div>
                         </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -478,15 +505,18 @@ export default function ActionPanel({
                         
                         <button 
                             onClick={(e) => openGoogleMaps(e, driver)}
-                            className={`w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white transition-transform ${type.includes('sarj') || type === 'MOBIL_UNIT' ? 'bg-blue-600 shadow-blue-500/30' : 'bg-gray-800 shadow-black/20'}`}
+                            className={`w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white transition-transform ${isStation ? 'bg-blue-600 shadow-blue-500/30' : 'bg-gray-800 shadow-black/20'}`}
                         >
-                            <Navigation size={16} /> YOL TARİFİ AL
+                            <MapIcon size={16} /> HARİTADA GİT (ROTA)
                         </button>
 
+                        {/* 🔥 ŞARJ İSTASYONU İSE ARAMA BUTONLARINI GİZLE 🔥 */}
+                        {!isStation && (
                         <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
-                        <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button>
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${driver.phoneNumber?.replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button>
                         </div>
+                        )}
                     </div>
                     )}
                 </div>

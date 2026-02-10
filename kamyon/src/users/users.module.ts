@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { UsersController } from './users.controller';
+
 import { UsersService } from './users.service';
 
 // 🔥 YENİ ŞEMALARI BURAYA IMPORT ETMELİSİN
 import { NewUser, NewUserSchema } from '../data/schemas/new-user.schema';
 import { NewProvider, NewProviderSchema } from '../data/schemas/new-provider.schema';
+import { UsersController } from './users.controller';
 
 @Module({
   imports: [
