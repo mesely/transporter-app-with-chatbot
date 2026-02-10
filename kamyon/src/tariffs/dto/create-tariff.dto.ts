@@ -1,10 +1,12 @@
 export class CreateTariffDto {
-  serviceType: string; // Burası eskiden serviceSlug'dı, serviceType yaptık.
-  openingFee: number;
-  unitPrice: number;
-  unit: 'km' | 'kwh' | 'fixed';
-  currency?: string;
-  nightMultiplier?: number;
-  minPrice?: number;
-  extraSettings?: Record<string, any>;
+  serviceType: string;    // 'nakliye', 'kurtarici', 'sarj'
+  openingFee: number;     // Açılış ücreti
+  pricePerUnit: number;   // Birim başı (km) ücret
+  unit: string;           // 'km' veya 'kwh'
+  
+  // Opsiyonel Alanlar (?)
+  currency?: string;      // 'TL'
+  minPrice?: number;      // İndi-bindi
+  nightMultiplier?: number; // Gece tarifesi (1.5 vb.)
+  extraSettings?: any;    // Esnek ayarlar
 }

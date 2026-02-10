@@ -8,7 +8,6 @@ export class ReportsController {
 
   @Post()
   async createReport(@Body() createReportDto: CreateReportDto) {
-    // Veri doğrulama otomatik yapılıyor (Dto sayesinde)
     const savedReport = await this.reportsService.create(createReportDto);
     return { message: 'Şikayet başarıyla alındı', reportId: savedReport._id };
   }
@@ -23,7 +22,7 @@ export class ReportsController {
     return this.reportsService.findOne(id);
   }
 
-  // Örn: Admin şikayeti kapatmak isterse
+  // Admin şikayeti güncellerken (Örn: Status -> RESOLVED)
   @Patch(':id')
   async updateReport(@Param('id') id: string, @Body() updateReportDto: UpdateReportDto) {
     return this.reportsService.update(id, updateReportDto);

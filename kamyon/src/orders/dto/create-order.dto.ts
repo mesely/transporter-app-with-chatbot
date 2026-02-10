@@ -1,56 +1,23 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsEnum, ValidateNested, IsMongoId } from 'class-validator';
-import { Type } from 'class-transformer';
+// src/orders/dto/create-order.dto.ts
 
 export enum OrderStatus {
-  PENDING = 'PENDING',       // Müşteri oluşturdu, şoför aranıyor
-  ACCEPTED = 'ACCEPTED',     // Şoför kabul etti
-  IN_PROGRESS = 'IN_PROGRESS', // Şoför yola çıktı / işlem başladı
-  COMPLETED = 'COMPLETED',   // İş bitti
-  CANCELLED = 'CANCELLED'    // İptal edildi
-}
-
-class LocationDto {
-  @IsNumber()
-  lat: number;
-
-  @IsNumber()
-  lng: number;
-
-  @IsOptional()
-  @IsString()
-  address?: string;
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  ON_THE_WAY = 'ON_THE_WAY',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
 }
 
 export class CreateOrderDto {
-  @IsNotEmpty()
-  @IsMongoId() // MongoDB ID formatında olmalı
   customerId: string;
-
-  @IsOptional()
-  @IsMongoId()
-  driverId?: string; // İlk etapta boş olabilir (havuza düşecekse)
-
-  @IsNotEmpty()
-  @IsString()
-  serviceType: string; // 'kurtarici', 'nakliye'
-
-  // Başlangıç Konumu
-  @ValidateNested()
-  @Type(() => LocationDto)
-  pickupLocation: LocationDto;
-
-  // Bitiş Konumu (Opsiyonel - örn: Sadece akü takviyesi ise bitiş yok)
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => LocationDto)
-  dropoffLocation?: LocationDto;
-
-  @IsOptional()
-  @IsNumber()
-  price?: number; // Tahmini veya anlaşılan fiyat
+  driverId?: string; // Bu ID artık NewProvider._id olacak
+  serviceType: string;
+  pickupLocation: { lat: number; lng: number; address?: string };
+  dropoffLocation?: { lat: number; lng: number; address?: string };
+  price?: number;
+  note?: string;
 }
 
 export class UpdateOrderStatusDto {
-  @IsEnum(OrderStatus)
   status: OrderStatus;
 }

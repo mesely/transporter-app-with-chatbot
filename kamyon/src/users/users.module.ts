@@ -2,18 +2,21 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { User, UserSchema } from './user.schema';
-import { Profile, ProfileSchema } from './schemas/profile.schema';
+
+// 🔥 YENİ ŞEMALARI BURAYA IMPORT ETMELİSİN
+import { NewUser, NewUserSchema } from '../data/schemas/new-user.schema';
+import { NewProvider, NewProviderSchema } from '../data/schemas/new-provider.schema';
 
 @Module({
   imports: [
+    // 🔥 BU KISIM EKSİKTİ: Modelleri Modüle Tanıtıyoruz
     MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
-      { name: Profile.name, schema: ProfileSchema },
+      { name: NewUser.name, schema: NewUserSchema },
+      { name: NewProvider.name, schema: NewProviderSchema },
     ]),
   ],
   controllers: [UsersController],
   providers: [UsersService],
-  exports: [UsersService],
+  exports: [UsersService], // Başka yerlerde (örn: Auth) kullanılacaksa dışa aç
 })
 export class UsersModule {}

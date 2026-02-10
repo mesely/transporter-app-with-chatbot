@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Body, Query, UseInterceptors, UploadedFile, Logger, BadRequestException, Delete, Param, Put } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import * as XLSX from 'xlsx';
 
 @Controller('users')
@@ -10,45 +9,40 @@ export class UsersController {
 
   constructor(private readonly usersService: UsersService) {}
 
-  // --- 1. KULLANICI OLUŞTURMA (TEKİL) ---
+  // --- 1. OLUŞTURMA ---
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(@Body() body: any) {
+    return this.usersService.create(body);
   }
 
-  // --- 2. AKILLI HARİTA & LİSTELEME ENDPOINT'İ ---
+  // --- 2. AKILLI HARİTA & LİSTELEME ---
   @Get('nearby')
   async findNearby(
     @Query('lat') lat: string, 
     @Query('lng') lng: string, 
     @Query('type') type: string,
-    @Query('zoom') zoom: string, // Harita uzaklık seviyesi
-    @Query('mode') mode: string  // 'list' ise karma liste döner
+    @Query('zoom') zoom: string,
+    @Query('mode') mode: string 
   ) {
-    // Varsayılan Koordinatlar (Veri gelmezse çökmemesi için)
     const latitude = parseFloat(lat || '38.4237');
     const longitude = parseFloat(lng || '27.1428');
     const zoomLevel = zoom ? parseInt(zoom) : 15;
 
-    // A) LİSTE MODU (ActionPanel - Infinite Scroll)
-    // Listeyi kaydırırken sadece kamyonlar doluşmasın diye her türden 5'er tane getirir.
+    // A) LİSTE MODU (Karışık Feed)
     if (mode === 'list') {
       return this.usersService.findDiverseList(latitude, longitude, 5);
     }
 
-    // B) AKILLI HARİTA MODU (Zoom Out yapınca)
-    // Zoom seviyesi 14'ten küçükse (uzaksa), haritayı karelere böler ve her kareden 1 temsilci getirir.
-    if (zoom && zoomLevel < 14) {
+    // B) AKILLI HARİTA (Uzak Zoom)
+    if (zoom && zoomLevel < 13) {
       return this.usersService.findSmartMapData(latitude, longitude, zoomLevel);
     }
 
-    // C) STANDART MOD (Zoom In yapınca veya Filtre seçince)
-    // Yakındayken veya özel bir tür (örn: 'vinç') seçiliyken normal arama yapar.
-    const searchType = this.normalizeServiceType(type);
-    return this.usersService.findNearby(latitude, longitude, searchType);
+    // C) YAKIN ARAMA
+    return this.usersService.findNearby(latitude, longitude, type);
   }
 
-  // --- 3. DİĞER STANDART ENDPOINTLER (MEVCUT) ---
+  // --- 3. FİLTRELEME & YÖNETİM ---
   @Get('all')
   async findAllFiltered(@Query('city') city?: string, @Query('type') type?: string) {
     return this.usersService.findFiltered(city, type);
@@ -64,7 +58,7 @@ export class UsersController {
     return this.usersService.deleteOne(id);
   }
 
-  // --- 4. EXCEL IMPORT (MEVCUT) ---
+  // --- 4. EXCEL IMPORT (YENİ YAPIYA UYGUN) ---
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importUsers(@UploadedFile() file: any) {
@@ -76,41 +70,28 @@ export class UsersController {
     for (const item of data) {
       const lat = parseFloat(item.lat || item.latitude);
       const lng = parseFloat(item.lng || item.longitude);
+      
       if (lat && lng) {
         try {
           await this.usersService.create({
-            ...item,
-            serviceType: this.cleanImportType(item.serviceType || item.hizmetTipi),
+            businessName: item.firstName || item.isletmeAdi || item.businessName, // İsim mapping
+            phoneNumber: item.phoneNumber || item.telefon,
+            email: item.email,
+            address: item.address || item.adres,
+            city: item.city || item.sehir,
+            district: item.district || item.ilce,
+            serviceType: item.serviceType || item.hizmetTipi, // create metodunda ENUM'a çevrilecek
             filterTags: item.filters ? item.filters.split(',') : [],
-            link: item.link || '',
-            metadata: item.extra ? JSON.parse(item.extra) : {}
+            link: item.link || item.website,
+            lat: lat,
+            lng: lng,
+            openingFee: item.openingFee,
+            pricePerUnit: item.pricePerUnit
           });
           count++;
         } catch (e) { this.logger.error(`Import Hatası: ${e.message}`); }
       }
     }
     return { status: 'SUCCESS', count };
-  }
-
-  // --- 5. YARDIMCI FONKSİYONLAR ---
-  private normalizeServiceType(type: string): string {
-    if (!type) return '';
-    const lower = type.toLowerCase().trim();
-    if (lower.includes('yurt') || lower === 'yurt_disi_nakliye') return 'nakliye';
-    if (lower.includes('şarj') || lower.includes('sarj')) return 'sarj';
-    if (lower.includes('vinc') || lower.includes('vinç')) return 'kurtarici';
-    if (lower.includes('kurtar')) return 'kurtarici';
-    return lower; 
-  }
-
-  private cleanImportType(type: string): string {
-    if (!type) return 'nakliye';
-    const lower = type.toLowerCase();
-    if (lower.includes('yurt') || lower.includes('global')) return 'yurt_disi_nakliye';
-    if (lower.includes('seyyar')) return 'seyyar_sarj';
-    if (lower.includes('istasyon')) return 'sarj_istasyonu';
-    if (lower.includes('vinc')) return 'vinc';
-    if (lower.includes('kurtar')) return 'kurtarici';
-    return 'nakliye';
   }
 }

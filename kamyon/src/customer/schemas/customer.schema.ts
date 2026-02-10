@@ -3,9 +3,9 @@ import { Document } from 'mongoose';
 
 export type CustomerDocument = Customer & Document;
 
-@Schema({ timestamps: true }) // created_at ve updated_at otomatik oluşur
+@Schema({ timestamps: true })
 export class Customer {
-  // Telefon numarası benzersiz (Unique) olmalı. Müşteriyi bununla tanıyacağız.
+  // Telefon numarası BENZERSİZ (Unique) anahtarımızdır.
   @Prop({ required: true, unique: true, index: true })
   phoneNumber: string;
 
@@ -15,24 +15,23 @@ export class Customer {
   @Prop()
   lastName: string;
 
-  @Prop()
+  @Prop({ unique: true, sparse: true }) // Email varsa unique olsun, yoksa sorun değil
   email: string;
 
   @Prop()
   city: string;
 
   @Prop({ default: true })
-  termsAccepted: boolean; // Sözleşme onayı
+  termsAccepted: boolean;
 
-  // Bildirim göndermek için (OneSignal / Firebase Token)
+  // Bildirim Tokeni (OneSignal / Firebase)
   @Prop()
   deviceToken: string;
 
-  // Müşterinin toplam işlem sayısı (Analiz için)
+  // İstatistikler
   @Prop({ default: 0 })
   orderCount: number;
 
-  // Müşterinin kara listede olup olmadığı
   @Prop({ default: false })
   isBanned: boolean;
 }

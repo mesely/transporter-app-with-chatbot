@@ -11,8 +11,8 @@ export class OrdersService {
   // 1. CREATE
   async create(createOrderDto: CreateOrderDto): Promise<OrderDocument> {
     const newOrder = new this.orderModel({
-      customer: createOrderDto.customerId, // DTO'dan gelen ID'yi şemadaki ref alanına atıyoruz
-      driver: createOrderDto.driverId,
+      customer: createOrderDto.customerId,
+      driver: createOrderDto.driverId, // Bu ID artık NewProvider ID'si olacak
       ...createOrderDto
     });
     return newOrder.save();
@@ -26,16 +26,23 @@ export class OrdersService {
 
     return this.orderModel.find(query)
       .sort({ createdAt: -1 })
-      .populate('customer', 'firstName lastName phoneNumber') // Müşteri detaylarını getir
-      .populate('driver', 'firstName lastName phoneNumber serviceType rating') // Şoför detaylarını getir
+      // 🔥 Müşteri hala eski User olabilir veya NewUser. 
+      // Eğer müşteri tarafını değiştirmediysek burası kalabilir ama 'email' eklemek iyi olur.
+      .populate('customer', 'firstName lastName phoneNumber email') 
+      
+      // 🔥 KRİTİK DEĞİŞİKLİK: Sürücü artık NewProvider!
+      // 'firstName lastName' YERİNE 'businessName' çekiyoruz.
+      // Ayrıca 'service' objesini de çekiyoruz ki 'kurtarici' mı 'vinc' mi görelim.
+      .populate('driver', 'businessName phoneNumber rating service pricing location') 
       .exec();
   }
 
   // 3. FIND ONE
   async findOne(id: string): Promise<OrderDocument> {
     const order = await this.orderModel.findById(id)
-      .populate('customer', 'firstName lastName phoneNumber')
-      .populate('driver', 'firstName lastName phoneNumber')
+      .populate('customer', 'firstName lastName phoneNumber email')
+      // 🔥 AYNI DEĞİŞİKLİK BURADA DA GEÇERLİ
+      .populate('driver', 'businessName phoneNumber rating service')
       .exec();
       
     if (!order) throw new NotFoundException('Sipariş bulunamadı');

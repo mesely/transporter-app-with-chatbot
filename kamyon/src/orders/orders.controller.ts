@@ -11,7 +11,7 @@ export class OrdersController {
     return this.ordersService.create(createOrderDto);
   }
 
-  // GET /orders?customerId=123 veya /orders?driverId=456
+  // GET /orders?customerId=... veya /orders?driverId=...
   @Get()
   findAll(
     @Query('customerId') customerId?: string,

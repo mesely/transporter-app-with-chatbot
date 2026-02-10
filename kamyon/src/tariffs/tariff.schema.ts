@@ -6,10 +6,10 @@ export type TariffDocument = Tariff & Document;
 @Schema({ timestamps: true })
 export class Tariff {
   @Prop({ required: true, unique: true, index: true })
-  serviceType: string; // 'nakliye', 'kurtarici'
+  serviceType: string; // 'nakliye', 'kurtarici', 'sarj'
 
   @Prop({ required: true })
-  openingFee: number; // Açılış
+  openingFee: number; // Açılış Ücreti
 
   @Prop({ required: true })
   pricePerUnit: number; // Km başı ücret
@@ -20,7 +20,7 @@ export class Tariff {
   @Prop({ default: 'TL' })
   currency: string;
 
-  // --- YENİ EKLENEN SAĞLAMLAŞTIRMA KOLONLARI ---
+  // --- GELİŞMİŞ AYARLAR ---
 
   @Prop({ default: 0 })
   minPrice: number; // Minimum ödenecek tutar (İndi-bindi)
@@ -28,8 +28,7 @@ export class Tariff {
   @Prop({ default: 1.0 })
   nightMultiplier: number; // Gece tarifesi çarpanı (örn: 1.5)
 
-  // ESNEK KOLON: Bekleme ücreti, trafik çarpanı vb. buraya atılır.
-  // DB'yi bozmadan yeni kural eklemeni sağlar.
+  // Esnek Kolon (Bekleme ücreti, trafik çarpanı vb.)
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   extraSettings: any; 
 }

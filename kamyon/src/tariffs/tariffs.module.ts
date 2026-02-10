@@ -6,10 +6,11 @@ import { Tariff, TariffSchema } from './tariff.schema';
 
 @Module({
   imports: [
+    // 🔥 ŞEMAYI BURAYA TANITIYORUZ Kİ SERVİS KULLANABİLSİN
     MongooseModule.forFeature([{ name: Tariff.name, schema: TariffSchema }]),
   ],
   controllers: [TariffsController],
   providers: [TariffsService],
-  exports: [TariffsService],
+  exports: [TariffsService], // Diğer modüller fiyat hesaplamak isterse diye export ettik
 })
 export class TariffsModule {}

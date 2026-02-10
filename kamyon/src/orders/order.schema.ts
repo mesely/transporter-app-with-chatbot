@@ -1,24 +1,29 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { OrderStatus } from './dto/create-order.dto';
-import { User } from '../users//user.schema'; // User şemasını import et
+
+// 🔥 Eski User (Müşteri için) ve Yeni Provider (Şoför için) Importları
+import { User } from '../users/user.schema'; 
+import { NewProvider } from '../data/schemas/new-provider.schema'; // Dosya yolu sende farklıysa düzelt
 
 export type OrderDocument = Order & Document;
 
 @Schema({ timestamps: true })
 export class Order {
-  // Müşteri Bağlantısı
+  
+  // 1. MÜŞTERİ (Hala standart User tablosunda olabilir)
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   customer: User;
 
-  // Şoför Bağlantısı (Başta boş olabilir)
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
-  driver: User;
+  // 2. ŞOFÖR / HİZMET SAĞLAYICI (🔥 ARTIK 'NewProvider' TABLOSUNDA)
+  // Bu sayede .populate('driver') dediğinde businessName, serviceType vb. gelir.
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'NewProvider' })
+  driver: NewProvider;
 
   @Prop({ required: true })
-  serviceType: string;
+  serviceType: string; // 'kurtarici', 'nakliye' vb.
 
-  // Konumlar (Obje olarak tutuyoruz)
+  // Konumlar
   @Prop({ type: Object, required: true })
   pickupLocation: {
     lat: number;
@@ -42,11 +47,9 @@ export class Order {
   @Prop({ default: 'TL' })
   currency: string;
 
-  // Şoförün o anki notu veya iletişim yöntemi
   @Prop()
   note?: string;
   
-  // ESNEK ALAN: Mesafe, süre vb.
   @Prop({ type: MongooseSchema.Types.Mixed })
   metaData?: any;
 }

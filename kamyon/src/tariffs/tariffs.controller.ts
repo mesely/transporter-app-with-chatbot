@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query, Param, Patch, Delete } from '@nestjs/common';
 import { TariffsService } from './tariffs.service';
+import { CreateTariffDto } from './dto/create-tariff.dto';
 
 @Controller('tariffs')
 export class TariffsController {
@@ -7,8 +8,8 @@ export class TariffsController {
 
   // POST /tariffs -> Yeni tarife ekle veya güncelle
   @Post()
-  create(@Body() body: any) {
-    return this.tariffsService.create(body);
+  create(@Body() createTariffDto: CreateTariffDto) {
+    return this.tariffsService.create(createTariffDto);
   }
 
   // GET /tariffs -> Hepsini getir

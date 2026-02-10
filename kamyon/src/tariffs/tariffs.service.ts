@@ -2,19 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Tariff, TariffDocument } from './tariff.schema';
-import { CreateTariffDto } from './dto/create-tariff.dto'; // DTO'yu import et
+import { CreateTariffDto } from './dto/create-tariff.dto';
 
 @Injectable()
 export class TariffsService {
   constructor(@InjectModel(Tariff.name) private tariffModel: Model<TariffDocument>) {}
 
-  // Create/Update mantığın harika, aynen koruyoruz.
-  // Sadece tip güvenliği için 'any' yerine DTO kullanıyoruz.
+  // Create/Update (Upsert Mantığı)
   async create(data: CreateTariffDto): Promise<TariffDocument> {
+    // serviceType (örn: 'nakliye') varsa güncelle, yoksa yeni oluştur.
     return this.tariffModel.findOneAndUpdate(
       { serviceType: data.serviceType }, 
       data, 
-      { upsert: true, new: true, setDefaultsOnInsert: true } // setDefaultsOnInsert önemli
+      { upsert: true, new: true, setDefaultsOnInsert: true } 
     );
   }
 
