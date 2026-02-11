@@ -5,7 +5,7 @@ import {
   ChevronDown, LocateFixed, Loader2, 
   Navigation, Globe, CarFront, Anchor, Home, 
   Package, Container, ArrowUpDown, Banknote, Map as MapIcon,
-  Check, Phone, MessageCircle 
+  Check, Phone, MessageCircle, Info 
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
@@ -18,20 +18,43 @@ const CITIES = [
 const DEFAULT_LAT = 38.4237; 
 const DEFAULT_LNG = 27.1428;
 
+// --- 🔥 YENİ: ARAÇ TEKNİK BİLGİLERİ (Screenshot'tan Alındı) ---
+// Bu bilgiler Sürücü Kartlarında otomatik görünecek
+const VEHICLE_SPECS: Record<string, { capacity: string, desc: string }> = {
+  // TIR GRUBU
+  frigorifik: { capacity: '22-24 ton', desc: 'Gıda - İlaç - Soğuk zincir' },
+  tenteli:    { capacity: '24 ton', desc: 'Paletli yük - Genel kargo' },
+  acik_kasa:  { capacity: '22-24 ton', desc: 'Demir-çelik - Makine - Vinç' }, // Sal Kasa
+  lowbed:     { capacity: '30-60 ton', desc: 'İş makinesi - Ağır sanayi' },
+  konteyner:  { capacity: '25-30 ton', desc: 'Liman - Konteyner taşımacılığı' },
+
+  // KAMYON GRUBU
+  '6_teker':  { capacity: '15-20 ton', desc: 'Paletli yük - Kısa mesafe' },
+  '10_teker': { capacity: '20-25 ton', desc: 'İç - Ağır taşıma - Uzun mesafe' },
+  '12_teker': { capacity: '20-25 ton', desc: 'Ağır ve uzun yol - Fabrika yükleri' },
+  kirkayak:   { capacity: '25-30 ton', desc: 'Ağır sanayi - Büyük hacim' },
+  '8_teker':  { capacity: '18-22 ton', desc: 'Orta mesafe - Genel yük' },
+
+  // KAMYONET GRUBU
+  panelvan:    { capacity: '1-1.5 ton', desc: 'Koli - Eşya - Hızlı Dağıtım' },
+  kapali_kasa: { capacity: '2-3 ton', desc: 'Mobilya - Evden Eve - Kuru Yük' }
+};
+
 // --- ALT SEÇENEK LİSTELERİ ---
 const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   tir: [
     { id: 'tenteli', label: 'Tenteli' },
     { id: 'frigorifik', label: 'Frigorifik' },
     { id: 'lowbed', label: 'Lowbed' },
-    { id: 'konteyner', label: 'Konteyner' }
+    { id: 'konteyner', label: 'Konteyner' },
+    { id: 'acik_kasa', label: 'Açık Kasa' }
   ],
   kamyon: [
     { id: '6_teker', label: '6 Teker' },
-    { id: '8_teker', label: '8 Teker' },
     { id: '10_teker', label: '10 Teker' },
     { id: '12_teker', label: '12 Teker' },
-    { id: 'kirkayak', label: 'Kırkayak' }
+    { id: 'kirkayak', label: 'Kırkayak' },
+    { id: '8_teker', label: '8 Teker' }
   ],
   kamyonet: [
     { id: 'panelvan', label: 'Panelvan' },
@@ -57,7 +80,6 @@ interface Driver {
   pricing?: { openingFee: number; pricePerUnit: number; };
 }
 
-// 🔥 DÜZELTME BURADA YAPILDI: activeTags ve onTagsChange EKLENDİ 🔥
 interface ActionPanelProps {
   onSearchLocation: (lat: number, lng: number) => void;
   onFilterApply: (type: string) => void; 
@@ -69,8 +91,6 @@ interface ActionPanelProps {
   onReset: () => void;
   activeDriverId: string | null;
   onSelectDriver: (id: string | null) => void;
-  
-  // Eksik olan özellikler bunlar:
   activeTags: string[];
   onTagsChange: (tags: string[]) => void;
 }
@@ -94,7 +114,7 @@ export default function ActionPanel({
   onSearchLocation, onFilterApply, onStartOrder, 
   actionType, onActionChange, drivers, loading, onReset,
   activeDriverId, onSelectDriver,
-  activeTags, onTagsChange // Props olarak alıyoruz
+  activeTags, onTagsChange 
 }: ActionPanelProps) {
   
   const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
@@ -106,7 +126,6 @@ export default function ActionPanel({
   const [showChargeRow, setShowChargeRow] = useState(false);
   const [showDomesticRow, setShowDomesticRow] = useState(false);
   
-  // Aktif Taşıma Tipi (Tır, Kamyon vb.)
   const [activeTransportFilter, setActiveTransportFilter] = useState<'tir' | 'kamyon' | 'kamyonet' | null>(null);
 
   const [visibleItems, setVisibleItems] = useState(5); 
@@ -127,14 +146,14 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // --- 1. ANA KATEGORİ SEÇİMİ ---
+  // --- ANA KATEGORİ SEÇİMİ ---
   const handleMainCategoryClick = (category: 'kurtarici' | 'nakliye' | 'sarj') => {
     setPanelState(1);
     setVisibleItems(5); 
     if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
 
     setActiveTransportFilter(null);
-    onTagsChange([]); // Etiketleri sıfırla
+    onTagsChange([]); 
 
     if (category === 'kurtarici') {
         setShowTowRow(!showTowRow); setShowChargeRow(false); setShowDomesticRow(false);
@@ -148,7 +167,7 @@ export default function ActionPanel({
     }
   };
 
-  // --- 2. ARAÇ TİPİ SEÇİMİ (TIR/KAMYON) ---
+  // --- ARAÇ TİPİ SEÇİMİ ---
   const handleTransportTypeClick = (type: 'tir' | 'kamyon' | 'kamyonet') => {
       if (activeTransportFilter === type) {
           setActiveTransportFilter(null);
@@ -162,15 +181,14 @@ export default function ActionPanel({
       setVisibleItems(5);
   };
 
-  // --- 3. ETİKET SEÇİMİ (Çoklu Seçim) ---
+  // --- ETİKET SEÇİMİ ---
   const handleTagClick = (tagId: string) => {
       const newTags = activeTags.includes(tagId) 
           ? activeTags.filter(t => t !== tagId) 
           : [...activeTags, tagId];
-      onTagsChange(newTags); // Page.tsx'e bildir
+      onTagsChange(newTags); 
   };
 
-  // Konum Bulma
   const findMyLocation = () => {
     setIsLocating(true);
     if (navigator.geolocation) {
@@ -213,7 +231,6 @@ export default function ActionPanel({
     if (lat && lng) window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
   };
 
-  // Liste Filtreleme (Şehir ve Sıralama) - Ana filtre page.tsx'te yapıldı
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
     if (selectedCity) list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
@@ -340,7 +357,6 @@ export default function ActionPanel({
           {showChargeRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
               <button onClick={() => { onFilterApply('sarj_istasyonu'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
-              {/* 🔥 SEYYAR ŞARJ DÜZELTMESİ YAPILDI */}
               <button onClick={() => { onFilterApply('seyyar_sarj'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white ring-2 ring-cyan-300' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}><Zap size={14}/> Mobil Şarj</button>
             </div>
           )}
@@ -395,14 +411,30 @@ export default function ActionPanel({
                 else if (subType === 'kamyonet') { iconBg = 'bg-purple-400'; IconComponent = Package; }
                 else if (['nakliye', 'kamyon'].some(t => subType.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
 
+                // 🔥 TEKNİK BİLGİ KARTI SEÇİMİ
+                const specs = driver.service?.tags?.find(tag => VEHICLE_SPECS[tag]) ? VEHICLE_SPECS[driver.service.tags.find(tag => VEHICLE_SPECS[tag])!] : null;
+
                 return (
                 <div key={driver._id} ref={el => { itemRefs.current[driver._id] = el; }} onClick={() => onSelectDriver(isSelected ? null : driver._id)} className={`bg-white/80 backdrop-blur-md rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 cursor-pointer active:scale-[0.98] ${isSelected ? 'border-green-500 ring-4 ring-green-500/10' : 'border-white/40'}`}>
                     <div className="flex justify-between items-start">
                         <div className="flex gap-4 flex-1 min-w-0">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}><IconComponent strokeWidth={2.5} /></div>
                             <div className="min-w-0 flex-1">
-                                <h4 className="font-black text-gray-900 text-sm uppercase truncate leading-tight">{driver.businessName} <span className="flex items-center gap-1 mt-1">{[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}<span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span></span></h4>
-                                <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate"><MapPin size={10} className="text-green-500" /> {driver.address?.district ? `${driver.address.district} / ` : ''}{driver.address?.city || 'Merkez'}</div>
+                                <h4 className="font-black text-gray-900 text-sm uppercase truncate leading-tight">{driver.businessName} 
+                                  <span className="flex items-center gap-1 mt-1">{[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}<span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span></span>
+                                </h4>
+                                
+                                {/* 🔥 TONAJ VE TİP BİLGİSİ (Varsa Göster) */}
+                                {specs && (
+                                  <div className="mt-1 flex items-center gap-1 bg-purple-50 w-fit px-2 py-0.5 rounded-lg border border-purple-100">
+                                    <Info size={10} className="text-purple-600" />
+                                    <span className="text-[9px] font-black text-purple-700 uppercase">{specs.capacity} • {specs.desc.split('-')[0]}</span>
+                                  </div>
+                                )}
+
+                                {!specs && (
+                                   <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate"><MapPin size={10} className="text-green-500" /> {driver.address?.district ? `${driver.address.district} / ` : ''}{driver.address?.city || 'Merkez'}</div>
+                                )}
                             </div>
                         </div>
                         <div className="text-right shrink-0"><div className="text-xl font-black text-gray-900 leading-none">₺{pricing.unit}</div><div className="text-[8px] text-gray-400 font-bold uppercase mt-1">/Birim</div></div>

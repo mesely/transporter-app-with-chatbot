@@ -1,6 +1,6 @@
 'use client';
 
-import { Star, X, MessageSquare, CheckCircle2, Clock } from 'lucide-react';
+import { Star, X, MessageSquare, CheckCircle2, Clock, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 interface RatingModalProps {
@@ -16,7 +16,7 @@ export default function RatingModal({ isOpen, onRate, onClose }: RatingModalProp
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- AKILLI ETİKETLER ---
+  // --- AKILLI ETİKETLER (Daha Canlı İkonlarla) ---
   const dynamicTags = useMemo(() => {
     if (selectedRating >= 4) {
       return ["Hızlı Geldi ⚡", "Harika Hizmet 🏆", "Güler Yüzlü 😊", "Güvenli Sürüş 🛡️", "Uygun Fiyat 💰"];
@@ -42,62 +42,66 @@ export default function RatingModal({ isOpen, onRate, onClose }: RatingModalProp
       setTimeout(() => {
           setIsSubmitting(false);
           onClose();
-      }, 500);
+      }, 600);
     }
   };
 
   return (
-    // Overlay: Hafif gri ve az bulanık (SettingsModal ile uyumlu)
-    <div className="fixed inset-0 z-[10001] bg-gray-900/10 backdrop-blur-[2px] flex items-center justify-center p-4 animate-in fade-in duration-300">
+    // Overlay: Admin paneliyle uyumlu koyuluk ve blur
+    <div className="fixed inset-0 z-[10001] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
       
-      {/* Modal Container: GLASSMORPHISM */}
-      <div className="w-full max-w-md rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.05)] border border-white/40 bg-white/80 backdrop-blur-2xl p-8 text-center relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+      {/* Modal Container: iOS Glassmorphism Stil */}
+      <div className="w-full max-w-md rounded-[3rem] shadow-2xl border border-white/60 bg-white/90 backdrop-blur-2xl p-8 text-center relative max-h-[92vh] overflow-y-auto custom-scrollbar animate-in zoom-in duration-300">
         
-        {/* Kapat Butonu (Glass Style) */}
+        {/* Kapat Butonu: Sürücü panelindeki yuvarlak buton stili */}
         <button 
           onClick={onClose} 
-          className="absolute top-6 right-6 w-10 h-10 bg-white/40 border border-white/50 hover:bg-white/80 hover:text-red-500 rounded-full flex items-center justify-center text-gray-500 transition-all active:scale-95 shadow-sm"
+          className="absolute top-6 right-6 w-12 h-12 bg-white shadow-lg border border-slate-100 hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center text-slate-400 transition-all active:scale-90"
         >
-          <X size={20} strokeWidth={2.5} />
+          <X size={20} strokeWidth={3} />
         </button>
 
-        <div className="mb-8 mt-2">
-          <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase">Hizmet Nasıldı?</h3>
-          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest mt-1">Sürücüyü değerlendir, kaliteyi artır.</p>
+        <div className="mb-10 mt-4">
+          <div className="bg-slate-900 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] w-fit mx-auto mb-4">
+            Geri Bildirim
+          </div>
+          <h3 className="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">Hizmet Nasıldı?</h3>
+          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-3">Deneyiminizi puanlayarak ağımızı güçlendirin.</p>
         </div>
 
-        {/* YILDIZLAR */}
-        <div className="flex justify-center gap-2 mb-8">
+        {/* YILDIZLAR: Daha büyük ve interaktif */}
+        <div className="flex justify-center gap-3 mb-10">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               onMouseEnter={() => setHoverRating(star)}
               onMouseLeave={() => setHoverRating(0)}
               onClick={() => { setSelectedRating(star); setSelectedTags([]); }}
-              className="transition-transform hover:scale-125 active:scale-90"
+              className="transition-all hover:scale-125 active:scale-95"
             >
               <Star 
-                className={`w-11 h-11 transition-all duration-300 ${
+                size={44}
+                className={`transition-all duration-300 ${
                   star <= (hoverRating || selectedRating) 
-                    ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]' 
-                    : 'fill-transparent text-gray-300 stroke-[1.5]' 
+                    ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]' 
+                    : 'fill-transparent text-slate-200 stroke-[1.5]' 
                 }`} 
               />
             </button>
           ))}
         </div>
 
-        {/* ETİKETLER */}
+        {/* ETİKETLER: Renkli Chip Tasarımı */}
         {selectedRating > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 mb-8 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex flex-wrap justify-center gap-2 mb-10 animate-in slide-in-from-bottom-4 duration-500">
             {dynamicTags.map(tag => (
               <button
                 key={tag}
                 onClick={() => toggleTag(tag)}
-                className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase transition-all border-2 ${
                   selectedTags.includes(tag)
-                    ? 'bg-gray-900 text-white border-gray-900 shadow-lg scale-105'
-                    : 'bg-white/40 text-gray-600 border-white/60 hover:bg-white/80 hover:border-white'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30 scale-105'
+                    : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-300'
                 }`}
               >
                 {tag}
@@ -106,36 +110,38 @@ export default function RatingModal({ isOpen, onRate, onClose }: RatingModalProp
           </div>
         )}
 
-        {/* YORUM ALANI (Glass Input) */}
+        {/* YORUM ALANI: Admin paneli input stili */}
         <div className="relative mb-8 group">
-          <div className="absolute top-3 left-4 text-gray-400 group-focus-within:text-gray-800 transition-colors">
-            <MessageSquare size={16} />
-          </div>
+          <MessageSquare className="absolute top-4 left-5 text-slate-300 group-focus-within:text-blue-500 transition-colors" size={18} />
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="EKLEMEK İSTEDİĞİNİZ BİR ŞEY VAR MI?"
-            className="w-full bg-white/50 border border-white/60 rounded-2xl py-3 pl-12 pr-4 text-[10px] font-bold uppercase focus:outline-none focus:ring-2 focus:ring-gray-200 focus:bg-white/80 transition-all min-h-[100px] resize-none shadow-inner placeholder:text-gray-400 text-gray-800"
+            placeholder="SÜRÜCÜ HAKKINDA NOTLARINIZ..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-[1.5rem] py-4 pl-14 pr-4 text-xs font-bold uppercase focus:outline-none focus:border-blue-500 focus:bg-white transition-all min-h-[120px] resize-none shadow-inner placeholder:text-slate-300 text-slate-700"
           />
         </div>
 
-        {/* PUANLAMA BUTONU */}
+        {/* PUANLAMA BUTONU: Siyah/Mavi geçişli ana aksiyon butonu */}
         <button 
           onClick={handleRateSubmit}
           disabled={selectedRating === 0 || isSubmitting}
-          className={`w-full py-5 rounded-2xl font-black text-xs tracking-[0.2em] uppercase mb-4 transition-all flex items-center justify-center gap-2 shadow-xl ${
+          className={`w-full py-6 rounded-[2rem] font-black text-xs tracking-[0.3em] uppercase mb-4 transition-all flex items-center justify-center gap-3 shadow-2xl ${
             selectedRating > 0 
-              ? 'bg-gray-900 text-white hover:bg-black active:scale-95 shadow-gray-900/20' 
-              : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+              ? 'bg-slate-900 text-white hover:bg-blue-600 active:scale-95 shadow-slate-900/30' 
+              : 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200'
           }`}
         >
-          {isSubmitting ? 'GÖNDERİLİYOR...' : <><CheckCircle2 size={16} /> PUANLAMAYI BİTİR</>}
+          {isSubmitting ? (
+            <Loader2 className="animate-spin" size={20} />
+          ) : (
+            <><CheckCircle2 size={18} /> DEĞERLENDİRMEYİ TAMAMLA</>
+          )}
         </button>
 
         {/* SONRA PUANLA BUTONU */}
         <button 
           onClick={onClose}
-          className="flex items-center justify-center gap-2 w-full py-3 text-gray-400 text-[10px] font-black uppercase tracking-widest hover:text-blue-600 transition-colors"
+          className="flex items-center justify-center gap-2 w-full py-2 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-slate-600 transition-colors"
         >
           <Clock size={14} /> ŞİMDİ DEĞİL, SONRA HATIRLAT
         </button>
