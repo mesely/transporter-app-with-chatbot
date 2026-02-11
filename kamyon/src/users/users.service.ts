@@ -44,9 +44,18 @@ export class UsersService implements OnModuleInit {
 
       let mainType = 'KURTARICI';
       if (data.serviceType) {
+         // Gelen veriye göre MainType'ı belirle
          const t = data.serviceType.toUpperCase();
          if (['NAKLIYE', 'SARJ', 'KURTARICI'].includes(t)) mainType = t;
+         // Alt tiplerden ana tip çıkarma
+         else if (['TIR', 'KAMYON', 'KAMYONET', 'YURT_DISI'].includes(t)) mainType = 'NAKLIYE';
+         else if (['OTO_KURTARMA', 'VINC'].includes(t)) mainType = 'KURTARICI';
+         else if (['ISTASYON', 'SEYYAR_SARJ', 'MOBIL_UNIT'].includes(t)) mainType = 'SARJ';
       }
+
+      // DB'ye 'seyyar_sarj' olarak kaydediyoruz (Frontend ile uyumlu olsun diye)
+      // Eğer DB'de MOBIL_UNIT kullanıyorsan burayı değiştirebilirsin.
+      const subTypeToSave = data.serviceType === 'MOBIL_UNIT' ? 'seyyar_sarj' : (data.serviceType || 'genel');
 
       return this.providerModel.findOneAndUpdate(
         { user: user._id },
@@ -57,7 +66,7 @@ export class UsersService implements OnModuleInit {
           address: { fullText: data.address || '', city: data.city || 'Bilinmiyor', district: data.district || 'Merkez' },
           service: {
             mainType: mainType,
-            subType: data.serviceType || 'genel', // Örn: 'tir', 'vinc', 'MOBIL_UNIT'
+            subType: subTypeToSave, 
             tags: data.filterTags || [] // Örn: ['tenteli', 'lowbed']
           },
           pricing: { openingFee: Number(data.openingFee) || 350, pricePerUnit: Number(data.pricePerUnit) || 40 },
@@ -107,17 +116,23 @@ export class UsersService implements OnModuleInit {
         const type = rawType.toLowerCase().trim();
 
         // A) ANA KATEGORİLER (Genel Arama)
+        // Eğer kullanıcı sadece 'nakliye' butonuna bastıysa, tüm nakliye araçlarını getir.
         if (type === 'nakliye') query['service.mainType'] = 'NAKLIYE';
         else if (type === 'kurtarici') query['service.mainType'] = 'KURTARICI';
         else if (type === 'sarj') query['service.mainType'] = 'SARJ';
 
-        // B) ÖZEL MAPPING (Frontend'deki isim DB'den farklıysa)
+        // B) ÖZEL MAPPING (Frontend'deki isim DB'den farklıysa veya özel durumlar)
         else if (type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
-        else if (type === 'seyyar_sarj') query['service.subType'] = 'MOBIL_UNIT';
+        else if (type === 'seyyar_sarj') {
+             // Hem 'seyyar_sarj' hem de eski veri kalıntısı varsa 'MOBIL_UNIT' ara
+             query['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
+        }
         else if (type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
 
-        // C) DİREKT EŞLEŞENLER
-        else query['service.subType'] = type;
+        // C) DİREKT EŞLEŞENLER (Tır, Kamyon, Vinç vb.)
+        else {
+            query['service.subType'] = type;
+        }
     }
 
     // Veriyi Çek ve Döndür

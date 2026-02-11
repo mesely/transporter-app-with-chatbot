@@ -55,31 +55,28 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. SERVİS RENK VE İKON YAPILANDIRMASI (DB VALUES) ---
+// --- 2. SERVİS RENK VE İKON YAPILANDIRMASI (KOYU TON MANTIĞI) ---
 const SERVICE_CONFIG: any = {
-  // KURTARICI GRUBU
-  kurtarici: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },        
-  oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },   
-  vinc: { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },             
+  // KURTARICI GRUBU (Kırmızı Tonları)
+  kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },        
+  oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },   // Daha koyu
+  vinc:         { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },             // En koyu
   
-  // NAKLİYE GRUBU
-  nakliye: { color: '#9333ea', Icon: Truck, label: 'Nakliye' },             
-  evden_eve: { color: '#9333ea', Icon: Home, label: 'Evden Eve' },           
-  kamyon: { color: '#9333ea', Icon: Truck, label: 'Kamyon' },             
-  tir: { color: '#7e22ce', Icon: Truck, label: 'TIR' }, 
-  kamyonet: { color: '#a855f7', Icon: Package, label: 'Kamyonet' },
-  yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },  
-  yurt_disi: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' }, 
+  // NAKLİYE GRUBU (Mor Tonları)
+  nakliye:           { color: '#a855f7', Icon: Truck, label: 'Nakliye' },             
+  evden_eve:         { color: '#9333ea', Icon: Home, label: 'Evden Eve' },           
+  kamyon:            { color: '#7e22ce', Icon: Truck, label: 'Kamyon' },             
+  tir:               { color: '#6b21a8', Icon: Truck, label: 'TIR' },               // Çok koyu mor
+  kamyonet:          { color: '#581c87', Icon: Package, label: 'Kamyonet' },        // En koyu mor
+  yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },      // İndigo (Farklılaşsın diye)
+  yurt_disi:         { color: '#4338ca', Icon: Globe, label: 'Uluslararası' }, 
   
-  // ŞARJ GRUBU (DB Değerleri)
-  sarj_istasyonu: { color: '#2563eb', Icon: Navigation, label: 'Şarj İstasyonu' },
-  istasyon: { color: '#2563eb', Icon: Navigation, label: 'Şarj İstasyonu' },      
-  
-  seyyar_sarj: { color: '#06b6d4', Icon: Zap, label: 'Mobil Şarj' }, 
-  MOBIL_UNIT: { color: '#06b6d4', Icon: Zap, label: 'Mobil Şarj' },           
-  
-  sarj: { color: '#2563eb', Icon: Navigation, label: 'Şarj' }, 
-  
+  // ŞARJ GRUBU (Mavi Tonları)
+  sarj:           { color: '#3b82f6', Icon: Zap, label: 'Şarj' }, 
+  sarj_istasyonu: { color: '#2563eb', Icon: Navigation, label: 'İstasyon' },
+  istasyon:       { color: '#1d4ed8', Icon: Navigation, label: 'İstasyon' },      // Koyu mavi
+  seyyar_sarj:    { color: '#0ea5e9', Icon: Zap, label: 'Mobil Şarj' },           // Açık mavi (Cyan)
+
   // DİĞER
   other: { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
 };
@@ -226,6 +223,9 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 13 : 6);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
+  // Harita Merkezi: Arama varsa orası, yoksa Türkiye'nin ortası
+  const initialCenter: [number, number] = searchCoords || [39.1667, 35.6667]; 
+
   const activeDriverCoords = useMemo(() => {
     if (!activeDriverId) return null;
     const driver = drivers.find(d => d._id === activeDriverId);
@@ -304,9 +304,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
     return clusters;
   }, [drivers, currentZoom, activeDriverId]);
-
-  // Harita Merkezi: Arama varsa orası, yoksa Türkiye'nin ortası
-  const initialCenter: [number, number] = searchCoords || [39.1667, 35.6667]; 
 
   return (
     <div className="absolute inset-0 w-full h-full z-0 bg-gray-50">
