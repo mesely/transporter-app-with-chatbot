@@ -1,15 +1,15 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation'; 
-import { MessageCircle, X } from 'lucide-react';  
+import { MessageCircle } from 'lucide-react';  
 
 // BİLEŞEN IMPORTLARI
 import TopBar from '../components/home/TopBar';         
 import ActionPanel from '../components/home/ActionPanel';
 
-// Haritayı Client-Side render ediyoruz (SSR Hatası almamak için)
+// Haritayı Client-Side render ediyoruz
 const Map = dynamic(() => import('../components/Map'), { 
   ssr: false,
   loading: () => (
@@ -19,8 +19,6 @@ const Map = dynamic(() => import('../components/Map'), {
   )
 });
 
-// 🔥 YENİ DB YAPISINA TAM UYUMLU DRIVER TİPİ
-// (Map.tsx ve ActionPanel.tsx ile birebir aynı olmalı)
 interface Driver {
   _id: string;
   businessName: string;
@@ -28,8 +26,6 @@ interface Driver {
   phoneNumber?: string;
   rating?: number;
   location: { coordinates: [number, number] };
-  
-  // Nested Alanlar
   address?: {
     city?: string;
     district?: string;
@@ -59,20 +55,19 @@ export default function Home() {
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici'); 
-  
-  // 🔥 ZOOM SEVİYESİ (Menzil kontrolü için kritik)
   const [mapZoom, setMapZoom] = useState<number>(13); 
   
-  // UI State
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // --- 1. VERİ ÇEKME FONKSİYONU ---
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string, zoom: number) => {
     setLoading(true);
     try {
-      // Backend'e zoom bilgisini de gönderiyoruz. 
-      // Backend: if (zoom < 8) Limit = 3000, MaxDistance = 15000km
-      const res = await fetch(`${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=${zoom}`);
+      // Backend filtrelemesi bazen geniş olabilir, bu yüzden type'ı URL'e ekliyoruz ama
+      // asıl hassas filtrelemeyi aşağıda "filteredForMap" kısmında yapacağız.
+      const url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=${zoom}`;
+      
+      const res = await fetch(url);
       const data = await res.json();
       
       if (Array.isArray(data)) {
@@ -88,35 +83,61 @@ export default function Home() {
     }
   }, []);
 
-  // --- 2. HANDLERS ---
+  // 🔥 EKLENEN KISIM: Harita için Hassas Filtreleme 🔥
+  // ActionPanel'deki filtreleme mantığının aynısını buraya uyguluyoruz.
+  // Böylece harita, seçilen kategoriye birebir uyan araçları gösterir.
+  const filteredForMap = useMemo(() => {
+    if (!drivers || drivers.length === 0) return [];
+    
+    return drivers.filter(d => {
+      // 1. Özel Eşleştirmeler (ActionPanel ile uyumlu)
+      if (actionType === 'yurt_disi') return d.service?.subType === 'yurt_disi_nakliye';
+      if (actionType === 'sarj_istasyonu') return d.service?.subType === 'istasyon';
+      if (actionType === 'seyyar_sarj') return d.service?.subType === 'MOBIL_UNIT';
+      
+      // 2. Ana Kategoriler (Tümünü göster)
+      if (actionType === 'kurtarici') return d.service?.mainType === 'KURTARICI';
+      if (actionType === 'nakliye') return d.service?.mainType === 'NAKLIYE';
+      if (actionType === 'sarj') return d.service?.mainType === 'SARJ';
 
-  // A) Konum Değişince (ActionPanel'den veya GPS'ten)
+      // 3. Alt Tipler (Tır, Kamyon, Vinç, Oto Kurtarma vb.)
+      // Eğer actionType spesifik bir alt tip ise (örn: 'tir'), sadece onları getir.
+      return d.service?.subType === actionType;
+    });
+  }, [drivers, actionType]);
+
+
+  // --- BAŞLANGIÇ YÜKLEMESİ ---
+  useEffect(() => {
+    const TURKEY_CENTER_LAT = 39.1667;
+    const TURKEY_CENTER_LNG = 35.6667;
+    const INITIAL_ZOOM = 6;
+    
+    // Sayfa ilk açıldığında 'kurtarici' varsayılan olarak seçili gelir.
+    fetchDrivers(TURKEY_CENTER_LAT, TURKEY_CENTER_LNG, 'kurtarici', INITIAL_ZOOM);
+  }, [fetchDrivers]); 
+
+
+  // --- 2. HANDLERS ---
   const handleSearchLocation = (lat: number, lng: number) => {
     setSearchCoords([lat, lng]);
-    // Konum değişince mevcut zoom seviyesiyle yeniden çek
-    fetchDrivers(lat, lng, actionType, mapZoom);
+    fetchDrivers(lat, lng, actionType, 13);
   };
 
-  // B) Filtre Değişince (ActionPanel'den)
   const handleFilterApply = (type: string) => {
     setActionType(type);
-    // Konum varsa veriyi yenile (Zoom bilgisini de katarak)
+    // Filtre değişince veri çek, ama asıl işi yukarıdaki 'filteredForMap' yapacak.
     if (searchCoords) {
       fetchDrivers(searchCoords[0], searchCoords[1], type, mapZoom);
     } else {
-      // Eğer henüz konum seçilmediyse varsayılan bir lokasyonla veya
-      // kullanıcının o anki GPS konumuyla (ActionPanel içinde bulunur) tetiklenir.
+      fetchDrivers(39.1667, 35.6667, type, 6);
     }
   };
 
-  // C) Harita Hareketi ve Zoom (Map Bileşeninden Gelir)
   const handleMapMove = (lat: number, lng: number, zoom: number) => {
-    setMapZoom(zoom); // Zoom seviyesini güncelle
-    // İstersen burada "Bu alanda ara" butonu koyup fetchDrivers çağırabilirsin.
-    // Şimdilik sadece state güncelliyoruz ki sonraki filtrelemede doğru zoom gitsin.
+    setMapZoom(zoom); 
   };
 
-  // D) Sipariş Başlatma
   const handleStartOrder = (driver: Driver, method: 'call' | 'message') => {
     console.log(`Sipariş: ${driver.businessName} - Yöntem: ${method}`);
   };
@@ -124,51 +145,52 @@ export default function Home() {
   return (
     <main className="relative w-full h-screen overflow-hidden bg-gray-50">
       
-      {/* 1. ÜST BAR */}
       <TopBar 
         sidebarOpen={sidebarOpen}
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onProfileClick={() => console.log("Profil")}
       />
 
-      {/* 2. HARİTA KATMANI */}
+      {/* HARİTA KISMI */}
       <div className="absolute inset-0 z-0">
         <Map 
           searchCoords={searchCoords}
-          drivers={drivers} 
+          // 🔥 DEĞİŞİKLİK BURADA: Artık ham 'drivers' değil, süzülmüş 'filteredForMap' gidiyor.
+          drivers={filteredForMap} 
           onStartOrder={handleStartOrder}
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId}
-          onMapMove={handleMapMove} // 🔥 Zoom takibi için
+          onMapMove={handleMapMove}
           onMapClick={() => setActiveDriverId(null)}
         />
       </div>
 
-      {/* 3. AKSİYON PANELİ */}
       <ActionPanel 
         onSearchLocation={handleSearchLocation}
         onFilterApply={handleFilterApply}
         onStartOrder={handleStartOrder}
         actionType={actionType}
         onActionChange={(type) => setActionType(type)}
-        drivers={drivers}
+        drivers={filteredForMap} // Listeye de süzülmüş veriyi göndermek daha tutarlı olur
         loading={loading}
-        onReset={() => {}}
+        onReset={() => {
+           setSearchCoords(null);
+           setActionType('kurtarici'); // Resetlenince başa dön
+           fetchDrivers(39.1667, 35.6667, 'kurtarici', 6);
+        }}
         activeDriverId={activeDriverId}
         onSelectDriver={setActiveDriverId}
       />
 
-      {/* 4. CHAT BUTONU (Yönlendirmeli) */}
       <div className="absolute top-28 right-4 z-[900]">
         <button
-          onClick={() => router.push('/chat')} // 🔥 DİREKT SAYFAYA GİT
+          onClick={() => router.push('/chat')} 
           className="w-12 h-12 bg-black text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform hover:bg-gray-800 border-2 border-white/20"
         >
           <MessageCircle size={24} />
         </button>
       </div>
 
-      {/* 5. SIDEBAR */}
       <div className={`absolute top-0 left-0 h-full w-72 bg-white shadow-2xl z-[1100] transform transition-transform duration-300 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-10 pt-24">
           <h2 className="text-2xl font-black mb-8 tracking-tight">MENÜ</h2>
@@ -182,7 +204,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div 
           onClick={() => setSidebarOpen(false)}

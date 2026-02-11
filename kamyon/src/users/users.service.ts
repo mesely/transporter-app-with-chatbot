@@ -16,10 +16,15 @@ export class UsersService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('🚀 Transporter V12 (Full Service): Sistem Hazır.');
-    try { await this.providerModel.collection.createIndex({ location: '2dsphere' }); } catch (e) {}
+    // GeoSpatial Index oluşturmak çok önemli (Konum araması için)
+    try { 
+      await this.providerModel.collection.createIndex({ location: '2dsphere' }); 
+    } catch (e) {
+      this.logger.error('Index hatası (zaten varsa sorun yok):', e);
+    }
   }
 
-  // --- 1. CREATE ---
+  // --- 1. CREATE (YENİ SÜRÜCÜ EKLEME) ---
   async create(data: any) {
     try {
       const cleanName = (data.firstName || data.businessName || '').trim();
@@ -32,7 +37,8 @@ export class UsersService implements OnModuleInit {
         user = await new this.userModel({ email, password: hashedPassword, role: 'provider', isActive: true }).save();
       }
 
-      let coords: [number, number] = [27.1428, 38.4237];
+      // Koordinat kontrolü (Önce GeoJSON, sonra lat/lng)
+      let coords: [number, number] = [35.6667, 39.1667]; // Default Türkiye Ortası
       if (data.location?.coordinates) coords = data.location.coordinates;
       else if (data.lng && data.lat) coords = [parseFloat(data.lng), parseFloat(data.lat)];
 
@@ -46,79 +52,105 @@ export class UsersService implements OnModuleInit {
         { user: user._id },
         {
           user: user._id,
-          businessName: cleanName || 'İsimsiz',
+          businessName: cleanName || 'İsimsiz İşletme',
           phoneNumber: rawPhone,
           address: { fullText: data.address || '', city: data.city || 'Bilinmiyor', district: data.district || 'Merkez' },
           service: {
             mainType: mainType,
-            subType: data.serviceType || 'genel',
-            tags: data.filterTags || []
+            subType: data.serviceType || 'genel', // Örn: 'tir', 'vinc', 'MOBIL_UNIT'
+            tags: data.filterTags || [] // Örn: ['tenteli', 'lowbed']
           },
           pricing: { openingFee: Number(data.openingFee) || 350, pricePerUnit: Number(data.pricePerUnit) || 40 },
-          location: { type: 'Point', coordinates: coords }
+          location: { type: 'Point', coordinates: coords },
+          rating: 5.0 // Varsayılan puan
         },
         { upsert: true, new: true }
       );
     } catch (e) { return null; }
   }
 
-  // --- 2. FIND NEARBY (ANA ARAMA) ---
+  // --- 2. FIND NEARBY (ANA ARAMA MOTORU) ---
+  // Frontend'den gelen 'type' ve 'zoom' verisine göre akıllı filtreleme yapar.
   async findNearby(lat: number, lng: number, rawType: string, zoom: number) {
     const safeZoom = zoom ? Number(zoom) : 15;
-    let maxDist = 500000; 
+    
+    // Zoom seviyesine göre arama yarıçapını ve limiti ayarla
+    let maxDist = 500000; // Varsayılan: 500km
     let limit = 200;
 
-    if (safeZoom < 9) {
-        maxDist = 20000000; 
-        limit = 5000;
-    } else if (safeZoom < 12) {
-        maxDist = 2000000;
+    if (safeZoom < 8) {
+        // Çok uzak (Tüm Ülke Görünümü): Çok geniş alan, çok veri
+        maxDist = 20000000; // 20.000 km (Tüm Dünya/Ülke)
+        limit = 3000; 
+    } else if (safeZoom < 11) {
+        // Şehirler arası görünüm
+        maxDist = 2000000; // 2.000 km
         limit = 1000;
+    } else {
+        // Sokak/Mahalle görünümü
+        maxDist = 100000; // 100 km
+        limit = 200;
     }
 
+    // Temel Konum Sorgusu ($near)
     const query: any = {
         location: {
             $near: {
-                $geometry: { type: 'Point', coordinates: [lng, lat] },
+                $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
                 $maxDistance: maxDist
             }
         }
     };
 
-    if (rawType) {
-        const type = rawType.toLowerCase();
-        if (type === 'nakliye') query['service.mainType'] = 'NAKLIYE';
-        else if (type === 'sarj') query['service.mainType'] = 'SARJ';
-        else if (type === 'kurtarici') query['service.mainType'] = 'KURTARICI';
+    // FİLTRELEME MANTIĞI (Frontend actionType -> DB Eşleştirmesi)
+    if (rawType && rawType !== '') {
+        const type = rawType.toLowerCase().trim();
+
+        // A) ANA KATEGORİLER (Genel Arama)
+        if (type === 'nakliye') {
+             query['service.mainType'] = 'NAKLIYE';
+        }
+        else if (type === 'kurtarici') {
+             query['service.mainType'] = 'KURTARICI';
+        }
+        else if (type === 'sarj') {
+             query['service.mainType'] = 'SARJ';
+        }
+
+        // B) ÖZEL MAPPING (Frontend'deki isim DB'den farklıysa)
+        else if (type === 'sarj_istasyonu') {
+             query['service.subType'] = 'istasyon';
+        }
+        else if (type === 'seyyar_sarj') {
+             query['service.subType'] = 'MOBIL_UNIT';
+        }
+        else if (type === 'yurt_disi') {
+             query['service.subType'] = 'yurt_disi_nakliye';
+        }
+
+        // C) DİREKT EŞLEŞENLER
+        // 'tir', 'kamyon', 'kamyonet', 'vinc', 'oto_kurtarma', 'evden_eve'
         else {
-            if (type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
-            else if (type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
-            else query['service.subType'] = type;
+             query['service.subType'] = type;
         }
     }
 
+    // Veriyi Çek ve Döndür
     return this.providerModel.find(query)
-        .select('businessName location service pricing address phoneNumber rating')
+        .select('businessName location service pricing address phoneNumber rating') // Sadece lazım olanları al
         .limit(limit)
-        .lean()
+        .lean() // Performans için lean() kullanıyoruz
         .exec();
   }
 
-  // --- 3. DİĞER FONKSİYONLAR (HATA VEREN KISIMLAR DÜZELTİLDİ) ---
+  // --- 3. DİĞER YARDIMCI FONKSİYONLAR ---
 
-  // Liste Modu (Karışık Getir) - Parametreler eklendi
-  async findDiverseList(lat: number, lng: number, limit: number = 5) {
-      // Şimdilik yakındaki herkesi getiriyoruz, ileride burayı özelleştirebilirsin
-      return this.findNearby(lat, lng, '', 15);
+  // Listeleme için (Zoom yoksa varsayılan yakınlık)
+  async findDiverseList(lat: number, lng: number) {
+      return this.findNearby(lat, lng, '', 13);
   }
 
-  // Akıllı Harita (Uzak Zoom) - Parametreler eklendi
-  async findSmartMapData(lat: number, lng: number) {
-      // Uzaktan bakınca çok veri çek (Zoom 8 gibi davran)
-      return this.findNearby(lat, lng, '', 8);
-  }
-
-  // Yönetim Paneli Filtreleme - Parametreler eklendi
+  // Yönetim Paneli vb. için Manuel Filtreleme
   async findFiltered(city?: string, type?: string) {
       const query: any = {};
       
@@ -135,21 +167,5 @@ export class UsersService implements OnModuleInit {
       }
 
       return this.providerModel.find(query).sort({ _id: -1 }).limit(100).exec();
-  }
-
-  // Update & Delete
-  async updateOne(id: string, data: any) { 
-      return this.providerModel.findByIdAndUpdate(id, data, { new: true }); 
-  }
-  
-  async deleteOne(id: string) { 
-      return this.providerModel.findByIdAndDelete(id); 
-  }
-
-  // İstatistik
-  async getServiceTypes() {
-    return this.providerModel.aggregate([{
-        $group: { _id: "$service.mainType", count: { $sum: 1 } }
-    }]).exec();
   }
 }
