@@ -11,7 +11,7 @@ interface TopBarProps {
 export default function TopBar({ onMenuClick, onProfileClick, sidebarOpen }: TopBarProps) {
   return (
     <div className="absolute top-0 left-0 right-0 z-[500] pointer-events-none">
-      {/* DEĞİŞİKLİK BURADA: px-6 (Sağ/Sol) ve pt-10 (Üst) */}
+      {/* Container: px-6 ve pt-11 (Konumlandırmalar aynı kaldı) */}
       <div className="px-6 pt-11 pb-4 flex items-center justify-between pointer-events-auto">
         
         {/* SOL - Menü Butonu */}
@@ -26,15 +26,7 @@ export default function TopBar({ onMenuClick, onProfileClick, sidebarOpen }: Top
           <Menu className="w-6 h-6" strokeWidth={2.5} />
         </button>
 
-        {/* ORTA - Logo */}
-        <div className="absolute left-1/2 transform -translate-x-1/2 pointer-events-none">
-          {/* Logo konumu üstten padding artınca kayabilir, gerekirse buraya 'mt-6' gibi bir margin ekleyebilirsin */}
-          <div className="bg-white/40 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg border border-white/30 mt-6"> 
-            <h1 className="text-sm font-black text-gray-800 tracking-[0.2em] drop-shadow-sm">
-              2TRANSPORTER2
-            </h1>
-          </div>
-        </div>
+        {/* ORTA - Logo Alanı Tamamen Silindi */}
 
         {/* SAĞ - Profil Butonu */}
         <button 
