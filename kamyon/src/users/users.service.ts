@@ -107,32 +107,17 @@ export class UsersService implements OnModuleInit {
         const type = rawType.toLowerCase().trim();
 
         // A) ANA KATEGORİLER (Genel Arama)
-        if (type === 'nakliye') {
-             query['service.mainType'] = 'NAKLIYE';
-        }
-        else if (type === 'kurtarici') {
-             query['service.mainType'] = 'KURTARICI';
-        }
-        else if (type === 'sarj') {
-             query['service.mainType'] = 'SARJ';
-        }
+        if (type === 'nakliye') query['service.mainType'] = 'NAKLIYE';
+        else if (type === 'kurtarici') query['service.mainType'] = 'KURTARICI';
+        else if (type === 'sarj') query['service.mainType'] = 'SARJ';
 
         // B) ÖZEL MAPPING (Frontend'deki isim DB'den farklıysa)
-        else if (type === 'sarj_istasyonu') {
-             query['service.subType'] = 'istasyon';
-        }
-        else if (type === 'seyyar_sarj') {
-             query['service.subType'] = 'MOBIL_UNIT';
-        }
-        else if (type === 'yurt_disi') {
-             query['service.subType'] = 'yurt_disi_nakliye';
-        }
+        else if (type === 'sarj_istasyonu') query['service.subType'] = 'istasyon';
+        else if (type === 'seyyar_sarj') query['service.subType'] = 'MOBIL_UNIT';
+        else if (type === 'yurt_disi') query['service.subType'] = 'yurt_disi_nakliye';
 
         // C) DİREKT EŞLEŞENLER
-        // 'tir', 'kamyon', 'kamyonet', 'vinc', 'oto_kurtarma', 'evden_eve'
-        else {
-             query['service.subType'] = type;
-        }
+        else query['service.subType'] = type;
     }
 
     // Veriyi Çek ve Döndür
@@ -143,14 +128,14 @@ export class UsersService implements OnModuleInit {
         .exec();
   }
 
-  // --- 3. DİĞER YARDIMCI FONKSİYONLAR ---
+  // --- 3. DİĞER FONKSİYONLAR (HATA VERENLER BURADA EKLENDİ) ---
 
   // Listeleme için (Zoom yoksa varsayılan yakınlık)
   async findDiverseList(lat: number, lng: number) {
       return this.findNearby(lat, lng, '', 13);
   }
 
-  // Yönetim Paneli vb. için Manuel Filtreleme
+  // Yönetim Paneli Filtreleme
   async findFiltered(city?: string, type?: string) {
       const query: any = {};
       
@@ -167,5 +152,22 @@ export class UsersService implements OnModuleInit {
       }
 
       return this.providerModel.find(query).sort({ _id: -1 }).limit(100).exec();
+  }
+
+  // 🔥 EKSİK OLAN 1: UPDATE ONE
+  async updateOne(id: string, data: any) { 
+      return this.providerModel.findByIdAndUpdate(id, data, { new: true }).exec(); 
+  }
+  
+  // 🔥 EKSİK OLAN 2: DELETE ONE
+  async deleteOne(id: string) { 
+      return this.providerModel.findByIdAndDelete(id).exec(); 
+  }
+
+  // 🔥 EKSİK OLAN 3: GET SERVICE TYPES (İstatistik/Debug için)
+  async getServiceTypes() {
+    return this.providerModel.aggregate([{
+        $group: { _id: "$service.mainType", count: { $sum: 1 } }
+    }]).exec();
   }
 }
