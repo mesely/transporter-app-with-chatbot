@@ -16,14 +16,16 @@ export class UsersService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('🚀 Transporter V12 (Full Service): Sistem Hazır.');
+    // GeoSpatial Index oluşturma
     try { 
       await this.providerModel.collection.createIndex({ location: '2dsphere' }); 
+      this.logger.log('✅ Konum indeksi doğrulandı.');
     } catch (e) {
       this.logger.error('Index hatası (zaten varsa sorun yok):', e);
     }
   }
 
-  // --- 1. CREATE (YENİ SÜRÜCÜ EKLEME) ---
+  // --- 1. CREATE ---
   async create(data: any) {
     try {
       const cleanName = (data.firstName || data.businessName || '').trim();
@@ -58,11 +60,7 @@ export class UsersService implements OnModuleInit {
           businessName: cleanName || 'İsimsiz İşletme',
           phoneNumber: rawPhone,
           address: { fullText: data.address || '', city: data.city || 'Bilinmiyor', district: data.district || 'Merkez' },
-          service: {
-            mainType: mainType,
-            subType: subTypeToSave, 
-            tags: data.filterTags || [] 
-          },
+          service: { mainType, subType: subTypeToSave, tags: data.filterTags || [] },
           pricing: { openingFee: Number(data.openingFee) || 350, pricePerUnit: Number(data.pricePerUnit) || 40 },
           location: { type: 'Point', coordinates: coords },
           rating: 5.0 
@@ -72,51 +70,37 @@ export class UsersService implements OnModuleInit {
     } catch (e) { return null; }
   }
 
-  // --- 2. FIND NEARBY (DÜZELTİLEN AGGREGATION MANTIĞI) ---
+  // --- 2. FIND NEARBY (GÜNCELLENMİŞ VE KEY EKLENMİŞ HALİ) ---
   async findNearby(lat: number, lng: number, rawType: string, zoom: number) {
     const safeZoom = zoom ? Number(zoom) : 15;
     let maxDist = 500000; 
     let limit = 200;
 
-    if (safeZoom < 8) {
-        maxDist = 20000000; 
-        limit = 3000; 
-    } else if (safeZoom < 11) {
-        maxDist = 2000000; 
-        limit = 1000;
-    } else {
-        maxDist = 100000; 
-        limit = 200;
-    }
+    if (safeZoom < 8) { maxDist = 20000000; limit = 3000; } 
+    else if (safeZoom < 11) { maxDist = 2000000; limit = 1000; } 
+    else { maxDist = 100000; limit = 200; }
 
-    // Filtreleme nesnesini ayrı oluşturuyoruz
     const filterQuery: any = {};
-
     if (rawType && rawType !== '') {
         const type = rawType.toLowerCase().trim();
-
         if (type === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
         else if (type === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
         else if (type === 'sarj') filterQuery['service.mainType'] = 'SARJ';
         else if (type === 'sarj_istasyonu') filterQuery['service.subType'] = 'istasyon';
-        else if (type === 'seyyar_sarj') {
-             filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
-        }
+        else if (type === 'seyyar_sarj') filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
         else if (type === 'yurt_disi') filterQuery['service.subType'] = 'yurt_disi_nakliye';
-        else {
-            filterQuery['service.subType'] = type;
-        }
+        else filterQuery['service.subType'] = type;
     }
 
-    // 🔥 .find() yerine .aggregate() kullanarak distanceField (mesafe) ekliyoruz.
     return this.providerModel.aggregate([
       {
         $geoNear: {
           near: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
-          distanceField: 'distance', // Bu alan sayesinde 'NaN' hatası çözülür
+          distanceField: 'distance',
+          key: 'location', // 🔥 KRİTİK: Birden fazla indeks hatasını önleyen satır
           maxDistance: maxDist,
           spherical: true,
-          query: filterQuery // Mevcut filtreleri buraya taşıdık
+          query: filterQuery 
         }
       },
       { $limit: limit },
@@ -129,29 +113,23 @@ export class UsersService implements OnModuleInit {
           address: 1,
           phoneNumber: 1,
           rating: 1,
-          distance: 1 // Mesafeyi frontend'e gönderiyoruz
+          distance: 1 
         }
       }
     ]).exec();
   }
 
   // --- 3. DİĞER FONKSİYONLAR ---
-
   async findDiverseList(lat: number, lng: number) {
       return this.findNearby(lat, lng, '', 13);
   }
 
   async findFiltered(city?: string, type?: string) {
       const query: any = {};
-      if (city) {
-          query['address.city'] = new RegExp(city, 'i');
-      }
+      if (city) query['address.city'] = new RegExp(city, 'i');
       if (type) {
-          if (['NAKLIYE', 'SARJ', 'KURTARICI'].includes(type.toUpperCase())) {
-              query['service.mainType'] = type.toUpperCase();
-          } else {
-              query['service.subType'] = type;
-          }
+          if (['NAKLIYE', 'SARJ', 'KURTARICI'].includes(type.toUpperCase())) query['service.mainType'] = type.toUpperCase();
+          else query['service.subType'] = type;
       }
       return this.providerModel.find(query).sort({ _id: -1 }).limit(100).exec();
   }
@@ -165,8 +143,6 @@ export class UsersService implements OnModuleInit {
   }
 
   async getServiceTypes() {
-    return this.providerModel.aggregate([{
-        $group: { _id: "$service.mainType", count: { $sum: 1 } }
-    }]).exec();
+    return this.providerModel.aggregate([{ $group: { _id: "$service.mainType", count: { $sum: 1 } } }]).exec();
   }
 }
