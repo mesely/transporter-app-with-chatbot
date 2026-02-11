@@ -18,29 +18,21 @@ const CITIES = [
 const DEFAULT_LAT = 38.4237; 
 const DEFAULT_LNG = 27.1428;
 
-// --- 🔥 YENİ: ARAÇ TEKNİK BİLGİLERİ (Screenshot'tan Alındı) ---
-// Bu bilgiler Sürücü Kartlarında otomatik görünecek
 const VEHICLE_SPECS: Record<string, { capacity: string, desc: string }> = {
-  // TIR GRUBU
   frigorifik: { capacity: '22-24 ton', desc: 'Gıda - İlaç - Soğuk zincir' },
   tenteli:    { capacity: '24 ton', desc: 'Paletli yük - Genel kargo' },
-  acik_kasa:  { capacity: '22-24 ton', desc: 'Demir-çelik - Makine - Vinç' }, // Sal Kasa
+  acik_kasa:  { capacity: '22-24 ton', desc: 'Demir-çelik - Makine - Vinç' },
   lowbed:     { capacity: '30-60 ton', desc: 'İş makinesi - Ağır sanayi' },
   konteyner:  { capacity: '25-30 ton', desc: 'Liman - Konteyner taşımacılığı' },
-
-  // KAMYON GRUBU
   '6_teker':  { capacity: '15-20 ton', desc: 'Paletli yük - Kısa mesafe' },
   '10_teker': { capacity: '20-25 ton', desc: 'İç - Ağır taşıma - Uzun mesafe' },
   '12_teker': { capacity: '20-25 ton', desc: 'Ağır ve uzun yol - Fabrika yükleri' },
   kirkayak:   { capacity: '25-30 ton', desc: 'Ağır sanayi - Büyük hacim' },
   '8_teker':  { capacity: '18-22 ton', desc: 'Orta mesafe - Genel yük' },
-
-  // KAMYONET GRUBU
   panelvan:    { capacity: '1-1.5 ton', desc: 'Koli - Eşya - Hızlı Dağıtım' },
   kapali_kasa: { capacity: '2-3 ton', desc: 'Mobilya - Evden Eve - Kuru Yük' }
 };
 
-// --- ALT SEÇENEK LİSTELERİ ---
 const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   tir: [
     { id: 'tenteli', label: 'Tenteli' },
@@ -63,7 +55,6 @@ const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   ]
 };
 
-// --- TİP TANIMLARI ---
 interface Driver {
   _id: string;
   businessName: string; 
@@ -72,11 +63,7 @@ interface Driver {
   rating?: number;
   location?: { coordinates: [number, number] };
   address?: { city?: string; district?: string; fullText?: string; };
-  service?: {
-    mainType: string;
-    subType: string;  
-    tags: string[]; 
-  };
+  service?: { mainType: string; subType: string; tags: string[]; };
   pricing?: { openingFee: number; pricePerUnit: number; };
 }
 
@@ -93,6 +80,7 @@ interface ActionPanelProps {
   onSelectDriver: (id: string | null) => void;
   activeTags: string[];
   onTagsChange: (tags: string[]) => void;
+  isSidebarOpen: boolean; // 🔥 Prop eklendi
 }
 
 const SkeletonCard = () => (
@@ -114,14 +102,14 @@ export default function ActionPanel({
   onSearchLocation, onFilterApply, onStartOrder, 
   actionType, onActionChange, drivers, loading, onReset,
   activeDriverId, onSelectDriver,
-  activeTags, onTagsChange 
+  activeTags, onTagsChange,
+  isSidebarOpen // 🔥 Destructuring'e eklendi
 }: ActionPanelProps) {
   
   const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   
-  // Menü Görünürlükleri
   const [showTowRow, setShowTowRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
   const [showDomesticRow, setShowDomesticRow] = useState(false);
@@ -146,12 +134,10 @@ export default function ActionPanel({
     }
   }, [activeDriverId]);
 
-  // --- ANA KATEGORİ SEÇİMİ ---
   const handleMainCategoryClick = (category: 'kurtarici' | 'nakliye' | 'sarj') => {
     setPanelState(1);
     setVisibleItems(5); 
     if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
-
     setActiveTransportFilter(null);
     onTagsChange([]); 
 
@@ -167,7 +153,6 @@ export default function ActionPanel({
     }
   };
 
-  // --- ARAÇ TİPİ SEÇİMİ ---
   const handleTransportTypeClick = (type: 'tir' | 'kamyon' | 'kamyonet') => {
       if (activeTransportFilter === type) {
           setActiveTransportFilter(null);
@@ -181,7 +166,6 @@ export default function ActionPanel({
       setVisibleItems(5);
   };
 
-  // --- ETİKET SEÇİMİ ---
   const handleTagClick = (tagId: string) => {
       const newTags = activeTags.includes(tagId) 
           ? activeTags.filter(t => t !== tagId) 
@@ -228,13 +212,12 @@ export default function ActionPanel({
     e.stopPropagation();
     const lat = driver.location?.coordinates[1];
     const lng = driver.location?.coordinates[0];
-    if (lat && lng) window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+    if (lat && lng) window.open(`https://www.google.com/maps/dir/?api=1&destination=$?q=${lat},${lng}`, '_blank');
   };
 
   const displayDrivers = useMemo(() => {
     let list = [...safeDrivers];
     if (selectedCity) list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
-    
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       if (sortMode === 'price_asc') return getPricing(a).total - getPricing(b).total;
@@ -252,16 +235,12 @@ export default function ActionPanel({
   }, [visibleItems, displayDrivers.length]);
 
   const renderedDrivers = displayDrivers.slice(0, visibleItems);
-  let heightClass = 'h-36'; 
-  if (panelState === 1) heightClass = 'h-[55vh]'; 
-  if (panelState === 2) heightClass = 'h-[92vh]'; 
-
-  const cycleSortMode = () => {
-      if (sortMode === 'distance') setSortMode('rating');
-      else if (sortMode === 'rating') setSortMode('price_asc');
-      else if (sortMode === 'price_asc') setSortMode('price_desc');
-      else setSortMode('distance');
-  };
+  
+  // 🔥 Sidebar açıksa paneli aşağı it, kapalıysa mevcut panelState'e göre boyutu ayarla
+  let heightClass = isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100';
+  let sizeClass = 'h-36'; 
+  if (panelState === 1) sizeClass = 'h-[55vh]'; 
+  if (panelState === 2) sizeClass = 'h-[92vh]'; 
 
   const getSortLabel = () => {
       switch(sortMode) {
@@ -279,39 +258,32 @@ export default function ActionPanel({
       onMouseUp={(e) => handleDragEnd(e.clientY)}
       onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
       onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
-      className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
+      className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${sizeClass} ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
     >
       <div onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 0)} className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing shrink-0 z-50 hover:opacity-80 transition-opacity">
         <div className="w-16 h-1.5 bg-gray-400/30 rounded-full shadow-sm"></div>
       </div>
 
       <div className="px-6 pb-6 flex flex-col h-full overflow-hidden relative">
-        
-        {/* ANA KATEGORİLER */}
         <div className="flex gap-3 shrink-0 mb-4">
           <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white scale-105 shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
             <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
-          
           <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${(actionType.includes('nakliye') || actionType === 'yurt_disi' || showDomesticRow) ? 'bg-purple-700 text-white scale-105 shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
-          
           <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${(actionType.includes('sarj') || showChargeRow) ? 'bg-blue-600 text-white scale-105 shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
             <Zap size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Şarj</span>
           </button>
         </div>
 
-        {/* ALT MENÜLER */}
         <div className="space-y-3 shrink-0 mb-2 transition-all duration-300">
-          
           {showTowRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
               <button onClick={() => { onFilterApply('oto_kurtarma'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white ring-2 ring-red-400' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
               <button onClick={() => { onFilterApply('vinc'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white ring-2 ring-red-400' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> Vinç</button>
             </div>
           )}
-
           {(['nakliye', 'yurt_disi', 'tir', 'kamyon', 'kamyonet'].some(t => actionType === t) || showDomesticRow) && (
              <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
                 <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setVisibleItems(5); setActiveTransportFilter(null); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType !== 'yurt_disi' ? 'bg-purple-700 text-white ring-2 ring-purple-300' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
@@ -322,7 +294,6 @@ export default function ActionPanel({
                 </button>
              </div>
           )}
-
           {showDomesticRow && actionType !== 'yurt_disi' && (
             <div className="grid grid-cols-4 gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
                <button onClick={() => { onFilterApply('nakliye'); setActiveTransportFilter(null); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'nakliye' ? 'bg-purple-700 text-white ring-1 ring-purple-300' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
@@ -339,7 +310,6 @@ export default function ActionPanel({
                </button>
             </div>
           )}
-
           {activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 animate-in slide-in-from-top-2 fade-in duration-300 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => {
@@ -353,7 +323,6 @@ export default function ActionPanel({
                 })}
              </div>
           )}
-
           {showChargeRow && (
             <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
               <button onClick={() => { onFilterApply('sarj_istasyonu'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white ring-2 ring-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Navigation size={14}/> İstasyon</button>
@@ -362,7 +331,6 @@ export default function ActionPanel({
           )}
         </div>
 
-        {/* ALT BAR */}
         {panelState > 0 && (
           <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide py-2 shrink-0">
               <div className="relative shrink-0 group">
@@ -372,17 +340,15 @@ export default function ActionPanel({
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
               </div>
-              <button onClick={cycleSortMode} className={`px-4 py-3 rounded-2xl text-[10px] font-black border transition-all shrink-0 flex items-center gap-2 shadow-lg active:scale-95 ${sortMode !== 'distance' ? 'bg-gray-900 text-white border-black' : 'bg-white/80 text-gray-700 border-white/20'}`}>
-                 {sortMode === 'price_asc' || sortMode === 'price_desc' ? <Banknote size={14} /> : <ArrowUpDown size={14} />}
-                 {getSortLabel()}
+              <button onClick={() => setSortMode(s => s === 'distance' ? 'rating' : s === 'rating' ? 'price_asc' : s === 'price_asc' ? 'price_desc' : 'distance')} className={`px-4 py-3 rounded-2xl text-[10px] font-black border transition-all shrink-0 flex items-center gap-2 shadow-lg active:scale-95 ${sortMode !== 'distance' ? 'bg-gray-900 text-white border-black' : 'bg-white/80 text-gray-700 border-white/20'}`}>
+                 <ArrowUpDown size={14} /> {getSortLabel()}
               </button>
-              <button onClick={findMyLocation} className={`px-4 py-3 text-white rounded-2xl bg-blue-600 shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : 'bg-blue-600'}`}>
+              <button onClick={findMyLocation} className={`px-4 py-3 text-white rounded-2xl shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : 'bg-blue-600'}`}>
                  {isLocating ? <Loader2 size={18} className="animate-spin"/> : <LocateFixed size={18} />}
               </button>
           </div>
         )}
 
-        {/* LİSTE */}
         <div ref={listContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
           {loading ? (
              <div className="space-y-3">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
@@ -390,7 +356,6 @@ export default function ActionPanel({
             <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in zoom-in duration-500">
                <div className="bg-gray-100 p-4 rounded-full mb-3"><MapPin size={32} className="text-gray-400" /></div>
                <h3 className="text-gray-800 font-black text-sm uppercase mb-1">Araç Bulunamadı</h3>
-               <button onClick={() => document.querySelector('select')?.focus()} className="bg-blue-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg active:scale-95">ŞEHİR SEÇİNİZ</button>
             </div>
           ) : (
             renderedDrivers.map((driver) => {
@@ -411,7 +376,6 @@ export default function ActionPanel({
                 else if (subType === 'kamyonet') { iconBg = 'bg-purple-400'; IconComponent = Package; }
                 else if (['nakliye', 'kamyon'].some(t => subType.includes(t))) { iconBg = 'bg-purple-600'; IconComponent = Truck; }
 
-                // 🔥 TEKNİK BİLGİ KARTI SEÇİMİ
                 const specs = driver.service?.tags?.find(tag => VEHICLE_SPECS[tag]) ? VEHICLE_SPECS[driver.service.tags.find(tag => VEHICLE_SPECS[tag])!] : null;
 
                 return (
@@ -423,15 +387,12 @@ export default function ActionPanel({
                                 <h4 className="font-black text-gray-900 text-sm uppercase truncate leading-tight">{driver.businessName} 
                                   <span className="flex items-center gap-1 mt-1">{[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}<span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span></span>
                                 </h4>
-                                
-                                {/* 🔥 TONAJ VE TİP BİLGİSİ (Varsa Göster) */}
                                 {specs && (
                                   <div className="mt-1 flex items-center gap-1 bg-purple-50 w-fit px-2 py-0.5 rounded-lg border border-purple-100">
                                     <Info size={10} className="text-purple-600" />
                                     <span className="text-[9px] font-black text-purple-700 uppercase">{specs.capacity} • {specs.desc.split('-')[0]}</span>
                                   </div>
                                 )}
-
                                 {!specs && (
                                    <div className="flex items-center gap-1 mt-1.5 text-gray-500 text-[10px] font-bold truncate"><MapPin size={10} className="text-green-500" /> {driver.address?.district ? `${driver.address.district} / ` : ''}{driver.address?.city || 'Merkez'}</div>
                                 )}

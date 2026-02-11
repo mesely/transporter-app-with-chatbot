@@ -1,33 +1,131 @@
+/**
+ * @file globals.css
+ * @description Transporter 2026 Sovereign Teması - Eksiksiz Versiyon.
+ * Fix: Hydration hatası için .overflow-hidden eklendi ve iOS uyumluluğu optimize edildi.
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fdfdfd;
+  --cyan-vibrant: #06b6d4;
+  --slate-dark: #0f172a;
 }
 
+/* GENEL BODY YAPILANDIRMASI */
 body {
-  background: #061a0a; 
-  color: var(--foreground);
+  background: var(--background);
+  color: var(--slate-dark);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  overflow: hidden;
+  
+  /* Kritik: Sadece yatay taşmaları engelle, dikey kayma serbesttir. */
+  /* Dikey kayma kontrolü JavaScript ve .overflow-hidden sınıfı ile yapılır. */
+  overflow-x: hidden; 
+  
+  margin: 0;
+  padding: 0;
   min-height: 100vh;
+  
+  /* iOS Safari cihazlarda adres çubuğu uyuşmazlığını önleyen tam boy görünüm */
   min-height: -webkit-fill-available;
+  
+  /* Yazı tiplerini daha keskin render et */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html {
   height: -webkit-fill-available;
+  scroll-behavior: smooth;
 }
 
-.backdrop-blur-2xl {
+/* --- HYDRATION FIX VE SCROLL KONTROLÜ --- */
+
+/** * Layout.tsx içindeki script tarafından kullanılır. 
+ * Inline style{{overflow-y: "hidden"}} kullanımının verdiği hatayı engeller.
+ */
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+/* --- KRİSTAL GLASSMORPHISM TASARIMI --- */
+
+.glass-card-refined {
+  background: rgba(255, 255, 255, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 25px 60px rgba(6, 182, 212, 0.1), 
+              inset 0 0 20px rgba(255, 255, 255, 0.5);
   -webkit-backdrop-filter: blur(40px);
   backdrop-filter: blur(40px);
 }
 
-.backdrop-blur-xl {
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
+/* Safari için yedek blur efekti */
+@supports not ((-webkit-backdrop-filter: blur(40px)) or (backdrop-filter: blur(40px))) {
+  .glass-card-refined {
+    background: rgba(255, 255, 255, 0.9);
+  }
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 0px; }
+/* --- ANİMASYONLAR --- */
+
+/* Kristal Parlama Animasyonu (Turkuaz Işık Süzmeleri) */
+@keyframes crystal-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    filter: blur(50px); 
+    opacity: 0.4; 
+  }
+  50% { 
+    transform: scale(1.2); 
+    filter: blur(70px); 
+    opacity: 0.6; 
+  }
+}
+
+.animate-crystal-glow {
+  animation: crystal-pulse 4s ease-in-out infinite;
+}
+
+/* Hafif Salınım Animasyonu (Sovereign Float) */
+@keyframes refined-float {
+  0%, 100% { 
+    transform: translateY(0px); 
+  }
+  50% { 
+    transform: translateY(-8px); 
+  }
+}
+
+.animate-refined {
+  animation: refined-float 5s ease-in-out infinite;
+}
+
+/* --- YARDIMCI SINIFLAR --- */
+
+/* Özel Scrollbar Gizleme (İçerik kayarken temiz görüntü için) */
+.custom-scrollbar {
+  -ms-overflow-style: none;  /* IE ve Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.custom-scrollbar::-webkit-scrollbar { 
+  display: none;
+  width: 0px; 
+  height: 0px;
+}
+
+/* Metin Gölgelendirme (Başlıklar için) */
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* iOS Safe Area (Çentik) Uyumluluğu */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
