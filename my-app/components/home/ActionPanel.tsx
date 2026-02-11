@@ -1,7 +1,9 @@
 /**
  * @file ActionPanel.tsx
  * @description Transporter 2026 Action Panel.
- * Güncelleme: Hassasiyet sorunu ve NaN km hatası giderildi. Blur efekti md seviyesine çekildi.
+ * FIX: Chat simgesinin üstte kalma sorunu z-[2000] ile çözüldü.
+ * FIX: Büyük moddayken tıklama ile küçülme engellendi.
+ * FIX: NaN km hatası ve hassasiyet ayarları optimize edildi.
  */
 
 'use client';
@@ -10,7 +12,7 @@ import {
   Truck, Zap, Star, MapPin, Wrench, 
   ChevronDown, LocateFixed, Loader2, 
   Navigation, Globe, CarFront, Anchor, Home, 
-  Package, Container, ArrowUpDown, Banknote, Map as MapIcon,
+  Package, Container, ArrowUpDown, Map as MapIcon,
   Check, Phone, MessageCircle, Info 
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -223,7 +225,7 @@ export default function ActionPanel({
     e.stopPropagation();
     const lat = driver.location?.coordinates[1];
     const lng = driver.location?.coordinates[0];
-    if (lat && lng) window.open(`https://www.google.com/maps/dir/?api=1&destination=$${lat},${lng}`, '_blank');
+    if (lat && lng) window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
   };
 
   const displayDrivers = useMemo(() => {
@@ -264,16 +266,17 @@ export default function ActionPanel({
 
   return (
     <div 
-      className={`fixed inset-x-0 bottom-0 z-[1000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${sizeClass} ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
+      // 🔥 Z-INDEX GÜNCELLEMESİ: ChatWidget'ın üzerine çıkması için z-[2000] yapıldı.
+      className={`fixed inset-x-0 bottom-0 z-[2000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${sizeClass} ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
     >
-      {/* DRAG HANDLE - Sadece burası paneli aşağı yukarı oynatır */}
       <div 
         onMouseDown={(e) => handleDragStart(e.clientY)}
         onMouseUp={(e) => handleDragEnd(e.clientY)}
         onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
         onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
-        onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 0)}
-        className="w-full flex justify-center py-6 cursor-grab active:cursor-grabbing shrink-0 z-[1001] hover:opacity-80 transition-opacity"
+        // 🔥 GÜNCELLEME: Büyük boyuttaysa (2) tıklandığında büyükte kalmaya devam eder.
+        onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 2)}
+        className="w-full flex justify-center py-6 cursor-grab active:cursor-grabbing shrink-0 z-[2001] hover:opacity-80 transition-opacity"
       >
         <div className="w-16 h-1.5 bg-gray-400/40 rounded-full shadow-sm"></div>
       </div>
@@ -363,7 +366,6 @@ export default function ActionPanel({
           </div>
         )}
 
-        {/* LIST CONTAINER - Burası paneli tetiklemez, sadece kendi içinde kayar */}
         <div 
           ref={listContainerRef} 
           onScroll={handleScroll} 
@@ -408,7 +410,6 @@ export default function ActionPanel({
                                 <h4 className="font-black text-gray-900 text-sm uppercase truncate leading-tight">{driver.businessName} 
                                   <span className="flex items-center gap-1 mt-1">
                                     {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
-                                    {/* MESAFE FIX: Sadece sayı ise ve varsa gösterilir */}
                                     {driver.distance !== undefined && driver.distance !== null && !isNaN(driver.distance) && (
                                       <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>
                                     )}
