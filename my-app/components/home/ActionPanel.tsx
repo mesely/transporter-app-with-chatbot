@@ -1,9 +1,10 @@
 /**
  * @file ActionPanel.tsx
  * @description Transporter 2026 Action Panel.
- * FIX: Chat simgesinin üstte kalma sorunu z-[2000] ile çözüldü.
- * FIX: Büyük moddayken tıklama ile küçülme engellendi.
- * FIX: NaN km hatası ve hassasiyet ayarları optimize edildi.
+ * GÜNCELLEME: 
+ * 1. Nakliye sekmesindeki "Tümü" butonu "Evden Eve" olarak değiştirildi.
+ * 2. Expansion Logic: Panel tam ekrandayken seçim yapıldığında orta boyuta düşmez, yerini korur.
+ * 3. Z-Index: Chat simgesinin altında kalmaması için z-[2000] sabitlendi.
  */
 
 'use client';
@@ -132,17 +133,19 @@ export default function ActionPanel({
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
 
+  // 🔥 FIX: PANEL GENİŞLEME MANTIĞI - Sadece kapalıyken orta boyuta açılır, diğer durumlarda boyutu korunur.
   useEffect(() => {
     if (activeDriverId) {
-      if (panelState === 0) setPanelState(1);
+      setPanelState(current => (current === 0 ? 1 : current));
       setTimeout(() => {
         itemRefs.current[activeDriverId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
     }
-  }, [activeDriverId, panelState]);
+  }, [activeDriverId]);
 
   const handleMainCategoryClick = (category: 'kurtarici' | 'nakliye' | 'sarj') => {
-    setPanelState(1);
+    // Kategoriye basınca da kapalıysa orta boyuta açılır
+    setPanelState(current => (current === 0 ? 1 : current));
     setVisibleItems(5); 
     if (listContainerRef.current) listContainerRef.current.scrollTop = 0;
     setActiveTransportFilter(null);
@@ -266,15 +269,16 @@ export default function ActionPanel({
 
   return (
     <div 
-      // 🔥 Z-INDEX GÜNCELLEMESİ: ChatWidget'ın üzerine çıkması için z-[2000] yapıldı.
+      // 🔥 Z-INDEX FIX: Panel büyüdüğünde her şeyin üzerinde olması için z-[2000] yapıldı.
       className={`fixed inset-x-0 bottom-0 z-[2000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${sizeClass} ${heightClass} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible`}
     >
+      {/* DRAG HANDLE */}
       <div 
         onMouseDown={(e) => handleDragStart(e.clientY)}
         onMouseUp={(e) => handleDragEnd(e.clientY)}
         onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
         onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
-        // 🔥 GÜNCELLEME: Büyük boyuttaysa (2) tıklandığında büyükte kalmaya devam eder.
+        // 🔥 FIX: Tıklama ile küçülme engellendi. Büyükteyken tıklandığında büyük kalır.
         onClick={() => setPanelState(prev => prev === 0 ? 1 : prev === 1 ? 2 : 2)}
         className="w-full flex justify-center py-6 cursor-grab active:cursor-grabbing shrink-0 z-[2001] hover:opacity-80 transition-opacity"
       >
@@ -286,7 +290,7 @@ export default function ActionPanel({
           <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white scale-105 shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
             <Wrench size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Kurtarıcı</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${(actionType.includes('nakliye') || actionType === 'yurt_disi' || showDomesticRow) ? 'bg-purple-700 text-white scale-105 shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
+          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${(actionType.includes('nakliye') || actionType === 'yurt_disi' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white scale-105 shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
             <Truck size={26} className="mb-1" /> <span className="text-[10px] font-black uppercase tracking-tighter">Nakliye</span>
           </button>
           <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-5 rounded-[2.2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 duration-300 ${(actionType.includes('sarj') || showChargeRow) ? 'bg-blue-600 text-white scale-105 shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
@@ -301,9 +305,9 @@ export default function ActionPanel({
               <button onClick={() => { onFilterApply('vinc'); setVisibleItems(5); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> Vinç</button>
             </div>
           )}
-          {(['nakliye', 'yurt_disi', 'tir', 'kamyon', 'kamyonet'].some(t => actionType === t) || showDomesticRow) && (
+          {(['nakliye', 'yurt_disi', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].some(t => actionType === t) || showDomesticRow) && (
              <div className="flex gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setVisibleItems(5); setActiveTransportFilter(null); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType !== 'yurt_disi' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
+                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setVisibleItems(5); setActiveTransportFilter(null); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${(actionType !== 'yurt_disi' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
                   <Truck size={14}/> Yurt İçi
                 </button>
                 <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi'); setVisibleItems(5); setActiveTransportFilter(null); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'yurt_disi' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}>
@@ -313,8 +317,9 @@ export default function ActionPanel({
           )}
           {showDomesticRow && actionType !== 'yurt_disi' && (
             <div className="grid grid-cols-4 gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
-               <button onClick={() => { onFilterApply('nakliye'); setActiveTransportFilter(null); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'nakliye' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
-                 <Home size={14}/> Tümü
+               {/* 🔥 GÜNCELLEME: "Tümü" yerine "Evden Eve" eklendi */}
+               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
+                 <Home size={14}/> Evden Eve
                </button>
                <button onClick={() => handleTransportTypeClick('tir')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${activeTransportFilter === 'tir' || actionType === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
                  <Container size={14}/> Tır

@@ -1,8 +1,7 @@
 /**
  * @file Map.tsx
  * @description Transporter 2026 Akıllı Harita Motoru.
- * Özellikler: MongoDB GeoJSON Senkronizasyonu, Dinamik İkonografi, 
- * Akıllı Kümeleme (Clustering) ve Smooth-Fly Animasyonları.
+ * GÜNCELLEME: evden_eve desteği ve MongoDB GeoJSON senkronizasyonu.
  */
 
 'use client';
@@ -16,7 +15,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 // --- ICONS ---
 import { 
   Truck, Zap, Anchor, Star, 
-  CalendarCheck, CarFront, Globe, Home, Navigation, Phone, MessageCircle, Package, MapPin
+  CarFront, Globe, Home, Navigation, Phone, MessageCircle, Package, MapPin
 } from 'lucide-react';
 
 // --- 1. TİPLER ---
@@ -27,9 +26,8 @@ interface Driver {
   phoneNumber?: string;
   rating?: number;
   location: {
-    coordinates: [number, number]; // [lng, lat] (MongoDB Standardı)
+    coordinates: [number, number]; // [lng, lat]
   };
-  reservationUrl?: string;
   address?: { city?: string; district?: string; };
   service?: { mainType: string; subType: string; tags: string[]; };
   pricing?: { openingFee: number; pricePerUnit: number; };
@@ -51,7 +49,7 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. SERVİS YAPILANDIRMASI ---
+// --- 2. SERVİS YAPILANDIRMASI (Evden Eve Eklendi) ---
 const SERVICE_CONFIG: any = {
   kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },        
   oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
@@ -68,7 +66,6 @@ const SERVICE_CONFIG: any = {
 };
 
 // --- 3. İKON GENERATORLARI ---
-
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
   const baseSize = isActive ? 52 : Math.max(34, Math.min(46, zoom * 2.8)); 
@@ -120,7 +117,6 @@ const createClusterIcon = (count: number, type: string) => {
 };
 
 // --- 4. MAP INTERNAL CONTROLLERS ---
-
 function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   const map = useMapEvents({
     zoomend: () => onZoomChange(map.getZoom()),
@@ -147,7 +143,6 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
 }
 
 // --- 5. ANA COMPONENT ---
-
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 13 : 6);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
@@ -194,7 +189,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
       }
     });
 
-    // Aktif sürücüyü her zaman ekle
     if (activeDriverId) {
         const active = drivers.find(d => d._id === activeDriverId);
         if (active) result.push({ ...active, isCluster: false });
@@ -205,24 +199,12 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
   return (
     <div className="absolute inset-0 w-full h-full z-0 bg-[#f8fdfe]">
-      <MapContainer 
-        center={initialCenter} 
-        zoom={currentZoom} 
-        zoomControl={false} 
-        className="w-full h-full"
-        minZoom={5}
-        maxZoom={18}
-      >
-        {/* Voyager TileLayer - Daha modern ve profesyonel görünüm */}
-        <TileLayer
-          attribution='&copy; CartoDB Voyager'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-        />
+      <MapContainer center={initialCenter} zoom={currentZoom} zoomControl={false} className="w-full h-full" minZoom={5} maxZoom={18}>
+        <TileLayer attribution='&copy; CartoDB' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
-        {/* Kullanıcı Konumu */}
         {searchCoords && (
           <Marker position={searchCoords} icon={L.divIcon({
             className: 'user-loc',
@@ -231,7 +213,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           })} />
         )}
 
-        {/* Markerlar */}
         {visibleMarkers.map((item: Driver) => {
           const pos: [number, number] = [item.location.coordinates[1], item.location.coordinates[0]];
 
@@ -258,14 +239,14 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
               eventHandlers={{ click: () => onSelectDriver(item._id) }}
             >
               <Popup className="custom-leaflet-popup" minWidth={260} closeButton={false}>
-                <div className="p-1 font-sans">
+                <div className="p-1 font-sans text-gray-900">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-[9px] font-black text-white px-2 py-0.5 rounded uppercase tracking-widest shadow-sm" style={{ backgroundColor: config.color }}>
                       {config.label}
                     </span>
                     {item.distance && <span className="text-[9px] font-bold text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
                   </div>
-                  <h4 className="font-black text-gray-900 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
+                  <h4 className="font-black text-slate-800 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
                   <div className="flex items-center gap-0.5 mb-4">
                     {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (item.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />)}
                   </div>

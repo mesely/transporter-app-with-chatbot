@@ -188,6 +188,18 @@ export class DataService {
     return { success: true, stats };
   }
 
+  async fixNakliyeToEvdenEve() {
+    this.logger.log('🛠️ FIX: "nakliye" olan subtype değerleri "evden_eve" olarak güncelleniyor...');
+    
+    const result = await this.newProviderModel.updateMany(
+      { 'service.subType': 'nakliye' }, // Filtre: subtype'ı nakliye olanlar
+      { $set: { 'service.subType': 'evden_eve' } } // Güncelleme: evden_eve yap
+    );
+
+    this.logger.log(`✅ İşlem tamamlandı. Güncellenen kayıt sayısı: ${result.modifiedCount}`);
+    return { success: true, updatedCount: result.modifiedCount };
+  }
+  
   // --- VIP EKLEME ---
   async injectPremiumChargers() {
     this.logger.log('🔋 VIP MOBİL ŞARJLAR (Skoda, EVbee, OtoPriz) EKLENİYOR...');

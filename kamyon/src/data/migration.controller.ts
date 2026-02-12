@@ -13,4 +13,14 @@ export class MigrationController {
       data: result
     });
   }
+
+  // 🔥 YENİ EKLENEN FIX ENDPOINT'I
+  @Post('fix-nakliye')
+  async fixNakliye(@Res() res) {
+    const result = await this.dataService.fixNakliyeToEvdenEve();
+    return res.status(HttpStatus.OK).json({
+      message: 'Nakliye -> Evden Eve dönüşümü tamamlandı.',
+      data: result
+    });
+  }
 }

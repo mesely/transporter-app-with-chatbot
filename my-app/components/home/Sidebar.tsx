@@ -129,7 +129,7 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
             <>
               <div className="p-4 rounded-3xl bg-red-50/80 border border-red-200 flex items-start gap-3 shadow-sm">
                 <Heart size={18} className="text-red-500 shrink-0 fill-red-500" />
-                <p className="text-[9px] font-black text-red-700 leading-tight uppercase">Tüm kazancımızın %10'u doğa ve hayvanları koruma projelerine aktarılmaktadır.</p>
+                <p className="text-[9px] font-black text-red-700 leading-tight uppercase">Tüm kazancımızın %10'una kadarı yardım kuruluşlarına aktarılmaktadır.</p>
               </div>
 
               {['KURTARMA', 'NAKLİYE', 'ENERJİ'].map(group => (

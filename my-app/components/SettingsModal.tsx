@@ -94,7 +94,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </div>
             <div>
               <h4 className="font-black text-gray-900 text-xs uppercase">Sosyal Sorumluluk</h4>
-              <p className="text-[10px] text-gray-500 font-bold mt-0.5 leading-tight">Gelirlerin %10'u yardım kuruluşlarına bağışlanır.</p>
+              <p className="text-[10px] text-gray-500 font-bold mt-0.5 leading-tight">Gelirlerin %10'una kadarı yardım kuruluşlarına bağışlanır.</p>
             </div>
           </div>
 
