@@ -62,8 +62,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
-  
-  // 🔥 Yeni: Koordinat takibi eklendi
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
 
   const [formData, setFormData] = useState({
@@ -72,7 +70,6 @@ export default function ProfilePage() {
     openingFee: '350', pricePerUnit: '40' 
   });
 
-  // Sayfa açıldığında konumu al (Haritada doğru yere çıkmak için şart)
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
@@ -103,33 +100,55 @@ export default function ProfilePage() {
   };
 
   const handleRegister = async () => {
-    if (!agreed) return alert("Sözleşmeyi onaylayın.");
-    if (formData.businessName.length < 3) return alert("Lütfen geçerli bir işletme adı girin.");
+    // 🛑 Validasyon: Sözleşme
+    if (!agreed) return alert("Lütfen hizmet şartlarını onaylayın.");
     
+    // 🛑 Validasyon: Telefon Numarası (0 ile başlamalı ve 11 hane olmalı)
+    const phoneRegex = /^0\d{10}$/;
+    if (!phoneRegex.test(formData.phoneNumber)) {
+      return alert("Hatalı Telefon Formatı! Numaranız 0 ile başlamalı ve toplam 11 haneli olmalıdır (Örn: 053XXXXXXXX).");
+    }
+
+    // 🛑 Validasyon: İşletme Adı
+    if (formData.businessName.trim().length < 3) {
+      return alert("Lütfen geçerli bir işletme adı girin.");
+    }
+
+    // 🛑 Validasyon: Hizmet Seçimi
+    if (formData.serviceTypes.length === 0) {
+      return alert("Lütfen en az bir hizmet türü seçin.");
+    }
+
     setLoading(true);
     try {
-      // 🔥 Payload'a lat ve lng eklendi
+      // 🛠️ MainType Düzeltmesi: Backend'in beklediği anahtar kelimelere eşleme yapıyoruz
+      let mappedServiceType = formData.serviceTypes[0];
+      if (mappedServiceType === 'yurt_disi_nakliye') mappedServiceType = 'YURT_DISI';
+      else if (mappedServiceType === 'evden_eve') mappedServiceType = 'NAKLIYE';
+      else if (mappedServiceType === 'oto_kurtarma') mappedServiceType = 'KURTARICI';
+
       const payload = { 
         ...formData, 
-        serviceType: formData.serviceTypes[0], // İlk seçileni ana tip yapar
+        serviceType: mappedServiceType, // Backend'e "YURT_DISI" veya "NAKLIYE" gitmesini sağlar
         role: 'provider',
-        lat: coords?.lat || 38.4237, // Eğer konum yoksa varsayılan İzmir
+        lat: coords?.lat || 38.4237,
         lng: coords?.lng || 27.1428
       };
 
-      const res = await fetch(`${API_URL}/users`, { // Dikkat: Users Service'e atıyoruz
+      const res = await fetch(`${API_URL}/users`, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(payload)
       });
 
-      if (res.ok) setIsRegistered(true);
-      else {
+      if (res.ok) {
+        setIsRegistered(true);
+      } else {
         const errData = await res.json();
-        alert("Kayıt başarısız: " + (errData.message || "Hata"));
+        alert("Kayıt sırasında bir hata oluştu: " + (errData.message || "Bilinmeyen hata"));
       }
     } catch (err) { 
-        alert("Bağlantı hatası!"); 
+        alert("Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin."); 
     } finally { 
         setLoading(false); 
     }
@@ -159,7 +178,7 @@ export default function ProfilePage() {
              <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-600"></span> İletişim Bilgileri</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input placeholder="İŞLETME ADI" value={formData.businessName} onChange={e => setFormData({...formData, businessName: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none focus:ring-2 ring-blue-500/20"/>
-                <input placeholder="TELEFON" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none focus:ring-2 ring-blue-500/20"/>
+                <input placeholder="TELEFON (05XXXXXXXXX)" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none focus:ring-2 ring-blue-500/20"/>
                 <input placeholder="E-POSTA" value={formData.email} className="md:col-span-2 w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none focus:ring-2 ring-blue-500/20" onChange={e => setFormData({...formData, email: e.target.value})}/>
              </div>
           </section>
@@ -175,7 +194,7 @@ export default function ProfilePage() {
                         <opt.icon size={48} strokeWidth={1.5} className="mb-4" />
                         <span className="text-sm font-black uppercase text-center leading-tight">{opt.label}</span>
                         {isSelected && opt.subs.length > 0 && (
-                          <button onClick={(e) => {e.stopPropagation(); setActiveFolder(opt.id)}} className="mt-4 py-2 px-6 bg-black text-white text-[10px] font-black rounded-xl flex items-center gap-2">AYARLA</button>
+                          <button onClick={(e) => {e.stopPropagation(); setActiveFolder(opt.id)}} className="mt-4 py-2 px-6 bg-black text-white text-[10px] font-black rounded-xl flex items-center gap-2 italic tracking-tighter">ÖZELLİK EKLE</button>
                         )}
                      </div>
                    );
@@ -197,7 +216,7 @@ export default function ProfilePage() {
                       {TURKEY_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                    </select>
                 </div>
-                <textarea placeholder="TAM ADRES..." value={formData.address} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-28 outline-none" onChange={e => setFormData({...formData, address: e.target.value})}/>
+                <textarea placeholder="İŞLETME ADRESİ VEYA GÜZERGAH BİLGİSİ..." value={formData.address} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-28 outline-none" onChange={e => setFormData({...formData, address: e.target.value})}/>
              </div>
           </section>
 
@@ -209,7 +228,7 @@ export default function ProfilePage() {
                 </div>
                 <span className="text-[10px] font-black text-gray-600 uppercase">Hizmet Şartlarını Onaylıyorum</span>
              </label>
-             <button onClick={handleRegister} disabled={loading || !agreed} className={`w-full max-w-sm py-6 rounded-[2.5rem] font-black uppercase text-sm tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${agreed ? 'bg-black text-white hover:bg-gray-900' : 'bg-gray-200 text-gray-400'}`}>
+             <button onClick={handleRegister} disabled={loading || !agreed} className={`w-full max-w-sm py-6 rounded-[2.5rem] font-black uppercase text-sm tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${agreed ? 'bg-black text-white hover:bg-gray-900 shadow-blue-500/20' : 'bg-gray-200 text-gray-400'}`}>
                 {loading ? <Loader2 className="animate-spin" size={24}/> : <>KAYDI TAMAMLA <ArrowRight size={20}/></>}
              </button>
           </div>
