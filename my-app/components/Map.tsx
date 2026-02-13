@@ -72,7 +72,7 @@ const SERVICE_CONFIG: any = {
   kamyonet:     { color: '#581c87', Icon: Package, label: 'Kamyonet' },
   yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },
   istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
-  seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Gezici Şarj' },
+  seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Mobil Şarj' },
   minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
   otobus:       { color: '#059669', Icon: Bus, label: 'Otobüs' },
   midibus:      { color: '#047857', Icon: Bus, label: 'Midibüs' },
@@ -215,7 +215,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
   return (
     <div className="absolute inset-0 w-full h-full z-0 bg-[#f0f4f8]">
       <MapContainer center={initialCenter} zoom={currentZoom} zoomControl={false} className="w-full h-full" minZoom={5} maxZoom={18}>
-        <TileLayer attribution='&copy; CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        <TileLayer attribution='© CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
@@ -263,7 +263,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     </span>
                     {/* 🔥 GEZİCİ ŞARJ İÇİN ÖZEL METİN */}
                     {isMobileCharge ? (
-                      <span className="text-[10px] font-black text-cyan-600 uppercase">Türkiye Geneli</span>
+                      <span className="text-[10px] font-black text-cyan-600 uppercase">TÜRKİYE GENELİ</span>
                     ) : (
                       item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>
                     )}
@@ -285,18 +285,19 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     >
                       <Phone size={13} /> ARA
                     </button>
+                    {/* WhatsApp yerine MESAJ AT butonu */}
                     <button 
-                      onClick={() => window.open(`https://wa.me/${item.phoneNumber?.replace(/\D/g,'')}`)}
+                      onClick={() => window.location.href=`sms:${item.phoneNumber}`}
                       className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                     >
-                      <MessageCircle size={13} /> WHATSAPP
+                      <MessageCircle size={13} /> MESAJ AT
                     </button>
                   </div>
                   
                   {/* 🔥 GEZİCİ ŞARJ DEĞİLSE ROTA BUTONU GÖSTER */}
                   {!isMobileCharge && (
                      <button 
-                        onClick={() => window.open(`http://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+                        onClick={() => window.open(`http://googleusercontent.com/maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
                         className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
                      >
                         <MapPin size={12} /> HARİTADA GÖSTER

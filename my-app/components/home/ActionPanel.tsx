@@ -1,10 +1,10 @@
 /**
  * @file ActionPanel.tsx
  * @description Transport 245 Master UI.
- * FIX: 'listContainerRef' tanımı eklendi, TS2304 hatası giderildi.
- * FIX: Tır, Kamyon, Kamyonet ana kategorileri seçildiğinde tüm alt tipler (6 teker, frigorifik vb.) listelenir.
- * FIX: Gezici Şarj için şehir filtresi bypass (Tüm Türkiye) ve mesafe gizleme aktif.
- * FIX: Konum kutusu ve Sıralama butonları (YAKIN, UCUZ, PUAN) tamamen dinamik kategori rengindedir.
+ * FIX: Liste sınırı yok, tüm veriler listelenir.
+ * FIX: "Mobil Şarj" için FİYAT BİLGİSİ GİZLENDİ.
+ * FIX: "Mobil Şarj" için "MESAJ AT" yerine "SİTEYE GİT" butonu eklendi.
+ * FIX: Diğer kategorilerde "MESAJ AT" (SMS) butonu aktif.
  */
 
 'use client';
@@ -52,6 +52,9 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
   "Yalova": [40.6500, 29.2667], "Yozgat": [39.8181, 34.8147], "Zonguldak": [41.4564, 31.7987]
 };
 
+const DEFAULT_LAT = 39.9334; 
+const DEFAULT_LNG = 32.8597;
+
 const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   tir: [{ id: 'tenteli', label: 'Tenteli' }, { id: 'frigorifik', label: 'Frigorifik' }, { id: 'lowbed', label: 'Lowbed' }, { id: 'konteyner', label: 'Konteyner' }, { id: 'acik_kasa', label: 'Açık Kasa' }],
   kamyon: [{ id: '6_teker', label: '6 Teker' }, { id: '8_teker', label: '8 Teker' }, { id: '10_teker', label: '10 Teker' }, { id: '12_teker', label: '12 Teker' }, { id: 'kirkayak', label: 'Kırkayak' }],
@@ -59,17 +62,32 @@ const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   yolcu: [{ id: 'minibus', label: 'Minibüs' }, { id: 'otobus', label: 'Otobüs' }, { id: 'midibus', label: 'Midibüs' }, { id: 'vip_tasima', label: 'VIP' }]
 };
 
+// 🔥 TİP TANIMLAMASI
+interface ActionPanelProps {
+  onSearchLocation: (lat: number, lng: number) => void;
+  onFilterApply: (type: string) => void;
+  onStartOrder: (driver: any, method: 'call' | 'message') => void;
+  actionType: string;
+  onActionChange: (t: string) => void;
+  drivers: any[];
+  loading: boolean;
+  activeDriverId: string | null;
+  onSelectDriver: (id: string | null) => void;
+  activeTags: string[];
+  onTagsChange: (tags: string[] | ((prev: string[]) => string[])) => void;
+  isSidebarOpen: boolean;
+}
+
 export default function ActionPanel({ 
   onSearchLocation, onFilterApply, onStartOrder, actionType, onActionChange, 
   drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen 
-}: any) {
+}: ActionPanelProps) {
   
   const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
-  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedCity, setSelectedCity] = useState(''); 
   const [sortMode, setSortMode] = useState<'distance' | 'rating' | 'price_asc' | 'price_desc'>('distance');
-  const [visibleItems, setVisibleItems] = useState(5);
 
   const [showTowRow, setShowTowRow] = useState(false);
   const [showChargeRow, setShowChargeRow] = useState(false);
@@ -79,11 +97,8 @@ export default function ActionPanel({
   const [activeTransportFilter, setActiveTransportFilter] = useState<string | null>(null);
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  
-  // 🔥 FIX: listContainerRef eksikliği giderildi
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // 🔥 DİNAMİK TEMA RENKLERİ
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
     if (actionType.includes('sarj') || actionType === 'sarj_istasyonu') return 'bg-blue-600';
@@ -109,7 +124,7 @@ export default function ActionPanel({
 
   const handleMainCategoryClick = (category: string) => {
     setPanelState(current => (current === 0 ? 1 : current));
-    setVisibleItems(5); setActiveTransportFilter(null); onTagsChange([]); 
+    setActiveTransportFilter(null); onTagsChange([]); 
     
     if (category === 'kurtarici') {
         setShowTowRow(!showTowRow); setShowChargeRow(false); setShowDomesticRow(false); setShowPassengerRow(false);
@@ -156,13 +171,10 @@ export default function ActionPanel({
   const displayDrivers = useMemo(() => {
     let list = Array.isArray(drivers) ? [...drivers] : [];
     
-    // Gezici Şarj Bypass
     if (selectedCity && actionType !== 'seyyar_sarj') {
         list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
 
-    // 🔥 KAMYON/TIR/KAMYONET ALT KATEGORİ MANTIĞI
-    // Eğer 'tır' seçiliyse ama aracın subtype'ı 'frigorifik' ise listede görünmeye devam etmeli
     if (activeTransportFilter && SUB_FILTERS[activeTransportFilter]) {
         const allowedSubTypes = [activeTransportFilter, ...SUB_FILTERS[activeTransportFilter].map(s => s.id)];
         list = list.filter(d => allowedSubTypes.includes(d.service?.subType));
@@ -275,7 +287,7 @@ export default function ActionPanel({
             <div className="flex gap-2 animate-in slide-in-from-top-2">
               <button onClick={() => onFilterApply('sarj_istasyonu')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> İstasyon</button>
               <button onClick={() => onFilterApply('seyyar_sarj')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
-                <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> Gezici Şarj
+                <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> Mobil Şarj
               </button>
             </div>
           )}
@@ -299,7 +311,7 @@ export default function ActionPanel({
                   onChange={handleCityChange} 
                   className={`w-full appearance-none ${activeThemeColor} text-white pl-3 pr-8 py-3 rounded-2xl text-[9px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
                 >
-                  <option value="">{selectedCity ? selectedCity.toUpperCase() : "MEVCUT KONUM"}</option>
+                  <option value="">TÜM TÜRKİYE</option>
                   {Object.keys(CITY_COORDINATES).map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
                 </select>
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={12} /></div>
@@ -317,7 +329,7 @@ export default function ActionPanel({
 
         <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
           {loading ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">Yükleniyor...</p></div> ) : (
-            displayDrivers.slice(0, visibleItems).map((driver) => {
+            displayDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id;
                 const p = getPricing(driver);
                 const sub = driver.service?.subType || '';
@@ -351,15 +363,30 @@ export default function ActionPanel({
                                 )}
                             </div>
                         </div>
-                        <div className="text-right shrink-0"><div className="text-xl font-black leading-none">₺{p.unit}</div><div className="text-[8px] text-gray-400 font-bold uppercase mt-1">/Birim</div></div>
+                        {/* 🔥 FIX: MOBİL ŞARJ İÇİN FİYAT GİZLENDİ */}
+                        {!isMobileCharge && (
+                          <div className="text-right shrink-0"><div className="text-xl font-black leading-none">₺{p.unit}</div><div className="text-[8px] text-gray-400 font-bold uppercase mt-1">/Birim</div></div>
+                        )}
                     </div>
                     {isSelected && (
                     <div className="mt-6 pt-6 border-t border-white/20 space-y-4 animate-in fade-in slide-in-from-top-2">
-                        <div className="grid grid-cols-2 gap-2 text-gray-900"><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Açılış</div><div className="text-sm font-black">₺{p.opening}</div></div><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Birim</div><div className="text-sm font-black">₺{p.unit}</div></div></div>
+                        {/* 🔥 FIX: MOBİL ŞARJ İÇİN DETAYLI FİYAT GİZLENDİ */}
+                        {!isMobileCharge && (
+                          <div className="grid grid-cols-2 gap-2 text-gray-900"><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Açılış</div><div className="text-sm font-black">₺{p.opening}</div></div><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Birim</div><div className="text-sm font-black">₺{p.unit}</div></div></div>
+                        )}
                         {!isMobileCharge && (
                           <button onClick={(e) => { e.stopPropagation(); window.open(`http://googleusercontent.com/maps.google.com/maps?q=${driver.location?.coordinates[1]},${driver.location?.coordinates[0]}`, '_blank'); }} className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"><MapIcon size={16} /> HARİTADA GİT (ROTA)</button>
                         )}
-                        <div className="flex gap-2"><button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button><button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${(driver.phoneNumber || '').replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button></div>
+                        <div className="flex gap-2">
+                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
+                          
+                          {/* 🔥 FIX: MOBİL ŞARJ İÇİN 'SİTEYE GİT', DİĞERLERİ İÇİN 'MESAJ AT' */}
+                          {isMobileCharge ? (
+                            <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || 'https://transport245.com', '_blank'); }} className="flex-1 bg-cyan-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Globe size={14}/> SİTEYE GİT</button>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> MESAJ AT</button>
+                          )}
+                        </div>
                     </div>)}
                 </div>
                 );

@@ -2,7 +2,7 @@
  * @file TariffModule.tsx
  * @description Transport 245 Yönetici Paneli - Tarife Yönetimi.
  * GÜNCELLEME: Yolcu Taşıma (Minibüs, Otobüs, VIP) eklendi.
- * GÜNCELLEME: Gezici Şarj ve İstasyon isimlendirmeleri/ID'leri frontend ile eşitlendi.
+ * GÜNCELLEME: Mobil Şarj ve İstasyon isimlendirmeleri frontend ile eşitlendi.
  */
 
 'use client';
@@ -15,7 +15,7 @@ import {
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 
-// Frontend (Sidebar/ActionPanel) ile %100 uyumlu ID ve Konfigürasyon
+// Frontend ile %100 uyumlu ID ve Konfigürasyon
 const SERVICE_TYPES = [
   // KURTARMA GRUBU
   { id: 'vinc', label: 'Vinç Hizmetleri', icon: Anchor, color: 'bg-rose-700', shadow: 'shadow-rose-900/20' },
@@ -27,7 +27,7 @@ const SERVICE_TYPES = [
   
   // ENERJİ GRUBU
   { id: 'istasyon', label: 'Şarj İstasyonu', icon: Navigation, color: 'bg-blue-700', shadow: 'shadow-blue-600/20' },
-  { id: 'seyyar_sarj', label: 'Gezici Şarj', icon: Zap, color: 'bg-cyan-500', shadow: 'shadow-cyan-500/20' },
+  { id: 'seyyar_sarj', label: 'Mobil Şarj', icon: Zap, color: 'bg-cyan-500', shadow: 'shadow-cyan-500/20' },
 
   // YOLCU TAŞIMA GRUBU (YENİ)
   { id: 'minibus', label: 'Yolcu - Minibüs', icon: Users, color: 'bg-teal-600', shadow: 'shadow-teal-600/20' },

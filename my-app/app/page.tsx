@@ -4,7 +4,7 @@
  * GÜNCELLEME: Marka ismi "Transport 245" olarak revize edildi.
  * GÜNCELLEME: Gezici Şarj (seyyar_sarj) için harita sınırları tamamen kaldırıldı (Türkiye Geneli).
  * GÜNCELLEME: Alt kategori hiyerarşisi (Tır, Kamyon, Kamyonet) filtrelemeye eklendi.
- * MANTIK: Sidebar ve ActionPanel arası karşılıklı kapanma senkronizasyonu korunmuştur.
+ * FIX: Liste kısıtlamasını kaldırmak için API'ye gönderilen 'zoom' değeri 9'a sabitlendi (Geniş Alan Araması).
  */
 
 'use client';
@@ -91,10 +91,12 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
+  // 🔥 MANTIK: Sidebar açılırsa ActionPanel'i kesin olarak küçült
   useEffect(() => {
     if (sidebarOpen) setActiveDriverId(null);
   }, [sidebarOpen]);
 
+  // 🔥 MANTIK: ActionPanel büyürse Sidebar'ı kesin olarak kapat
   useEffect(() => {
     if (activeDriverId) setSidebarOpen(false);
   }, [activeDriverId]);
@@ -102,7 +104,9 @@ export default function Home() {
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string, zoom: number) => {
     setLoading(true);
     try {
-      // 🔥 FIX: Gezici Şarj seçiliyse koordinat/zoom kısıtlaması olmadan TÜM veriyi çek (Türkiye Geneli)
+      // 🔥 FIX: Gezici Şarj ise 'all' endpointini kullan. 
+      // Diğerleri için zoom ne olursa olsun, API'ye '8' (İl Geneli) gönderiyoruz ki liste dolsun.
+      
       let url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=${zoom}`;
       
       if (type === 'seyyar_sarj') {
@@ -119,9 +123,9 @@ export default function Home() {
     }
   }, []);
 
-  // Başlangıç Yüklemesi (Ankara Merkezli)
+  // Başlangıç Yüklemesi (Ankara Merkezli - Geniş Tarama)
   useEffect(() => {
-    if (!searchCoords) fetchDrivers(39.9334, 32.8597, 'kurtarici', 6);
+    if (!searchCoords) fetchDrivers(39.9334, 32.8597, 'kurtarici', 8);
   }, [fetchDrivers, searchCoords]); 
 
   // --- GELİŞMİŞ FİLTRELEME MANTIĞI ---
@@ -133,19 +137,19 @@ export default function Home() {
 
       let matchesType = false;
 
-      // 1. ÖZEL DURUMLAR (Gezici Şarj, Yurt Dışı, Evden Eve, İstasyon)
+      // 1. ÖZEL DURUMLAR
       if (actionType === 'seyyar_sarj') matchesType = s.subType === 'seyyar_sarj';
       else if (actionType === 'yurt_disi_nakliye') matchesType = s.subType === 'yurt_disi_nakliye';
       else if (actionType === 'evden_eve') matchesType = s.subType === 'evden_eve';
       else if (actionType === 'sarj_istasyonu') matchesType = s.subType === 'istasyon';
       
-      // 2. ANA KATEGORİLER (KURTARICI, NAKLIYE, SARJ, YOLCU)
+      // 2. ANA KATEGORİLER
       else if (actionType === 'kurtarici') matchesType = s.mainType === 'KURTARICI';
       else if (actionType === 'nakliye') matchesType = s.mainType === 'NAKLIYE';
       else if (actionType === 'sarj') matchesType = s.mainType === 'SARJ';
       else if (actionType === 'yolcu') matchesType = s.mainType === 'YOLCU';
       
-      // 3. HİYERARŞİK FİLTRELEME (Tır seçiliyse frigorifik de görünsün)
+      // 3. HİYERARŞİK FİLTRELEME (Tır, Kamyon vb.)
       else if (CATEGORY_MAP[actionType]) {
         matchesType = s.subType === actionType || CATEGORY_MAP[actionType].includes(s.subType);
       }
@@ -155,7 +159,7 @@ export default function Home() {
 
       if (!matchesType) return false;
 
-      // TAG (Etiket) Filtresi (Örn: 6 Teker, 8 Teker)
+      // TAG (Etiket) Filtresi
       if (activeTags.length > 0) {
         return activeTags.some(tag => (s.tags || []).includes(tag));
       }
@@ -189,7 +193,9 @@ export default function Home() {
       <ActionPanel 
         onSearchLocation={(lat, lng) => { 
           setSearchCoords([lat, lng]); 
-          fetchDrivers(lat, lng, actionType, 13); 
+          // 🔥 FIX: Konum seçilse bile API'ye ZOOM 9 (Geniş Alan) gönderiyoruz ki liste dolsun.
+          // Harita bileşeni (Map.tsx) kendi içinde bu koordinata yakınlaşacaktır (flyTo).
+          fetchDrivers(lat, lng, actionType, 9); 
           setSidebarOpen(false); 
         }}
         onFilterApply={(type) => { 
@@ -198,7 +204,8 @@ export default function Home() {
           setSidebarOpen(false); 
           const lat = searchCoords ? searchCoords[0] : 39.9334;
           const lng = searchCoords ? searchCoords[1] : 32.8597;
-          fetchDrivers(lat, lng, type, mapZoom); 
+          // 🔥 FIX: Filtre değişince de geniş alan taraması (Zoom 9)
+          fetchDrivers(lat, lng, type, 9); 
         }}
         actionType={actionType}
         onActionChange={(t) => { setActionType(t); setSidebarOpen(false); }}
@@ -221,7 +228,8 @@ export default function Home() {
           setSidebarOpen(false); 
           const lat = searchCoords ? searchCoords[0] : 39.9334;
           const lng = searchCoords ? searchCoords[1] : 32.8597;
-          fetchDrivers(lat, lng, type, 13);
+          // 🔥 FIX: Yan menüden seçimde de geniş alan taraması
+          fetchDrivers(lat, lng, type, 9);
         }}
         onReportClick={() => {}} 
       />

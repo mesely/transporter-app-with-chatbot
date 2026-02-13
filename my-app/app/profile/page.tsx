@@ -54,7 +54,7 @@ const SERVICE_OPTIONS = [
       { id: 'vip_tasima', label: 'VIP TRANSFER', icon: Crown }
   ]},
   { id: 'istasyon', label: 'İSTASYON', icon: Navigation, color: 'blue', subs: [] },
-  { id: 'seyyar_sarj', label: 'GEZİCİ ŞARJ', icon: Zap, color: 'cyan', subs: [] },
+  { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'cyan', subs: [] },
 ];
 
 const getColorClasses = (colorName: string, isSelected: boolean) => {
@@ -97,13 +97,13 @@ export default function ProfilePage() {
           if (data && data._id) {
             setExistingId(data._id);
             setFormData({
-              businessName: data.businessName || '',
+              businessName: data.businessName || data.firstName || '',
               email: data.email || '',
               phoneNumber: data.phoneNumber || '',
-              serviceTypes: data.serviceTypes || [],
-              city: data.city || 'İstanbul',
-              address: data.address || '',
-              filterTags: data.filterTags || [],
+              serviceTypes: data.serviceType ? [data.serviceType] : [],
+              city: data.address?.city || 'İstanbul',
+              address: data.address?.fullText || '',
+              filterTags: data.service?.tags || [],
               openingFee: data.pricing?.openingFee?.toString() || '350',
               pricePerUnit: data.pricing?.pricePerUnit?.toString() || '40'
             });
@@ -119,14 +119,10 @@ export default function ProfilePage() {
   const toggleService = (id: string, hasSubs: boolean) => {
     setFormData(prev => {
       const isSelected = prev.serviceTypes.includes(id);
-      let newTypes = isSelected ? prev.serviceTypes.filter(t => t !== id) : [...prev.serviceTypes, id];
+      let newTypes = isSelected ? [] : [id]; // Tekil Seçim (Radio Mantığı)
       let newTags = [...prev.filterTags];
-      if (isSelected) {
-        const config = SERVICE_OPTIONS.find(s => s.id === id);
-        if (config?.subs) {
-          const subIds = config.subs.map(s => s.id);
-          newTags = newTags.filter(t => !subIds.includes(t));
-        }
+      if (isSelected || newTypes.length > 0) {
+         newTags = []; // Kategori değişirse tagleri temizle
       }
       return { ...prev, serviceTypes: newTypes, filterTags: newTags };
     });
@@ -143,18 +139,23 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!agreed) return alert("Lütfen hizmet şartlarını ve KVKK metnini onaylayın.");
     if (formData.businessName.trim().length < 2) return alert("İşletme adı giriniz.");
+    if (formData.serviceTypes.length === 0) return alert("Lütfen bir hizmet branşı seçiniz.");
     
     setSaving(true);
     try {
-      // API Standardına Uygun Mapping
-      let mappedMain = 'NAKLIYE';
-      if (formData.serviceTypes.includes('oto_kurtarma') || formData.serviceTypes.includes('vinc')) mappedMain = 'KURTARICI';
-      else if (formData.serviceTypes.includes('istasyon') || formData.serviceTypes.includes('seyyar_sarj')) mappedMain = 'SARJ';
-      else if (formData.serviceTypes.includes('yolcu_tasima')) mappedMain = 'YOLCU';
+      const subType = formData.serviceTypes[0];
+      let mappedMain = 'NAKLIYE'; // Varsayılan
+
+      if (['oto_kurtarma', 'vinc'].includes(subType)) mappedMain = 'KURTARICI';
+      else if (['istasyon', 'seyyar_sarj'].includes(subType)) mappedMain = 'SARJ';
+      else if (['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType)) mappedMain = 'YOLCU';
+      else if (['yurt_disi_nakliye'].includes(subType)) mappedMain = 'YURT_DISI';
 
       const payload = { 
-        ...formData, 
+        ...formData,
+        firstName: formData.businessName, // Backend uyumluluğu
         mainType: mappedMain,
+        serviceType: subType, // Backend serviceType bekliyor olabilir
         role: 'provider',
         pricing: { 
           openingFee: Number(formData.openingFee), 
