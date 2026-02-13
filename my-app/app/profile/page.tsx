@@ -1,3 +1,11 @@
+/**
+ * @file profile/page.tsx
+ * @description Transport 245 Driver Profile & Registration.
+ * FIX: Profile Editing (PUT vs POST logic) implemented.
+ * FIX: KVKK & Service Contract Modals added.
+ * FIX: 8 Teker and Passenger Transport categories integrated.
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,13 +14,13 @@ import {
   Loader2, ShieldCheck, X, Anchor, CarFront, 
   Zap, Navigation, Globe, Home, Package, Container,
   Snowflake, Box, Layers, Archive, Check, Settings2, Wallet, 
-  ArrowRight, ChevronDown, Edit3, Save, RefreshCcw
+  ArrowRight, ChevronDown, Edit3, Save, RefreshCcw, Users, Bus, Crown
 } from 'lucide-react';
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 
 const TURKEY_CITIES = [
-  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Amasya", "Ankara", "Antalya", "Artvin", "Aydın", "Balıkesir", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Isparta", "İstanbul", "İzmir", "Kars", "Kastamonu", "Kayseri", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Kahramanmaraş", "Mardin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Şanlıurfa", "Uşak", "Van", "Yozgat", "Zonguldak", "Aksaray", "Bayburt", "Karaman", "Kırıkkale", "Batman", "Şırnak", "Bartın", "Ardahan", "Iğdır", "Yalova", "Karabük", "Kilis", "Osmaniye", "Düzce"
+  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
 ];
 
 const SERVICE_OPTIONS = [
@@ -28,6 +36,7 @@ const SERVICE_OPTIONS = [
     ]},
   { id: 'kamyon', label: 'KAMYON', icon: Truck, color: 'purple', subs: [
       { id: '6_teker', label: '6 TEKER', icon: Truck },
+      { id: '8_teker', label: '8 TEKER', icon: Truck },
       { id: '10_teker', label: '10 TEKER', icon: Truck },
       { id: '12_teker', label: '12 TEKER', icon: Truck },
       { id: 'kirkayak', label: 'KIRKAYAK', icon: Layers }
@@ -38,8 +47,14 @@ const SERVICE_OPTIONS = [
       { id: 'kapali_kasa', label: 'KAPALI KASA', icon: Archive }
     ]},
   { id: 'evden_eve', label: 'EVDEN EVE', icon: Home, color: 'pink', subs: [] },
+  { id: 'yolcu_tasima', label: 'YOLCU TAŞIMA', icon: Users, color: 'emerald', subs: [
+      { id: 'minibus', label: 'MİNİBÜS', icon: CarFront },
+      { id: 'otobus', label: 'OTOBÜS', icon: Bus },
+      { id: 'midibus', label: 'MİDİBÜS', icon: Bus },
+      { id: 'vip_tasima', label: 'VIP TRANSFER', icon: Crown }
+  ]},
   { id: 'istasyon', label: 'İSTASYON', icon: Navigation, color: 'blue', subs: [] },
-  { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'cyan', subs: [] },
+  { id: 'seyyar_sarj', label: 'GEZİCİ ŞARJ', icon: Zap, color: 'cyan', subs: [] },
 ];
 
 const getColorClasses = (colorName: string, isSelected: boolean) => {
@@ -53,21 +68,55 @@ const getColorClasses = (colorName: string, isSelected: boolean) => {
     pink:   isSelected ? 'bg-pink-700 text-white border-pink-600 shadow-pink-500/40' : 'bg-white text-pink-700 border-pink-100 hover:border-pink-300',
     blue:   isSelected ? 'bg-blue-700 text-white border-blue-600 shadow-blue-500/40' : 'bg-white text-blue-700 border-blue-100 hover:border-blue-300',
     cyan:   isSelected ? 'bg-cyan-600 text-white border-cyan-50 shadow-cyan-500/40' : 'bg-white text-cyan-700 border-cyan-100 hover:border-cyan-300',
+    emerald: isSelected ? 'bg-emerald-700 text-white border-emerald-600 shadow-emerald-500/40' : 'bg-white text-emerald-700 border-emerald-100 hover:border-emerald-300',
   };
   return base[colorName] || base.blue;
 };
 
 export default function ProfilePage() {
-  const [isSaved, setIsSaved] = useState(false); // Kayıt bitti mi?
-  const [loading, setLoading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [loading, setLoading] = useState(true); // Veri çekilirken başlar
+  const [saving, setSaving] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [showLegalModal, setShowLegalModal] = useState<'kvkk' | 'contract' | null>(null);
+  const [existingId, setExistingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
-    city: 'İzmir', address: '', filterTags: [] as string[],
+    city: 'İstanbul', address: '', filterTags: [] as string[],
     openingFee: '350', pricePerUnit: '40' 
   });
+
+  // --- 🔥 PROFİL ÇEKME / DÜZENLEME MANTIĞI ---
+  useEffect(() => {
+    const fetchExistingProfile = async () => {
+      try {
+        // Not: Gerçek senaryoda burası Auth (JWT) veya tarayıcıdaki bir ID ile çalışır
+        const res = await fetch(`${API_URL}/users/me`); 
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data._id) {
+            setExistingId(data._id);
+            setFormData({
+              businessName: data.businessName || '',
+              email: data.email || '',
+              phoneNumber: data.phoneNumber || '',
+              serviceTypes: data.serviceTypes || [],
+              city: data.city || 'İstanbul',
+              address: data.address || '',
+              filterTags: data.filterTags || [],
+              openingFee: data.pricing?.openingFee?.toString() || '350',
+              pricePerUnit: data.pricing?.pricePerUnit?.toString() || '40'
+            });
+            setAgreed(true); // Mevcut kullanıcı zaten onaylamıştır
+          }
+        }
+      } catch (err) { console.log("Profil çekilemedi, yeni kayıt modunda."); }
+      finally { setLoading(false); }
+    };
+    fetchExistingProfile();
+  }, []);
 
   const toggleService = (id: string, hasSubs: boolean) => {
     setFormData(prev => {
@@ -94,125 +143,119 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!agreed) return alert("Hizmet şartlarını onaylayın.");
-    const phoneRegex = /^0\d{10}$/;
-    if (!phoneRegex.test(formData.phoneNumber)) {
-      return alert("Hatalı Telefon! Numaranız 0 ile başlamalı ve 11 haneli olmalıdır.");
-    }
-    if (formData.businessName.trim().length < 3) return alert("İşletme adı çok kısa.");
-
-    setLoading(true);
+    if (!agreed) return alert("Lütfen hizmet şartlarını ve KVKK metnini onaylayın.");
+    if (formData.businessName.trim().length < 2) return alert("İşletme adı giriniz.");
+    
+    setSaving(true);
     try {
-      let mappedServiceType = formData.serviceTypes[0];
-      if (mappedServiceType === 'yurt_disi_nakliye') mappedServiceType = 'YURT_DISI';
-      else if (mappedServiceType === 'evden_eve') mappedServiceType = 'NAKLIYE';
-      else if (mappedServiceType === 'oto_kurtarma') mappedServiceType = 'KURTARICI';
+      // API Standardına Uygun Mapping
+      let mappedMain = 'NAKLIYE';
+      if (formData.serviceTypes.includes('oto_kurtarma') || formData.serviceTypes.includes('vinc')) mappedMain = 'KURTARICI';
+      else if (formData.serviceTypes.includes('istasyon') || formData.serviceTypes.includes('seyyar_sarj')) mappedMain = 'SARJ';
+      else if (formData.serviceTypes.includes('yolcu_tasima')) mappedMain = 'YOLCU';
 
-      const payload = { ...formData, serviceType: mappedServiceType, role: 'provider' };
-      const res = await fetch(`${API_URL}/users`, { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      const payload = { 
+        ...formData, 
+        mainType: mappedMain,
+        role: 'provider',
+        pricing: { 
+          openingFee: Number(formData.openingFee), 
+          pricePerUnit: Number(formData.pricePerUnit) 
+        }
+      };
+
+      const method = existingId ? 'PUT' : 'POST';
+      const endpoint = existingId ? `${API_URL}/users/${existingId}` : `${API_URL}/users`;
+
+      const res = await fetch(endpoint, { 
+        method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
 
       if (res.ok) {
         setIsSaved(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        alert("Kaydedilirken hata oluştu.");
+        alert("Kaydedilirken bir sorun oluştu.");
       }
-    } catch (err) { alert("Bağlantı hatası!"); }
-    finally { setLoading(false); }
+    } catch (err) { alert("Sunucu bağlantı hatası!"); }
+    finally { setSaving(false); }
   };
 
-  // --- ÖZET GÖRÜNÜMÜ (Kayıt Sonrası) ---
+  if (loading) return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-white z-[9999]">
+      <Loader2 className="animate-spin text-blue-600 mb-4" size={48} />
+      <p className="font-black text-xs uppercase tracking-widest text-gray-400">Profil Verileri Yükleniyor...</p>
+    </div>
+  );
+
+  // --- ÖZET GÖRÜNÜMÜ ---
   if (isSaved) return (
     <div className="fixed inset-0 w-full h-full bg-[#f8fafc] overflow-y-auto custom-scrollbar p-6">
       <div className="w-full max-w-2xl mx-auto space-y-8 pt-10 pb-32">
-        <div className="bg-green-50 border border-green-100 rounded-[2.5rem] p-8 text-center shadow-xl animate-in zoom-in duration-500">
-           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
+        <div className="bg-green-50 border border-green-100 rounded-[2.5rem] p-8 text-center shadow-xl">
+           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
               <ShieldCheck size={40} className="text-white" />
            </div>
-           <h1 className="text-3xl font-black text-green-900 uppercase italic">Kayıt Aktif Edildi</h1>
-           <p className="text-green-700 text-xs font-bold uppercase tracking-widest mt-2">Bilgileriniz veri merkezine başarıyla iletildi.</p>
+           <h1 className="text-3xl font-black text-green-900 uppercase italic">Profil Güncellendi</h1>
+           <p className="text-green-700 text-xs font-bold uppercase tracking-widest mt-2">Transport 245 ağındaki bilgileriniz tazeledi.</p>
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-2xl shadow-gray-200/50 space-y-8">
+        <div className="bg-white rounded-[3rem] p-10 shadow-2xl space-y-8">
            <div className="flex justify-between items-center border-b border-gray-50 pb-6">
               <h2 className="text-xl font-black text-gray-900 uppercase">Kayıt Özeti</h2>
-              <button onClick={() => setIsSaved(false)} className="flex items-center gap-2 bg-blue-50 text-blue-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95">
+              <button onClick={() => setIsSaved(false)} className="flex items-center gap-2 bg-blue-50 text-blue-600 px-6 py-3 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all">
                  <Edit3 size={14}/> Bilgileri Düzenle
               </button>
            </div>
-
-           <div className="grid grid-cols-1 gap-6">
-              <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
-                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">İşletme Bilgisi</label>
-                 <div className="text-sm font-black text-gray-800 uppercase tracking-tight">{formData.businessName}</div>
-                 <div className="text-[11px] font-bold text-gray-500 mt-1">{formData.phoneNumber} • {formData.email}</div>
-              </div>
-
-              <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
-                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Hizmet Branşları</label>
-                 <div className="flex flex-wrap gap-2">
-                    {formData.serviceTypes.map(t => (
-                      <span key={t} className="bg-white px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-black uppercase text-gray-700 shadow-sm">{t.replace('_',' ')}</span>
-                    ))}
-                    {formData.filterTags.map(tag => (
-                      <span key={tag} className="bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-sm">{tag}</span>
-                    ))}
-                 </div>
-              </div>
-
-              <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
-                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Tarife & Bölge</label>
-                 <div className="flex items-center gap-4 text-sm font-black text-gray-800 uppercase">
-                    <span className="flex items-center gap-1.5"><Wallet size={16} className="text-green-600"/> ₺{formData.openingFee}</span>
-                    <span className="flex items-center gap-1.5"><RefreshCcw size={16} className="text-blue-600"/> ₺{formData.pricePerUnit} / Birim</span>
-                 </div>
-                 <div className="text-[11px] font-bold text-gray-500 mt-3 flex items-center gap-1.5 uppercase"><MapPin size={14} className="text-red-500"/> {formData.city} / {formData.address}</div>
-              </div>
-           </div>
-
-           <button onClick={() => window.location.href = '/'} className="w-full py-5 bg-black text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:bg-gray-900 active:scale-[0.98] transition-all">
-              Hizmet Haritasına Dön
-           </button>
+           <button onClick={() => window.location.href = '/'} className="w-full py-5 bg-black text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl transition-all">Hizmet Haritasına Dön</button>
         </div>
       </div>
     </div>
   );
 
-  // --- KAYIT FORMU ---
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#f8fafc] overflow-y-auto custom-scrollbar touch-pan-y">
+    <div className="fixed inset-0 w-full h-full bg-[#f8fafc] overflow-y-auto custom-scrollbar">
       <div className="w-full max-w-5xl mx-auto p-6 md:p-12 pb-32">
         <header className="mb-12 flex flex-col items-start gap-3">
-          <div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em]">Transporter 2026</div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 uppercase italic tracking-tighter leading-none">SÜRÜCÜ <span className="text-blue-600">KAYIT PANELİ</span></h1>
+          <div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em]">Transport 245</div>
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 uppercase italic tracking-tighter leading-none">
+            {existingId ? 'PROFİLİNİ' : 'SÜRÜCÜ'} <span className="text-blue-600">{existingId ? 'GÜNCELLE' : 'KAYIT PANELİ'}</span>
+          </h1>
         </header>
 
         <div className="space-y-10">
-          {/* İletişim Bilgileri */}
+          {/* İletişim */}
           <section className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50">
              <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-600"></span> İletişim Bilgileri</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <input placeholder="İŞLETME ADI" value={formData.businessName} onChange={e => setFormData({...formData, businessName: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none"/>
-                <input placeholder="TELEFON (05XXXXXXXXX)" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none"/>
-                <input placeholder="E-POSTA" value={formData.email} className="md:col-span-2 w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none" onChange={e => setFormData({...formData, email: e.target.value})}/>
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">İşletme Adı</label>
+                   <input value={formData.businessName} onChange={e => setFormData({...formData, businessName: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none" placeholder="Örn: Öz Nakliyat"/>
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Telefon</label>
+                   <input value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none" placeholder="05XXXXXXXXX"/>
+                </div>
+                <div className="md:col-span-2 space-y-1">
+                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">E-Posta</label>
+                   <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none" placeholder="iletisim@sirket.com"/>
+                </div>
              </div>
           </section>
 
           {/* Hizmet Türü */}
           <section>
-             <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 pl-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-600"></span> Hizmet Türü</h3>
+             <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 pl-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-600"></span> Hizmet Branşları</h3>
              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {SERVICE_OPTIONS.map((opt) => {
                    const isSelected = formData.serviceTypes.includes(opt.id);
                    return (
-                     <div key={opt.id} onClick={() => toggleService(opt.id, opt.subs.length > 0)} className={`group relative flex flex-col items-center justify-center p-6 rounded-[2.5rem] border-2 cursor-pointer transition-all duration-300 min-h-[180px] ${getColorClasses(opt.color, isSelected)} ${isSelected ? 'shadow-xl scale-[1.02] z-10' : 'hover:scale-[0.98]'}`}>
-                        {isSelected && <div className="absolute top-4 right-4 bg-white p-1 rounded-full"><Check size={14} strokeWidth={4} className="text-black"/></div>}
-                        <opt.icon size={48} strokeWidth={1.5} className="mb-4" />
-                        <span className="text-sm font-black uppercase text-center leading-tight">{opt.label}</span>
+                     <div key={opt.id} onClick={() => toggleService(opt.id, opt.subs.length > 0)} className={`group relative flex flex-col items-center justify-center p-6 rounded-[2.5rem] border-2 cursor-pointer transition-all duration-300 min-h-[160px] ${getColorClasses(opt.color, isSelected)} ${isSelected ? 'shadow-xl scale-[1.02] z-10' : 'hover:scale-[0.98]'}`}>
+                        {isSelected && <div className="absolute top-4 right-4 bg-white p-1 rounded-full shadow-md"><Check size={14} strokeWidth={4} className="text-black"/></div>}
+                        <opt.icon size={42} strokeWidth={1.5} className="mb-4" />
+                        <span className="text-[11px] font-black uppercase text-center leading-tight">{opt.label}</span>
                         {isSelected && opt.subs.length > 0 && (
-                          <button onClick={(e) => {e.stopPropagation(); setActiveFolder(opt.id)}} className="mt-4 py-2 px-6 bg-black text-white text-[10px] font-black rounded-xl flex items-center gap-2">ÖZELLİK EKLE</button>
+                          <button onClick={(e) => {e.stopPropagation(); setActiveFolder(opt.id)}} className="mt-4 py-1.5 px-4 bg-black text-white text-[9px] font-black rounded-xl">ÖZELLİKLER ({formData.filterTags.filter(t => opt.subs.some(s=>s.id===t)).length})</button>
                         )}
                      </div>
                    );
@@ -221,60 +264,89 @@ export default function ProfilePage() {
           </section>
 
           {/* Tarife & Adres */}
-          <section className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50">
-             <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Tarife & Adres Bilgisi</h3>
+          <section className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-xl">
+             <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Bölge & Fiyatlandırma</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 divide-x divide-gray-200">
                     <div className="px-4"><Wallet size={20} className="text-green-600"/></div>
-                    <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Açılış</label><input type="number" value={formData.openingFee} onChange={e => setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
-                    <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e => setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
+                    <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Açılış (₺)</label><input type="number" value={formData.openingFee} onChange={e => setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
+                    <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Birim (₺)</label><input type="number" value={formData.pricePerUnit} onChange={e => setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
                 </div>
                 <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 pr-4">
-                   <div className="p-4 bg-white rounded-2xl shadow-sm mr-4"><MapPin size={20} className="text-blue-600"/></div>
+                   <div className="p-4 bg-white rounded-2xl shadow-sm mr-4"><MapPin size={20} className="text-red-500"/></div>
                    <select value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full bg-transparent font-black text-sm outline-none cursor-pointer uppercase">
                       {TURKEY_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                    </select>
                 </div>
-                <textarea placeholder="TAM ADRES VEYA GÜZERGAH..." value={formData.address} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-28 outline-none" onChange={e => setFormData({...formData, address: e.target.value})}/>
+                <textarea placeholder="DETAYLI ADRES, DURAK VEYA ÇALIŞMA GÜZERGAHI..." value={formData.address} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-24 outline-none" onChange={e => setFormData({...formData, address: e.target.value})}/>
              </div>
           </section>
 
+          {/* Sözleşme & Onay */}
           <div className="flex flex-col items-center gap-6 pt-6">
-             <label className="flex items-center gap-3 cursor-pointer group bg-white px-6 py-3 rounded-2xl border border-gray-200 shadow-sm">
-                <input type="checkbox" className="hidden" checked={agreed} onChange={() => setAgreed(!agreed)}/>
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${agreed ? 'bg-black border-black' : 'border-gray-300'}`}>
+             <div className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border border-gray-200 shadow-sm">
+                <input type="checkbox" id="legal" className="hidden" checked={agreed} onChange={() => setAgreed(!agreed)}/>
+                <label htmlFor="legal" className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all ${agreed ? 'bg-black border-black' : 'border-gray-300'}`}>
                    {agreed && <Check size={14} className="text-white" strokeWidth={4} />}
+                </label>
+                <div className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">
+                   <button onClick={() => setShowLegalModal('kvkk')} className="text-blue-600 underline">KVKK Metni</button> ve 
+                   <button onClick={() => setShowLegalModal('contract')} className="text-blue-600 underline ml-1">Kullanım Sözleşmesi</button>'ni okudum, onaylıyorum.
                 </div>
-                <span className="text-[10px] font-black text-gray-600 uppercase">Hizmet Şartlarını Onaylıyorum</span>
-             </label>
-             <button onClick={handleSave} disabled={loading || !agreed} className={`w-full max-w-sm py-6 rounded-[2.5rem] font-black uppercase text-sm tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${agreed ? 'bg-black text-white hover:bg-gray-900 shadow-blue-500/20' : 'bg-gray-200 text-gray-400'}`}>
-                {loading ? <Loader2 className="animate-spin" size={24}/> : <>KAYDI TAMAMLA <ArrowRight size={20}/></>}
+             </div>
+             <button onClick={handleSave} disabled={saving || !agreed} className={`w-full max-w-sm py-6 rounded-[2.5rem] font-black uppercase text-sm tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${agreed ? 'bg-black text-white hover:bg-gray-900 shadow-blue-500/30' : 'bg-gray-200 text-gray-400'}`}>
+                {saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'PROFİLİ GÜNCELLE' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}
              </button>
           </div>
         </div>
 
-        {/* ALT ÖZELLİK MODAL */}
-        {activeFolder && SERVICE_OPTIONS.find(s => s.id === activeFolder) && (
+        {/* MODALLAR */}
+        {activeFolder && (
             <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center sm:p-4">
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setActiveFolder(null)}></div>
-                <div className="relative w-full sm:max-w-xl bg-gray-100 rounded-t-[2.5rem] sm:rounded-[3rem] p-8 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden text-gray-900 animate-in slide-in-from-bottom-20">
+                <div className="relative w-full sm:max-w-xl bg-gray-100 rounded-t-[2.5rem] sm:rounded-[3rem] p-8 shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom-20 duration-500">
                     <div className="flex items-center justify-between mb-8">
-                        <div><h2 className="text-2xl font-black uppercase italic">Özellik Seçimi</h2><p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Çoklu seçim yapabilirsiniz</p></div>
-                        <button onClick={() => setActiveFolder(null)} className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-400"><X size={20} /></button>
+                        <div><h2 className="text-2xl font-black uppercase italic">Özellik Seçimi</h2><p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">En az bir adet seçiniz</p></div>
+                        <button onClick={() => setActiveFolder(null)} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400"><X size={20} /></button>
                     </div>
                     <div className="grid grid-cols-2 gap-3 overflow-y-auto p-1 flex-1 custom-scrollbar">
                         {SERVICE_OPTIONS.find(s => s.id === activeFolder)?.subs.map(sub => {
                             const isTagSelected = formData.filterTags.includes(sub.id);
                             return (
-                                <button key={sub.id} onClick={() => toggleSubOption(sub.id)} className={`relative flex flex-col items-center justify-center py-6 rounded-[2rem] transition-all border-2 ${isTagSelected ? `border-transparent bg-slate-900 text-white shadow-xl` : 'border-white bg-white text-slate-500'}`}>
+                                <button key={sub.id} onClick={() => toggleSubOption(sub.id)} className={`relative flex flex-col items-center justify-center py-6 rounded-[2.5rem] transition-all border-2 ${isTagSelected ? `border-transparent bg-slate-900 text-white shadow-xl` : 'border-white bg-white text-slate-500'}`}>
                                     {isTagSelected && <div className="absolute top-3 right-3 bg-white/20 p-1 rounded-full"><Check size={12} strokeWidth={4} className="text-white"/></div>}
                                     <sub.icon size={32} className="mb-2" />
-                                    <span className="text-xs font-black uppercase tracking-tight">{sub.label}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-tight">{sub.label}</span>
                                 </button>
                             )
                         })}
                     </div>
-                    <button onClick={() => setActiveFolder(null)} className="mt-6 w-full py-5 rounded-[2rem] font-black uppercase text-xs shadow-xl text-white bg-black active:scale-95">TAMAMLANDI</button>
+                    <button onClick={() => setActiveFolder(null)} className="mt-6 w-full py-5 rounded-[2rem] font-black uppercase text-xs shadow-xl text-white bg-black">SEÇİMİ TAMAMLA</button>
+                </div>
+            </div>
+        )}
+
+        {showLegalModal && (
+            <div className="fixed inset-0 z-[10001] flex items-center justify-center p-6">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowLegalModal(null)}></div>
+                <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in duration-300">
+                    <div className="flex items-center justify-between p-8 border-b border-gray-100">
+                        <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900">
+                            {showLegalModal === 'kvkk' ? 'KVKK AYDINLATMA METNİ' : 'HİZMET VE KULLANIM SÖZLEŞMESİ'}
+                        </h2>
+                        <button onClick={() => setShowLegalModal(null)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 hover:bg-red-500 hover:text-white transition-colors"><X size={20} /></button>
+                    </div>
+                    <div className="p-10 overflow-y-auto custom-scrollbar prose prose-sm text-gray-600 font-medium leading-relaxed">
+                        {showLegalModal === 'kvkk' ? (
+                            <p>Transport 245 olarak kişisel verilerinizin güvenliği hususuna azami hassasiyet göstermekteyiz. 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca, verileriniz işlenmektedir...</p>
+                        ) : (
+                            <p>İşbu sözleşme, Transport 245 platformu üzerinden sunulan aracı hizmetlerin kullanım şartlarını belirlemektedir. Sürücü, platform üzerinden sağladığı bilgilerin doğruluğunu taahhüt eder...</p>
+                        )}
+                        <p className="mt-4">Detaylı metinler Transport 245 hukuk departmanı tarafından onaylanan güncel sürücü sözleşmelerini kapsamaktadır.</p>
+                    </div>
+                    <div className="p-8 bg-gray-50 flex justify-end">
+                        <button onClick={() => { setAgreed(true); setShowLegalModal(null); }} className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg hover:bg-blue-700 transition-all">OKUDUM, ONAYLIYORUM</button>
+                    </div>
                 </div>
             </div>
         )}

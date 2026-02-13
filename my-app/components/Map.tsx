@@ -1,7 +1,9 @@
 /**
  * @file Map.tsx
- * @description Transporter 2026 Akıllı Harita Motoru.
- * GÜNCELLEME: evden_eve desteği ve MongoDB GeoJSON senkronizasyonu.
+ * @description Transport 245 Akıllı Harita Motoru.
+ * GÜNCELLEME: Türkiye geneli Ankara merkezli başlangıç.
+ * GÜNCELLEME: Gezici Şarj (Özel İkon), İstasyon (Zap) ve Yolcu Taşıma desteği.
+ * GÜNCELLEME: 8 Teker ve tüm alt kategori pinleri optimize edildi.
  */
 
 'use client';
@@ -15,8 +17,19 @@ import { renderToStaticMarkup } from 'react-dom/server';
 // --- ICONS ---
 import { 
   Truck, Zap, Anchor, Star, 
-  CarFront, Globe, Home, Navigation, Phone, MessageCircle, Package, MapPin
+  CarFront, Globe, Home, Navigation, Phone, MessageCircle, Package, MapPin,
+  Users, Bus, Crown
 } from 'lucide-react';
+
+// --- ÖZEL İKON: GEZİCİ ŞARJ (İnce Çizgili Detaylı SVG) ---
+const GeziciSarjIcon = ({ size = 24, color = "currentColor" }: { size?: number, color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
+    <path d="M29 36c4 0 4-10 10-10s6 10 10 10" strokeDasharray="3 2" />
+    <path d="M38 24l2 2-2 2" strokeWidth="1" />
+    <path d="M44 38h16v8H44z" /><path d="M44 38l2-5h10l2 5" /><circle cx="48" cy="48" r="2.5" /><circle cx="56" cy="48" r="2.5" />
+  </svg>
+);
 
 // --- 1. TİPLER ---
 interface Driver {
@@ -31,8 +44,6 @@ interface Driver {
   address?: { city?: string; district?: string; };
   service?: { mainType: string; subType: string; tags: string[]; };
   pricing?: { openingFee: number; pricePerUnit: number; };
-  
-  // Cluster State
   isCluster?: boolean;
   count?: number;
   expansionZoom?: number;
@@ -49,39 +60,52 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. SERVİS YAPILANDIRMASI (Evden Eve Eklendi) ---
+// --- 2. SERVİS YAPILANDIRMASI (RENK VE İKONLAR) ---
 const SERVICE_CONFIG: any = {
-  kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },        
+  // KURTARICI (Kırmızı)
   oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
   vinc:         { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },
-  nakliye:      { color: '#a855f7', Icon: Truck, label: 'Nakliye' },             
-  evden_eve:    { color: '#9333ea', Icon: Home, label: 'Evden Eve' },           
-  kamyon:       { color: '#7e22ce', Icon: Truck, label: 'Kamyon' },             
-  tir:          { color: '#6b21a8', Icon: Truck, label: 'TIR' },
+  kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },
+  
+  // NAKLİYE (Mor)
+  nakliye:      { color: '#9333ea', Icon: Truck, label: 'Nakliye' },
+  evden_eve:    { color: '#a855f7', Icon: Home, label: 'Evden Eve' },
+  tir:          { color: '#7e22ce', Icon: Truck, label: 'TIR' },
+  kamyon:       { color: '#6b21a8', Icon: Truck, label: 'Kamyon' },
   kamyonet:     { color: '#581c87', Icon: Package, label: 'Kamyonet' },
   yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },
-  istasyon:     { color: '#1d4ed8', Icon: Navigation, label: 'İstasyon' },
-  seyyar_sarj:  { color: '#0ea5e9', Icon: Zap, label: 'Mobil Şarj' },
+  
+  // ŞARJ (Mavi)
+  istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
+  seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Gezici Şarj' },
+  
+  // YOLCU (Zümrüt/Yeşil)
+  minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
+  otobus:       { color: '#059669', Icon: Bus, label: 'Otobüs' },
+  midibus:      { color: '#047857', Icon: Bus, label: 'Midibüs' },
+  vip_tasima:   { color: '#064e3b', Icon: Crown, label: 'VIP Transfer' },
+  yolcu:        { color: '#10b981', Icon: Users, label: 'Yolcu Taşıma' },
+
   other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
 };
 
 // --- 3. İKON GENERATORLARI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const baseSize = isActive ? 52 : Math.max(34, Math.min(46, zoom * 2.8)); 
+  const baseSize = isActive ? 54 : Math.max(34, Math.min(46, zoom * 2.8)); 
   const iconHtml = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
 
   return L.divIcon({
-    className: `custom-pin-marker ${isActive ? 'z-[1000]' : ''}`,
+    className: `custom-pin-marker ${isActive ? 'z-[2000]' : ''}`,
     html: `
       <div style="
         background-color: ${isActive ? '#16a34a' : config.color}; 
         width: ${baseSize}px; height: ${baseSize}px; 
         border-radius: 50% 50% 50% 0; transform: rotate(-45deg); 
-        border: ${isActive ? '3px' : '2px'} solid white; 
-        box-shadow: ${isActive ? '0 0 25px rgba(22,163,74,0.5)' : '0 4px 10px rgba(0,0,0,0.2)'}; 
+        border: ${isActive ? '4px' : '2px'} solid white; 
+        box-shadow: ${isActive ? '0 0 30px rgba(22,163,74,0.6)' : '0 4px 12px rgba(0,0,0,0.25)'}; 
         display: flex; align-items: center; justify-content: center;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
         <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
           ${iconHtml}
         </div>
@@ -95,7 +119,7 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
 
 const createClusterIcon = (count: number, type: string) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const size = 42 + (Math.min(count, 50) / 50) * 12;
+  const size = 44 + (Math.min(count, 50) / 50) * 14;
   const iconHtml = renderToStaticMarkup(<config.Icon size={size * 0.35} color="white" strokeWidth={3} />);
 
   return L.divIcon({
@@ -105,10 +129,10 @@ const createClusterIcon = (count: number, type: string) => {
         background-color: ${config.color}; 
         width: ${size}px; height: ${size}px; 
         border-radius: 50%; border: 3px solid rgba(255,255,255,0.9);
-        box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
         display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <div style="margin-bottom: -1px;">${iconHtml}</div>
-        <div style="font-weight: 900; font-size: ${size * 0.25}px; color: white; line-height: 1;">${count}</div>
+        <div style="margin-bottom: -2px;">${iconHtml}</div>
+        <div style="font-weight: 900; font-size: ${size * 0.28}px; color: white; line-height: 1; letter-spacing: -0.5px;">${count}</div>
       </div>
     `,
     iconSize: [size, size],
@@ -116,7 +140,7 @@ const createClusterIcon = (count: number, type: string) => {
   });
 };
 
-// --- 4. MAP INTERNAL CONTROLLERS ---
+// --- 4. HARİTA KONTROLLERİ ---
 function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   const map = useMapEvents({
     zoomend: () => onZoomChange(map.getZoom()),
@@ -142,25 +166,25 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
   return null;
 }
 
-// --- 5. ANA COMPONENT ---
+// --- 5. ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
-  const [currentZoom, setCurrentZoom] = useState(searchCoords ? 13 : 6);
+  // 🔥 BAŞLANGIÇ: Ankara / Türkiye Geneli
+  const [currentZoom, setCurrentZoom] = useState(searchCoords ? 13 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
-  const initialCenter: [number, number] = searchCoords || [39.1667, 35.6667];
+  const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
 
   const activeDriverCoords = useMemo(() => {
     const d = drivers.find(d => d._id === activeDriverId);
     return d ? [d.location.coordinates[1], d.location.coordinates[0]] as [number, number] : null;
   }, [activeDriverId, drivers]);
 
-  // --- KÜMELEME (CLUSTERING) MANTIĞI ---
   const visibleMarkers = useMemo(() => {
     if (!drivers.length) return [];
     if (currentZoom >= 12) return drivers.map(d => ({ ...d, isCluster: false }));
 
     const result: Driver[] = [];
     const processed = new Set<string>();
-    const threshold = 80 / Math.pow(2, currentZoom); 
+    const threshold = 100 / Math.pow(2, currentZoom); 
 
     drivers.forEach((d) => {
       if (processed.has(d._id) || d._id === activeDriverId) return;
@@ -198,18 +222,19 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
   }, [drivers, currentZoom, activeDriverId]);
 
   return (
-    <div className="absolute inset-0 w-full h-full z-0 bg-[#f8fdfe]">
+    <div className="absolute inset-0 w-full h-full z-0 bg-[#f0f4f8]">
       <MapContainer center={initialCenter} zoom={currentZoom} zoomControl={false} className="w-full h-full" minZoom={5} maxZoom={18}>
-        <TileLayer attribution='&copy; CartoDB' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+        <TileLayer attribution='&copy; CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
+        {/* Kullanıcı Konumu */}
         {searchCoords && (
           <Marker position={searchCoords} icon={L.divIcon({
             className: 'user-loc',
-            html: `<div style="background-color:#3b82f6; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 15px rgba(59,130,246,0.6); animation:pulse 2s infinite;"></div>`,
-            iconSize: [18, 18], iconAnchor: [9, 9]
+            html: `<div style="background-color:#2563eb; width:20px; height:20px; border-radius:50%; border:4px solid white; box-shadow:0 0 20px rgba(37,99,235,0.7); animation:pulse 2s infinite;"></div>`,
+            iconSize: [20, 20], iconAnchor: [10, 10]
           })} />
         )}
 
@@ -234,35 +259,40 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
               icon={createCustomIcon(item.service?.subType, currentZoom, isActive)}
               ref={(el) => { 
                 markerRefs.current[item._id] = el;
-                if (el && isActive) setTimeout(() => el.openPopup(), 150);
+                if (el && isActive) setTimeout(() => el.openPopup(), 200);
               }}
               eventHandlers={{ click: () => onSelectDriver(item._id) }}
             >
-              <Popup className="custom-leaflet-popup" minWidth={260} closeButton={false}>
+              <Popup className="custom-leaflet-popup" minWidth={280} closeButton={false}>
                 <div className="p-1 font-sans text-gray-900">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[9px] font-black text-white px-2 py-0.5 rounded uppercase tracking-widest shadow-sm" style={{ backgroundColor: config.color }}>
+                  <div className="flex justify-between items-start mb-2.5">
+                    <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
                       {config.label}
                     </span>
-                    {item.distance && <span className="text-[9px] font-bold text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
-                  </div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
-                  <div className="flex items-center gap-0.5 mb-4">
-                    {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (item.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />)}
+                    {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
                   </div>
                   
-                  <div className="flex gap-2 border-t border-gray-100 pt-3">
+                  <h4 className="font-black text-slate-900 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
+                  
+                  <div className="flex items-center gap-0.5 mb-4">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} size={11} className={s <= (item.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+                    ))}
+                    <span className="text-[10px] font-bold text-gray-400 ml-1">({item.rating || 5}.0)</span>
+                  </div>
+                  
+                  <div className="flex gap-2 border-t border-gray-100 pt-3.5">
                     <button 
                       onClick={() => { onStartOrder(item, 'call'); window.location.href=`tel:${item.phoneNumber}`; }}
-                      className="flex-1 bg-gray-900 text-white py-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md"
+                      className="flex-1 bg-gray-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                     >
-                      <Phone size={12} /> ARA
+                      <Phone size={13} /> ARA
                     </button>
                     <button 
                       onClick={() => window.open(`https://wa.me/${item.phoneNumber?.replace(/\D/g,'')}`)}
-                      className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md"
+                      className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                     >
-                      <MessageCircle size={12} /> WHATSAPP
+                      <MessageCircle size={13} /> WHATSAPP
                     </button>
                   </div>
                 </div>

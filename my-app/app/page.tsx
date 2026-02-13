@@ -1,28 +1,28 @@
 /**
  * @file page.tsx
- * @description Transporter 2026 Master Orchestrator.
- * Fix: Profil tıklaması artık Sidebar'ı değil, doğrudan Profil Modal'ını açar.
- * Mantık: Sidebar ve ActionPanel arası karşılıklı özel küçülme/kapanma senkronizasyonu korunmuştur.
+ * @description Transport 245 Master Orchestrator.
+ * GÜNCELLEME: Marka ismi "Transport 245" olarak revize edildi.
+ * GÜNCELLEME: Filtreleme mantığı evden_eve ve Gezici Şarj ile senkronize edildi.
+ * MANTIK: Sidebar ve ActionPanel arası karşılıklı kapanma senkronizasyonu korunmuştur.
  */
 
 'use client';
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation'; 
 import { Truck, LifeBuoy, Scale, MessageSquare, MapPin, ShieldCheck } from 'lucide-react';  
 
 import TopBar from '../components/home/TopBar';         
 import ActionPanel from '../components/home/ActionPanel';
 import Sidebar from '../components/home/Sidebar';
-import ChatWidget from '../components/ChatWidget';
-import ProfileModal from '../components/ProfileModal'; // Profil modalı eklendi
 
-// --- LOADER BİLEŞENİ ---
+import ProfileModal from '../components/ProfileModal';
+
+// --- LOADER BİLEŞENİ (Transport 245 Temalı) ---
 const LOADING_MESSAGES = [
-  { text: "Transporter nakliye ihtiyacınızı anında karşılar.", sub: "Tır, Kamyon ve Kamyonetler taranıyor...", icon: Truck },
-  { text: "Yolda mı kaldınız? Transporter her an yanınızda.", sub: "En yakın çekici ve vinç operatörleri bulunuyor...", icon: LifeBuoy },
-  { text: "Transporter 6563 Sayılı Kanun Uyarınca Aracı Hizmet Sağlayıcıdır.", sub: "Güvenliğiniz için tüm süreçler kayıt altına alınmaktadır.", icon: Scale },
+  { text: "Transport 245 nakliye ihtiyacınızı anında karşılar.", sub: "Tır, Kamyon ve Kamyonetler taranıyor...", icon: Truck },
+  { text: "Yolda mı kaldınız? Transport 245 her an yanınızda.", sub: "En yakın çekici ve vinç operatörleri bulunuyor...", icon: LifeBuoy },
+  { text: "Transport 245 6563 Sayılı Kanun Uyarınca Aracı Hizmet Sağlayıcıdır.", sub: "Güvenliğiniz için tüm süreçler kayıt altına alınmaktadır.", icon: Scale },
   { text: "Görüşlerinizle Birlikte Gelişiyoruz.", sub: "İşlem sonunda şikayet ve öneri formunu doldurmayı unutmayın.", icon: MessageSquare },
   { text: "Sürücüler ve İstasyonlar Taranıyor...", sub: "Harita verileri ve fiyat tarifeleri güncelleniyor.", icon: MapPin }
 ];
@@ -47,7 +47,7 @@ function ScanningLoader({ onFinish }: { onFinish: () => void }) {
   const CurrentIcon = LOADING_MESSAGES[currentStep].icon;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-white/40 backdrop-blur-[25px] flex flex-col items-center justify-center text-gray-800 animate-in fade-in duration-700">
+    <div className="fixed inset-0 w-full h-full z-[99999] bg-white/40 backdrop-blur-[25px] flex flex-col items-center justify-center text-gray-800 animate-in fade-in duration-700">
       <div className="relative z-10 bg-white/30 border border-white/60 backdrop-blur-3xl p-10 rounded-[3rem] shadow-2xl ring-1 ring-white/40 mb-16">
          <CurrentIcon className="w-16 h-16 text-gray-900 drop-shadow-md" strokeWidth={1.2} />
       </div>
@@ -62,7 +62,7 @@ function ScanningLoader({ onFinish }: { onFinish: () => void }) {
       </div>
       <div className="absolute bottom-8 flex items-center gap-2 bg-white/20 border border-white/40 backdrop-blur-lg px-6 py-2 rounded-full z-10 shadow-sm">
         <ShieldCheck size={14} className="text-blue-600" />
-        <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em]">Transporter 2026</span>
+        <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em]">Transport 245</span>
       </div>
     </div>
   );
@@ -80,11 +80,11 @@ export default function Home() {
   const [actionType, setActionType] = useState('kurtarici'); 
   const [mapZoom, setMapZoom] = useState<number>(13); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showProfile, setShowProfile] = useState(false); // Profil Modal State'i
+  const [showProfile, setShowProfile] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
-  // 🔥 MANTIK: Sidebar açılırsa ActionPanel'i kesin olarak küçült
+  // 🔥 MANTIK: Sidebar açılırsa ActionPanel'i kesin olarak küçült (Seçimi temizle)
   useEffect(() => {
     if (sidebarOpen) setActiveDriverId(null);
   }, [sidebarOpen]);
@@ -97,6 +97,7 @@ export default function Home() {
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string, zoom: number) => {
     setLoading(true);
     try {
+      // API tipi ne olursa olsun tümünü çekiyoruz, filtrelemeyi frontend useMemo içinde yapıyoruz.
       const url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=${zoom}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -112,19 +113,27 @@ export default function Home() {
     if (!searchCoords) fetchDrivers(39.1667, 35.6667, 'kurtarici', 6);
   }, [fetchDrivers, searchCoords]); 
 
+  // --- GELİŞMİŞ FİLTRELEME MANTIĞI ---
   const filteredDrivers = useMemo(() => {
     if (!drivers) return [];
     return drivers.filter(d => {
       const s = d.service;
       if (!s) return false;
+
+      // 1. Tip Eşleşmesi (Gezici Şarj ve Evden Eve özel durumları dahil)
       let matchesType = (actionType === 'yurt_disi') ? s.subType === 'yurt_disi_nakliye' :
                         (actionType === 'sarj_istasyonu') ? s.subType === 'istasyon' :
                         (actionType === 'seyyar_sarj') ? s.subType === 'seyyar_sarj' :
+                        (actionType === 'evden_eve') ? s.subType === 'evden_eve' :
                         (actionType === 'kurtarici') ? s.mainType === 'KURTARICI' :
                         (actionType === 'nakliye') ? s.mainType === 'NAKLIYE' :
                         (actionType === 'sarj') ? s.mainType === 'SARJ' : s.subType === actionType;
+
       if (!matchesType) return false;
+
+      // 2. Tag (Etiket) Eşleşmesi (Tır/Kamyon alt özellikleri)
       if (activeTags.length > 0) return activeTags.some(tag => (s.tags || []).includes(tag));
+      
       return true;
     });
   }, [drivers, actionType, activeTags]);
@@ -132,14 +141,17 @@ export default function Home() {
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
       
+      {/* Giriş Yükleme Ekranı */}
       {showLoader && <ScanningLoader onFinish={() => setShowLoader(false)} />}
 
+      {/* Üst Bar */}
       <TopBar 
         sidebarOpen={sidebarOpen}
         onMenuClick={() => setSidebarOpen(true)}
-        onProfileClick={() => setShowProfile(true)} // 🔥 Sidebar yerine Profil Modal'ını açar
+        onProfileClick={() => setShowProfile(true)}
       />
 
+      {/* Harita Katmanı */}
       <div className="absolute inset-0 z-0">
         <Map 
           searchCoords={searchCoords}
@@ -152,32 +164,53 @@ export default function Home() {
         />
       </div>
 
+      {/* Alt Aksiyon Paneli */}
       <ActionPanel 
-        onSearchLocation={(lat, lng) => { setSearchCoords([lat, lng]); fetchDrivers(lat, lng, actionType, 13); setSidebarOpen(false); }}
-        onFilterApply={(type) => { setActionType(type); setActiveTags([]); setSidebarOpen(false); if (searchCoords) fetchDrivers(searchCoords[0], searchCoords[1], type, mapZoom); }}
+        onSearchLocation={(lat, lng) => { 
+          setSearchCoords([lat, lng]); 
+          fetchDrivers(lat, lng, actionType, 13); 
+          setSidebarOpen(false); 
+        }}
+        onFilterApply={(type) => { 
+          setActionType(type); 
+          setActiveTags([]); 
+          setSidebarOpen(false); 
+          if (searchCoords) fetchDrivers(searchCoords[0], searchCoords[1], type, mapZoom); 
+        }}
         actionType={actionType}
         onActionChange={(t) => { setActionType(t); setSidebarOpen(false); }}
         activeTags={activeTags}
         onTagsChange={setActiveTags}
         drivers={filteredDrivers}
         loading={loading}
-        onReset={() => { setSearchCoords(null); setActionType('kurtarici'); setActiveTags([]); fetchDrivers(39.1667, 35.6667, 'kurtarici', 6); }}
+        onReset={() => { 
+          setSearchCoords(null); 
+          setActionType('kurtarici'); 
+          setActiveTags([]); 
+          fetchDrivers(39.1667, 35.6667, 'kurtarici', 6); 
+        }}
         activeDriverId={activeDriverId}
         onSelectDriver={setActiveDriverId}
         onStartOrder={() => {}}
         isSidebarOpen={sidebarOpen} 
       />
 
-      <ChatWidget isOpen={chatOpen} onToggle={setChatOpen} />
+ 
 
+      {/* Yan Menü (Sidebar) */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)}
-        onSelectAction={(type) => { setActionType(type); setActiveTags([]); setSidebarOpen(false); if (searchCoords) fetchDrivers(searchCoords[0], searchCoords[1], type, 13); }}
+        onSelectAction={(type) => { 
+          setActionType(type); 
+          setActiveTags([]); 
+          setSidebarOpen(false); 
+          if (searchCoords) fetchDrivers(searchCoords[0], searchCoords[1], type, 13); 
+        }}
         onReportClick={() => {}} 
       />
 
-      {/* Profil Modal Entegrasyonu */}
+      {/* Profil Modal */}
       <ProfileModal 
         isOpen={showProfile} 
         onClose={() => setShowProfile(false)} 

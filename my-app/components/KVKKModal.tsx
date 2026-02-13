@@ -1,100 +1,94 @@
 /**
  * @file KVKKModal.tsx
- * @description Transporter 2026 KVKK Aydınlatma Metni Modalı.
+ * @description Transport 245 KVKK Aydınlatma Metni Modalı.
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Globe } from 'lucide-react';
-import Image from 'next/image';
+import { X, ShieldCheck } from 'lucide-react';
 
 interface KVKKModalProps {
   isOpen: boolean;
   onClose: () => void;
+  readOnly?: boolean; 
 }
 
-const CONTENT: any = {
-  tr: {
-    title: "KVKK Aydınlatma Metni",
-    subtitle: "6698 Sayılı Kanun Uyarınca Bilgilendirme",
-    intro: "Transporter AI Platformu olarak, kişisel verilerinizin güvenliği hususuna azami hassasiyet göstermekteyiz.",
-    sections: [
-      { h: "1. Veri Sorumlusu", p: "Veri Sorumlusu sıfatıyla Transporter AI, verilerinizi kanuna uygun işlemektedir." },
-      { h: "2. İşlenen Veriler", p: "Kimlik, iletişim, GPS lokasyon ve teknik cihaz bilgileriniz işlenmektedir." },
-      { h: "3. İşleme Amacı", p: "En yakın hizmet sağlayıcının yönlendirilmesi ve yasal yükümlülükler için işlenir." },
-      { h: "4. Veri Aktarımı", p: "Yalnızca lojistik talebin ifası amacıyla sürücülerle paylaşılır." },
-      { h: "5. Haklarınız", p: "Verilerinizin silinmesini veya düzeltilmesini her zaman talep edebilirsiniz." }
-    ]
-  },
-  en: {
-    title: "KVKK Clarification",
-    subtitle: "Under Law No. 6698",
-    intro: "As Transporter AI, we care deeply about your personal data security.",
-    sections: [
-      { h: "1. Data Controller", p: "Transporter AI processes your data as the primary controller." },
-      { h: "2. Processed Data", p: "Identity, contact, GPS location, and device information are processed." },
-      { h: "3. Purpose", p: "Data is used for logistics routing and legal compliance." },
-      { h: "4. Transfer", p: "Shared only with drivers for the duration of the service." },
-      { h: "5. Your Rights", p: "You can request deletion or correction of your data at any time." }
-    ]
-  }
-};
-
-export default function KVKKModal({ isOpen, onClose }: KVKKModalProps) {
-  const [lang, setLang] = useState<'tr' | 'en'>('tr');
-  const t = CONTENT[lang];
-
-  useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
-
+export default function KVKKModal({ isOpen, onClose, readOnly = false }: KVKKModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110000] bg-slate-900/10 backdrop-blur-xl flex items-center justify-center p-4 transition-all animate-in fade-in duration-300">
-      <div className="w-full max-w-xl h-[85vh] bg-white rounded-[3rem] shadow-2xl border border-white flex flex-col overflow-hidden relative">
+    <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+
+      <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in duration-300">
         
-        {/* HEADER */}
-        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-white/50 relative z-10">
-          <div className="flex items-center gap-3 text-slate-900">
-            <Image src="/favicon.ico" width={24} height={24} alt="Logo" />
-            <span className="font-black text-xs uppercase tracking-tighter italic">Transporter</span>
-          </div>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 sm:p-8 border-b border-gray-100 shrink-0 text-gray-900">
           <div className="flex items-center gap-3">
-            <button onClick={() => setLang(lang === 'tr' ? 'en' : 'tr')} className="bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md active:scale-90 transition-all">
-              <Globe size={12} className="inline mr-1" /> {lang === 'tr' ? 'EN' : 'TR'}
-            </button>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
-              <X size={24} />
-            </button>
-          </div>
-        </div>
-
-        {/* CONTENT */}
-        <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2">{t.title}</h2>
-            <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em]">{t.subtitle}</p>
-          </div>
-
-          <div className="border-l-4 border-slate-900 pl-6 py-2 italic font-bold text-slate-700 text-sm">
-            "{t.intro}"
-          </div>
-
-          {t.sections.map((s: any, i: number) => (
-            <div key={i} className="space-y-3 px-2">
-              <h3 className="font-black text-slate-900 uppercase text-[11px] tracking-widest">{s.h}</h3>
-              <p className="text-slate-500 text-[13px] leading-relaxed font-medium text-justify">{s.p}</p>
+            <div className="p-2 bg-green-50 rounded-xl">
+              <ShieldCheck className="text-green-600" size={24} />
             </div>
-          ))}
-
-          <div className="pt-10 pb-6 text-center">
-             <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">Transporter Sovereign Legal 2026</p>
+            <h2 className="text-lg sm:text-xl font-black uppercase tracking-tighter">
+              KVKK Aydınlatma Metni
+            </h2>
           </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 hover:bg-red-500 hover:text-white transition-all">
+            <X size={20} />
+          </button>
         </div>
+
+        {/* Content */}
+        <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar text-gray-600 text-sm leading-relaxed space-y-6">
+          <p className="font-medium italic">İşbu Aydınlatma Metni, Transport 245 kullanıcılarının 6698 sayılı KVKK kapsamında bilgilendirilmesi amacıyla hazırlanmıştır.</p>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase">1. Veri Sorumlusu</h3>
+            <p>Kişisel verileriniz, Transport 245 Platformu tarafından KVKK’ya uygun olarak işlenmektedir.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase">2. İşlenen Kişisel Veriler</h3>
+            <div className="pl-4 border-l-2 border-gray-100 space-y-3">
+              <p><strong>a) Kullanıcıya Ait Veriler:</strong> Kimlik (Ad-Soyad), İletişim (Tel, E-posta), Profil bilgileri, Kullanım kayıtları ve Konum bilgisi.</p>
+              <p><strong>b) Hizmet Sağlayıcılara Ait Veriler:</strong> Firma adı, İşyeri telefonu, Adres/Konum ve Hizmet tanıtım bilgileri.</p>
+              <p><strong>c) Ödeme Bilgileri:</strong> Ödemeler uygulama mağazaları üzerinden yapılır; kart bilgileriniz tarafımızca toplanmaz.</p>
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase">3. Veri Kaynakları</h3>
+            <p>Veriler; kullanıcı beyanı, eklenen/düzeltilen bilgiler ve Google gibi üçüncü taraf herkese açık kaynaklardan elde edilir.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase">4. İşlenme Amaçları</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Hizmetlerin sunulması ve yönetilmesi</li>
+              <li>Hesap güvenliğinin sağlanması</li>
+              <li>Abonelik süreçlerinin takibi</li>
+              <li>Hukuki yükümlülüklerin yerine getirilmesi</li>
+            </ul>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase">5. Saklama Süresi ve Aktarım</h3>
+            <p>Verileriniz işlenme amacı süresince saklanır. Yasal yükümlülükler dışında üçüncü şahıslara satılmaz veya ticari amaçla paylaşılmaz.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase">6. Haklarınız (Madde 11)</h3>
+            <p>Verilerinizin işlenip işlenmediğini öğrenme, düzeltme, silme ve zararın giderilmesini talep etme haklarına sahipsiniz.</p>
+          </section>
+        </div>
+
+        {/* Footer */}
+        {!readOnly && (
+          <div className="p-6 sm:p-8 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button onClick={onClose} className="w-full sm:w-auto px-10 py-4 bg-black text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95">
+              OKUDUM, ANLADIM
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
