@@ -1,6 +1,8 @@
 /**
  * @file UserAgreementModal.tsx
- * @description Transport 245 Kullanıcı Sözleşmesi Modalı.
+ * @description Transport 245 Kullanıcı Sözleşmesi Modalı (Tam Metin).
+ * FIX: Gönderilen 11 maddelik tam metin işlendi.
+ * FIX: Abonelik ve Ücretlendirme maddesi vurgulandı.
  */
 
 'use client';
@@ -38,38 +40,69 @@ export default function UserAgreementModal({ isOpen, onClose, readOnly = false }
         </div>
 
         {/* Content */}
-        <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar text-gray-600 text-sm leading-relaxed space-y-6">
+        <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar text-gray-600 text-sm leading-relaxed space-y-8 font-medium">
           
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase">1. Platformun Niteliği</h3>
-            <p>Transport 245, kullanıcılar ile hizmet sağlayıcıları bir araya getiren aracı bir teknoloji platformudur. Hizmetlerin doğrudan sağlayıcısı değildir.</p>
-          </section>
-
-          <section className="space-y-2 bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
-            <h3 className="font-black text-blue-900 uppercase">2. Ücretlendirme ve Abonelik (Kritik)</h3>
-            <p className="text-blue-800">Uygulamanın temel kullanımı, ilk kayıt tarihinden itibaren <strong>12 ay süreyle ücretsizdir.</strong></p>
-            <p className="mt-2 text-blue-800">Ücretsiz sürenin sonunda yıllık abonelik bedeli <strong>1 ABD Doları (USD)</strong> olarak belirlenmiştir. Bu bedel yerel para birimi üzerinden uygulama mağazaları tarafından tahsil edilir.</p>
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">1. Platformun Niteliği</h3>
+            <p>Platform, kullanıcılar ile hizmet sağlayıcıları bir araya getiren aracı bir teknoloji platformudur. Hizmetlerin doğrudan sağlayıcısı değildir ve doğabilecek uyuşmazlıklardan sorumlu tutulamaz.</p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase">3. Kullanım Koşulları</h3>
-            <p>Kullanıcı; hukuka, genel ahlaka ve mevzuata uygun hareket etmeyi taahhüt eder. Yanıltıcı içerik durumunda hesap askıya alınabilir.</p>
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">2. Kullanıcı Hesabı</h3>
+            <p>Kullanıcı, doğru ve güncel bilgilerle hesap oluşturmalıdır. Hesap güvenliğinden ve yapılan işlemlerden kullanıcı bizzat sorumludur.</p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase">4. Sorumluluk Sınırları</h3>
-            <p>Transport 245; hizmet kesintileri, veri kayıpları veya taraflar arasında yaşanan anlaşmazlıklardan sorumlu tutulamaz.</p>
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">3. Kullanım Koşulları</h3>
+            <p>Uygulama hukuka ve genel ahlaka uygun kullanılmalıdır. Yanıltıcı bilgi veya sistem güvenliğini tehlikeye atan durumlarda hesap askıya alınabilir.</p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase">5. Bağış Politikası</h3>
-            <p>Platform, elde edilen gelirlerin <strong>%10’unu</strong> sosyal sorumluluk kapsamında yardım kuruluşlarına bağışlamayı hedefler.</p>
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">4. İçerik ve Sorumluluk</h3>
+            <p>Platform, içeriğin doğruluğunu garanti etmez. Hizmet kesintileri, veri kayıpları veya taraflar arası anlaşmazlıklardan sorumlu değildir.</p>
+          </section>
+
+          {/* KRİTİK BÖLÜM VURGUSU */}
+          <section className="bg-blue-50/60 p-6 rounded-[2rem] border border-blue-100 space-y-3">
+            <h3 className="font-black text-blue-900 uppercase tracking-wide">5. Ücretlendirme ve Abonelik</h3>
+            <ul className="list-disc pl-5 space-y-2 text-blue-800">
+              <li><strong>Ücretsiz Dönem:</strong> İlk kayıt tarihinden itibaren <strong>12 (on iki) ay süreyle ücretsizdir.</strong></li>
+              <li><strong>Abonelik Bedeli:</strong> Ücretsiz süre sonunda yıllık abonelik bedeli <strong>1 ABD Doları (USD)</strong> karşılığıdır.</li>
+              <li><strong>Ödeme:</strong> Apple App Store veya Google Play Store üzerinden yerel para birimiyle tahsil edilir. Kart bilgileri saklanmaz.</li>
+              <li><strong>Yenileme:</strong> Mağaza kuralları gereği iptal edilmedikçe otomatik yenilenir.</li>
+            </ul>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase">6. Yürürlük ve İptal</h3>
-            <p>Kullanıcı, dilediği zaman hesabını silebilir. Sözleşme, uygulamayı kullanmaya başladığınız andan itibaren geçerlidir.</p>
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">6. Veri Kaynakları</h3>
+            <p>Bilgiler; Google/herkese açık kaynaklar, Platform tarafından eklenen veriler ve kullanıcılar tarafından girilen verilerden oluşur.</p>
           </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">7. Bağış Politikası</h3>
+            <p>Platform, gelirlerinin <strong>%10’unu</strong> sosyal sorumluluk kapsamında yardım kuruluşlarına bağışlamayı hedefler.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">8. Gizlilik</h3>
+            <p>Kişisel veriler KVKK Aydınlatma Metni’ne ve mevzuata uygun şekilde korunur.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">9. Hesap Silme</h3>
+            <p>Kullanıcı dilediği zaman hesabını silebilir. Yasal zorunluluk haricindeki veriler silinir veya anonim hale getirilir.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">10. Değişiklik Hakkı</h3>
+            <p>Platform, sözleşmede değişiklik yapma hakkını saklı tutar. Güncel metin uygulamada yayımlandığı andan itibaren geçerlidir.</p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="font-black text-gray-900 uppercase tracking-wide">11. Yürürlük</h3>
+            <p>Uygulamayı kullanmaya başlamanız, bu sözleşmeyi okuduğunuz ve kabul ettiğiniz anlamına gelir.</p>
+          </section>
+
         </div>
 
         {/* Footer */}

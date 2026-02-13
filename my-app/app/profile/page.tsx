@@ -2,7 +2,7 @@
  * @file profile/page.tsx
  * @description Transport 245 Driver Profile & Registration.
  * FIX: Profile Editing (PUT vs POST logic) implemented.
- * FIX: KVKK & Service Contract Modals added.
+ * FIX: KVKK & Contract links redirect to /privacy page.
  * FIX: 8 Teker and Passenger Transport categories integrated.
  */
 
@@ -79,7 +79,6 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
-  const [showLegalModal, setShowLegalModal] = useState<'kvkk' | 'contract' | null>(null);
   const [existingId, setExistingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -92,7 +91,6 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchExistingProfile = async () => {
       try {
-        // Not: Gerçek senaryoda burası Auth (JWT) veya tarayıcıdaki bir ID ile çalışır
         const res = await fetch(`${API_URL}/users/me`); 
         if (res.ok) {
           const data = await res.json();
@@ -282,7 +280,7 @@ export default function ProfilePage() {
              </div>
           </section>
 
-          {/* Sözleşme & Onay */}
+          {/* Sözleşme & Onay (Linkler /privacy'ye yönlendirildi) */}
           <div className="flex flex-col items-center gap-6 pt-6">
              <div className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border border-gray-200 shadow-sm">
                 <input type="checkbox" id="legal" className="hidden" checked={agreed} onChange={() => setAgreed(!agreed)}/>
@@ -290,8 +288,8 @@ export default function ProfilePage() {
                    {agreed && <Check size={14} className="text-white" strokeWidth={4} />}
                 </label>
                 <div className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">
-                   <button onClick={() => setShowLegalModal('kvkk')} className="text-blue-600 underline">KVKK Metni</button> ve 
-                   <button onClick={() => setShowLegalModal('contract')} className="text-blue-600 underline ml-1">Kullanım Sözleşmesi</button>'ni okudum, onaylıyorum.
+                   <a href="/privacy" target="_blank" className="text-blue-600 underline">KVKK Metni</a> ve 
+                   <a href="/privacy" target="_blank" className="text-blue-600 underline ml-1">Kullanım Sözleşmesi</a>'ni okudum, onaylıyorum.
                 </div>
              </div>
              <button onClick={handleSave} disabled={saving || !agreed} className={`w-full max-w-sm py-6 rounded-[2.5rem] font-black uppercase text-sm tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${agreed ? 'bg-black text-white hover:bg-gray-900 shadow-blue-500/30' : 'bg-gray-200 text-gray-400'}`}>
@@ -300,7 +298,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* MODALLAR */}
+        {/* ALT ÖZELLİK MODAL */}
         {activeFolder && (
             <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center sm:p-4">
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setActiveFolder(null)}></div>
@@ -322,31 +320,6 @@ export default function ProfilePage() {
                         })}
                     </div>
                     <button onClick={() => setActiveFolder(null)} className="mt-6 w-full py-5 rounded-[2rem] font-black uppercase text-xs shadow-xl text-white bg-black">SEÇİMİ TAMAMLA</button>
-                </div>
-            </div>
-        )}
-
-        {showLegalModal && (
-            <div className="fixed inset-0 z-[10001] flex items-center justify-center p-6">
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowLegalModal(null)}></div>
-                <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in duration-300">
-                    <div className="flex items-center justify-between p-8 border-b border-gray-100">
-                        <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900">
-                            {showLegalModal === 'kvkk' ? 'KVKK AYDINLATMA METNİ' : 'HİZMET VE KULLANIM SÖZLEŞMESİ'}
-                        </h2>
-                        <button onClick={() => setShowLegalModal(null)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 hover:bg-red-500 hover:text-white transition-colors"><X size={20} /></button>
-                    </div>
-                    <div className="p-10 overflow-y-auto custom-scrollbar prose prose-sm text-gray-600 font-medium leading-relaxed">
-                        {showLegalModal === 'kvkk' ? (
-                            <p>Transport 245 olarak kişisel verilerinizin güvenliği hususuna azami hassasiyet göstermekteyiz. 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca, verileriniz işlenmektedir...</p>
-                        ) : (
-                            <p>İşbu sözleşme, Transport 245 platformu üzerinden sunulan aracı hizmetlerin kullanım şartlarını belirlemektedir. Sürücü, platform üzerinden sağladığı bilgilerin doğruluğunu taahhüt eder...</p>
-                        )}
-                        <p className="mt-4">Detaylı metinler Transport 245 hukuk departmanı tarafından onaylanan güncel sürücü sözleşmelerini kapsamaktadır.</p>
-                    </div>
-                    <div className="p-8 bg-gray-50 flex justify-end">
-                        <button onClick={() => { setAgreed(true); setShowLegalModal(null); }} className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg hover:bg-blue-700 transition-all">OKUDUM, ONAYLIYORUM</button>
-                    </div>
                 </div>
             </div>
         )}

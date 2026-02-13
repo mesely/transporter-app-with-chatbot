@@ -1,13 +1,20 @@
+/**
+ * @file ProviderModule.tsx
+ * @description Transport 245 Yönetici Paneli - Kurum/Sürücü Yönetim Modülü.
+ * GÜNCELLEME: Yolcu Taşıma, 8 Teker ve Gezici Şarj eklendi.
+ * GÜNCELLEME: Kayıt/Düzenleme mantığı NAKLIYE/KURTARICI/SARJ/YOLCU tiplerine göre optimize edildi.
+ */
+
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, Search, Phone, Edit, Trash2, MapPin, X, 
   Loader2, Truck, Zap, Anchor, CarFront, Globe, 
-  Navigation, Filter, CheckCircle2, Home, Mail, 
-  Banknote, Package, Tag, Settings2, Check, Container, 
-  Snowflake, Layers, Archive, Box, Wallet, ArrowRight,
-  User, Info
+  Navigation, Filter, Home, Package, Container, 
+  Snowflake, Layers, Archive, Box, Check, Users, Bus, Crown,
+  ArrowRight,
+  Settings2
 } from 'lucide-react';
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
@@ -34,6 +41,7 @@ const SERVICE_OPTIONS = [
     id: 'kamyon', label: 'KAMYON', icon: Truck, color: 'bg-purple-600', hover: 'hover:border-purple-400',
     subs: [
       { id: '6_teker', label: '6 TEKER', icon: Truck },
+      { id: '8_teker', label: '8 TEKER', icon: Truck },
       { id: '10_teker', label: '10 TEKER', icon: Truck },
       { id: '12_teker', label: '12 TEKER', icon: Truck },
       { id: 'kirkayak', label: 'KIRKAYAK', icon: Layers }
@@ -48,8 +56,17 @@ const SERVICE_OPTIONS = [
     ]
   },
   { id: 'evden_eve', label: 'EVDEN EVE', icon: Home, color: 'bg-pink-600', hover: 'hover:border-pink-400', subs: [] },
+  { 
+    id: 'yolcu_tasima', label: 'YOLCU TAŞIMA', icon: Users, color: 'bg-emerald-600', hover: 'hover:border-emerald-400',
+    subs: [
+      { id: 'minibus', label: 'MİNİBÜS', icon: CarFront },
+      { id: 'otobus', label: 'OTOBÜS', icon: Bus },
+      { id: 'midibus', label: 'MİDİBÜS', icon: Bus },
+      { id: 'vip_tasima', label: 'VIP TRANSFER', icon: Crown }
+    ]
+  },
   { id: 'istasyon', label: 'İSTASYON', icon: Navigation, color: 'bg-blue-600', hover: 'hover:border-blue-400', subs: [] },
-  { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'bg-cyan-500', hover: 'hover:border-cyan-400', subs: [] },
+  { id: 'seyyar_sarj', label: 'GEZİCİ ŞARJ', icon: Zap, color: 'bg-cyan-500', hover: 'hover:border-cyan-400', subs: [] },
 ];
 
 export default function ProviderModule() {
@@ -111,13 +128,11 @@ export default function ProviderModule() {
     finally { setLoading(false); }
   };
 
-  // 🔥 ÇOKLU SEÇİM VE ETİKET TEMİZLEME MANTIĞI DÜZELTİLDİ
   const toggleServiceType = (id: string) => {
     setFormData((prev: any) => {
       const isSelected = prev.serviceTypes.includes(id);
       let newTypes = isSelected ? prev.serviceTypes.filter((t: string) => t !== id) : [...prev.serviceTypes, id];
       
-      // Eğer bir servis tipi çıkarılırsa, ona ait alt tag'leri de temizle
       let newTags = [...prev.filterTags];
       if (isSelected) {
         const config = SERVICE_OPTIONS.find(s => s.id === id);
@@ -140,7 +155,6 @@ export default function ProviderModule() {
   };
 
   const handleSave = async () => {
-    // 🛑 Telefon kontrolü (0 ile başlamalı, 11 haneli olmalı)
     const phoneRegex = /^0\d{10}$/;
     if (!phoneRegex.test(formData.phoneNumber)) {
       return alert("Hatalı Telefon Formatı! Numaranız 0 ile başlamalı ve toplam 11 haneli olmalıdır.");
@@ -149,10 +163,13 @@ export default function ProviderModule() {
     setLoading(true);
     const endpoint = isEditing ? `${API_URL}/users/${formData._id}` : `${API_URL}/users`;
     try {
-      // MainType derive etme mantığı (Yurt dışı nakliye -> NAKLIYE vb.)
       let mappedServiceType = formData.serviceTypes[0];
-      if (mappedServiceType === 'yurt_disi_nakliye') mappedServiceType = 'YURT_DISI';
-      else if (mappedServiceType === 'oto_kurtarma') mappedServiceType = 'KURTARICI';
+      let mappedMain = 'NAKLIYE'; // Varsayılan
+
+      if (['yurt_disi_nakliye'].includes(mappedServiceType)) mappedMain = 'YURT_DISI';
+      else if (['oto_kurtarma', 'vinc'].includes(mappedServiceType)) mappedMain = 'KURTARICI';
+      else if (['istasyon', 'seyyar_sarj'].includes(mappedServiceType)) mappedMain = 'SARJ';
+      else if (['yolcu_tasima'].includes(mappedServiceType)) mappedMain = 'YOLCU';
 
       const res = await fetch(endpoint, {
         method: isEditing ? 'PUT' : 'POST',
@@ -160,8 +177,13 @@ export default function ProviderModule() {
         body: JSON.stringify({ 
           ...formData, 
           firstName: formData.businessName, 
+          mainType: mappedMain, 
           serviceType: mappedServiceType, 
-          role: 'provider' 
+          role: 'provider',
+          pricing: {
+            openingFee: Number(formData.openingFee),
+            pricePerUnit: Number(formData.pricePerUnit)
+          }
         })
       });
       if (res.ok) { 
@@ -204,7 +226,7 @@ export default function ProviderModule() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="min-w-fit">
           <div className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-lg mb-3 w-fit">
-            Transporter Panel v12
+            Transport 245 Panel v2.0
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-slate-800 uppercase italic tracking-tighter leading-none whitespace-nowrap">
             Hizmet Ağı <span className="text-blue-600">Yönetimi</span>
@@ -273,7 +295,7 @@ export default function ProviderModule() {
                       <h3 className="font-black text-slate-800 text-lg uppercase truncate max-w-[150px] leading-tight">{p.businessName || p.firstName}</h3>
                       <div className="flex gap-1 mt-1 flex-wrap">
                         <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">{p.service?.subType}</span>
-                        {p.service?.tags?.map((t:string) => <span key={t} className="text-[8px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{t}</span>)}
+                        {p.service?.tags?.map((t:string) => <span key={t} className="text-[8px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{t.replace('_',' ')}</span>)}
                       </div>
                     </div>
                   </div>
@@ -361,11 +383,11 @@ export default function ProviderModule() {
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">Seçili Özellikler (Tags)</h3>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">Seçili Özellikler</h3>
                   <div className="flex flex-wrap gap-2 min-h-[60px] p-4 bg-slate-50 border border-slate-200 rounded-3xl">
                     {formData.filterTags.map((tag: string) => (
                       <span key={tag} className="flex items-center gap-1 bg-slate-800 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-md">
-                        {tag} <button onClick={() => setFormData({...formData, filterTags: formData.filterTags.filter((t:string)=>t!==tag)})} className="hover:text-red-400 ml-1"><X size={12}/></button>
+                        {tag.replace('_',' ')} <button onClick={() => setFormData({...formData, filterTags: formData.filterTags.filter((t:string)=>t!==tag)})} className="hover:text-red-400 ml-1"><X size={12}/></button>
                       </span>
                     ))}
                     {formData.filterTags.length === 0 && <span className="text-[10px] text-slate-300 italic uppercase">Henüz özellik seçilmedi...</span>}

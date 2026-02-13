@@ -3,7 +3,7 @@
  * @description Transport 245 Akıllı Harita Motoru.
  * GÜNCELLEME: Türkiye geneli Ankara merkezli başlangıç.
  * GÜNCELLEME: Gezici Şarj (Özel İkon), İstasyon (Zap) ve Yolcu Taşıma desteği.
- * GÜNCELLEME: 8 Teker ve tüm alt kategori pinleri optimize edildi.
+ * GÜNCELLEME: Harita kontrolcüsü ActionPanel'den gelen koordinatlara uçuş yapar.
  */
 
 'use client';
@@ -21,7 +21,7 @@ import {
   Users, Bus, Crown
 } from 'lucide-react';
 
-// --- ÖZEL İKON: GEZİCİ ŞARJ (İnce Çizgili Detaylı SVG) ---
+// --- ÖZEL İKON: GEZİCİ ŞARJ (İnce Çizgili Detaylı SVG - Panel ile Uyumlu) ---
 const GeziciSarjIcon = ({ size = 24, color = "currentColor" }: { size?: number, color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
@@ -75,9 +75,9 @@ const SERVICE_CONFIG: any = {
   kamyonet:     { color: '#581c87', Icon: Package, label: 'Kamyonet' },
   yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },
   
-  // ŞARJ (Mavi)
+  // ŞARJ (Mavi & Cyan)
   istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
-  seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Gezici Şarj' },
+  seyyar_sarj:  { color: '#06b6d4', Icon: GeziciSarjIcon, label: 'Gezici Şarj' }, // Cyan-500
   
   // YOLCU (Zümrüt/Yeşil)
   minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
@@ -92,7 +92,8 @@ const SERVICE_CONFIG: any = {
 // --- 3. İKON GENERATORLARI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const baseSize = isActive ? 54 : Math.max(34, Math.min(46, zoom * 2.8)); 
+  // Aktif pin daha büyük, zoom'a göre boyutlanan standart pin
+  const baseSize = isActive ? 56 : Math.max(36, Math.min(48, zoom * 2.8)); 
   const iconHtml = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
 
   return L.divIcon({
@@ -141,6 +142,21 @@ const createClusterIcon = (count: number, type: string) => {
 };
 
 // --- 4. HARİTA KONTROLLERİ ---
+// ActionPanel'den gelen il koordinatına uçuşu sağlar
+function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (activeDriverCoords) {
+      // Sürücü seçilince ona yakınlaş
+      map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
+    } else if (coords) {
+      // İl seçilince şehre git (Zoom 12 ideal şehir görünümü)
+      map.flyTo(coords, 12, { duration: 1.5 });
+    }
+  }, [coords, activeDriverCoords, map]);
+  return null;
+}
+
 function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   const map = useMapEvents({
     zoomend: () => onZoomChange(map.getZoom()),
@@ -154,22 +170,10 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   return null;
 }
 
-function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (activeDriverCoords) {
-      map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
-    } else if (coords) {
-      map.flyTo(coords, 14, { duration: 1.5 });
-    }
-  }, [coords, activeDriverCoords, map]);
-  return null;
-}
-
 // --- 5. ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
-  // 🔥 BAŞLANGIÇ: Ankara / Türkiye Geneli
-  const [currentZoom, setCurrentZoom] = useState(searchCoords ? 13 : 6.5);
+  // 🔥 BAŞLANGIÇ: Ankara / Türkiye Geneli (Zoom 6.5)
+  const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
   const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
 
@@ -227,9 +231,11 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
         <TileLayer attribution='&copy; CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
+        
+        {/* 🔥 HARİTA KONTROLCÜSÜ: İl Seçimini Dinler */}
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
-        {/* Kullanıcı Konumu */}
+        {/* Kullanıcı Konumu (Mavi nokta) */}
         {searchCoords && (
           <Marker position={searchCoords} icon={L.divIcon({
             className: 'user-loc',

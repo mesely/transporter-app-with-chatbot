@@ -1,9 +1,9 @@
 /**
  * @file ActionPanel.tsx
  * @description Transport 245 Master UI.
- * FIX: Gezici Şarj için "Tüm Türkiye" arama mantığı (Şehir filtresi bypass).
- * FIX: Gezici Şarj kurum listesindeki ikon arka planı butondaki Cyan rengiyle (bg-cyan-600) eşitlendi.
- * FIX: İkon renkleri ve stilleri standardize edildi.
+ * FIX: Gezici Şarj kurumları şehir filtresinden muaf tutuldu (Tüm Türkiye).
+ * FIX: Gezici Şarj kurumlarının adres/mesafe bilgileri listede gizlendi.
+ * FIX: Konum kutusu ve butonlar tamamen dinamik kategori rengini alır.
  */
 
 'use client';
@@ -13,35 +13,46 @@ import {
   ChevronDown, LocateFixed, Loader2, 
   Navigation, Globe, CarFront, Anchor, Home, 
   Package, Container, ArrowUpDown, Map as MapIcon,
-  Check, Phone, MessageCircle, Info, Users, Bus, Crown 
+  Check, Phone, MessageCircle, Info, Users, Bus, Crown,
+  TrendingDown, ThumbsUp 
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 
-const CITIES = [
-  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
-];
+// --- KOORDİNAT VERİTABANI ---
+const CITY_COORDINATES: Record<string, [number, number]> = {
+  "Adana": [37.0000, 35.3213], "Adıyaman": [37.7648, 38.2786], "Afyonkarahisar": [38.7507, 30.5567],
+  "Ağrı": [39.7191, 43.0503], "Aksaray": [38.3687, 34.0370], "Amasya": [40.6499, 35.8353],
+  "Ankara": [39.9334, 32.8597], "Antalya": [36.8969, 30.7133], "Ardahan": [41.1105, 42.7022],
+  "Artvin": [41.1828, 41.8183], "Aydın": [37.8560, 27.8416], "Balıkesir": [39.6484, 27.8826],
+  "Bartın": [41.6344, 32.3375], "Batman": [37.8812, 41.1351], "Bayburt": [40.2552, 40.2249],
+  "Bilecik": [40.1451, 29.9798], "Bingöl": [38.8853, 40.4980], "Bitlis": [38.4006, 42.1095],
+  "Bolu": [40.7350, 31.6061], "Burdur": [37.7204, 30.2908], "Bursa": [40.1885, 29.0610],
+  "Çanakkale": [40.1553, 26.4142], "Çankırı": [40.6013, 33.6134], "Çorum": [40.5506, 34.9556],
+  "Denizli": [37.7765, 29.0864], "Diyarbakır": [37.9144, 40.2306], "Düzce": [40.8438, 31.1565],
+  "Edirne": [41.6768, 26.5603], "Elazığ": [38.6810, 39.2264], "Erzincan": [39.7500, 39.5000],
+  "Erzurum": [39.9043, 41.2679], "Eskişehir": [39.7667, 30.5256], "Gaziantep": [37.0662, 37.3833],
+  "Giresun": [40.9128, 38.3895], "Gümüşhane": [40.4600, 39.4700], "Hakkari": [37.5833, 43.7333],
+  "Hatay": [36.4018, 36.3498], "Iğdır": [39.9167, 44.0333], "Isparta": [37.7648, 30.5566],
+  "İstanbul": [41.0082, 28.9784], "İzmir": [38.4237, 27.1428], "Kahramanmaraş": [37.5858, 36.9371],
+  "Karabük": [41.2061, 32.6204], "Karaman": [37.1759, 33.2287], "Kars": [40.6167, 43.1000],
+  "Kastamonu": [41.3887, 33.7827], "Kayseri": [38.7312, 35.4787], "Kilis": [36.7184, 37.1212],
+  "Kırıkkale": [39.8468, 33.5153], "Kırklareli": [41.7333, 27.2167], "Kırşehir": [39.1425, 34.1709],
+  "Kocaeli": [40.8533, 29.8815], "Konya": [37.8667, 32.4833], "Kütahya": [39.4167, 29.9833],
+  "Malatya": [38.3552, 38.3095], "Manisa": [38.6191, 27.4289], "Mardin": [37.3212, 40.7245],
+  "Mersin": [36.8000, 34.6333], "Muğla": [37.2153, 28.3636], "Muş": [38.9462, 41.7539],
+  "Nevşehir": [38.6244, 34.7144], "Niğde": [37.9667, 34.6833], "Ordu": [40.9839, 37.8764],
+  "Osmaniye": [37.0742, 36.2476], "Rize": [41.0201, 40.5234], "Sakarya": [40.7569, 30.3783],
+  "Samsun": [41.2928, 36.3313], "Şanlıurfa": [37.1591, 38.7969], "Siirt": [37.9333, 41.9500],
+  "Sinop": [42.0231, 35.1531], "Şırnak": [37.5164, 42.4611], "Sivas": [39.7477, 37.0179],
+  "Tekirdağ": [40.9833, 27.5167], "Tokat": [40.3167, 36.5500], "Trabzon": [41.0027, 39.7168],
+  "Tunceli": [39.1079, 39.5401], "Uşak": [38.6823, 29.4082], "Van": [38.4891, 43.4089],
+  "Yalova": [40.6500, 29.2667], "Yozgat": [39.8181, 34.8147], "Zonguldak": [41.4564, 31.7987]
+};
 
 const DEFAULT_LAT = 39.9334; 
 const DEFAULT_LNG = 32.8597;
-
-const VEHICLE_SPECS: Record<string, { capacity: string, desc: string }> = {
-  frigorifik: { capacity: '22-24 ton', desc: 'Gıda - İlaç' },
-  tenteli:    { capacity: '24 ton', desc: 'Genel Kargo' },
-  acik_kasa:  { capacity: '22-24 ton', desc: 'Demir-çelik' },
-  lowbed:     { capacity: '30-60 ton', desc: 'İş makinesi' },
-  konteyner:  { capacity: '25-30 ton', desc: 'Liman' },
-  '6_teker':  { capacity: '15-20 ton', desc: 'Palteli Yük' },
-  '8_teker':  { capacity: '18-22 ton', desc: 'Genel Yük' },
-  '10_teker': { capacity: '20-25 ton', desc: 'Uzun Mesafe' },
-  kirkayak:   { capacity: '25-30 ton', desc: 'Büyük Hacim' },
-  panelvan:    { capacity: '1-1.5 ton', desc: 'Hızlı Dağıtım' },
-  kapali_kasa: { capacity: '2-3 ton', desc: 'Mobilya' },
-  otobus:      { capacity: '46-54 Kişi', desc: 'Turizm' },
-  minibus:     { capacity: '14-20 Kişi', desc: 'Personel' },
-  vip_tasima:  { capacity: '4-9 Kişi', desc: 'Özel Transfer' }
-};
 
 const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   tir: [{ id: 'tenteli', label: 'Tenteli' }, { id: 'frigorifik', label: 'Frigorifik' }, { id: 'lowbed', label: 'Lowbed' }, { id: 'konteyner', label: 'Konteyner' }, { id: 'acik_kasa', label: 'Açık Kasa' }],
@@ -71,6 +82,23 @@ export default function ActionPanel({
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
+
+  // 🔥 AKTİF KATEGORİ RENGİ (Dinamik UI İçin)
+  const activeThemeColor = useMemo(() => {
+    if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
+    if (actionType.includes('sarj') || actionType === 'sarj_istasyonu') return 'bg-blue-600';
+    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc') return 'bg-red-600';
+    if (actionType.includes('yolcu') || ['minibus','otobus','midibus','vip_tasima'].includes(actionType)) return 'bg-emerald-600';
+    return 'bg-purple-600'; 
+  }, [actionType]);
+
+  const activeThemeText = useMemo(() => {
+    if (actionType === 'seyyar_sarj') return 'text-cyan-600';
+    if (actionType.includes('sarj') || actionType === 'sarj_istasyonu') return 'text-blue-600';
+    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc') return 'text-red-600';
+    if (actionType.includes('yolcu') || ['minibus','otobus','midibus','vip_tasima'].includes(actionType)) return 'text-emerald-600';
+    return 'text-purple-600'; 
+  }, [actionType]);
 
   useEffect(() => {
     if (activeDriverId) {
@@ -108,6 +136,25 @@ export default function ActionPanel({
     }
   };
 
+  const findClosestCityFromCoords = (lat: number, lng: number) => {
+    let closestCity = '';
+    let minDistance = Infinity;
+    Object.entries(CITY_COORDINATES).forEach(([city, coords]) => {
+      const dist = Math.sqrt(Math.pow(coords[0] - lat, 2) + Math.pow(coords[1] - lng, 2));
+      if (dist < minDistance) { minDistance = dist; closestCity = city; }
+    });
+    return closestCity;
+  };
+
+  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const city = e.target.value;
+    setSelectedCity(city);
+    if (city && CITY_COORDINATES[city]) {
+      const [lat, lng] = CITY_COORDINATES[city];
+      onSearchLocation(lat, lng);
+    }
+  };
+
   const getPricing = (driver: any) => {
     const matched = tariffs.find(t => t.serviceType === driver.service?.subType);
     const opening = driver.pricing?.openingFee ?? matched?.openingFee ?? 350;
@@ -119,15 +166,17 @@ export default function ActionPanel({
   const displayDrivers = useMemo(() => {
     let list = Array.isArray(drivers) ? [...drivers] : [];
     
-    // 🔥 FIX: "Gezici Şarj" (seyyar_sarj) için şehir filtresini baypas et (Tüm Türkiye)
+    // 🔥 GEZİCİ ŞARJ İSTİSNASI: Şehir filtresini bypass et
     if (selectedCity && actionType !== 'seyyar_sarj') {
         list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
 
     list.sort((a, b) => {
+      const priceA = getPricing(a).total;
+      const priceB = getPricing(b).total;
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-      if (sortMode === 'price_asc') return getPricing(a).total - getPricing(b).total;
-      if (sortMode === 'price_desc') return getPricing(b).total - getPricing(a).total;
+      if (sortMode === 'price_asc') return priceA - priceB;
+      if (sortMode === 'price_desc') return priceB - priceA;
       return (a.distance || 0) - (b.distance || 0);
     });
     return list;
@@ -137,7 +186,14 @@ export default function ActionPanel({
     setIsLocating(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => { onSearchLocation(pos.coords.latitude, pos.coords.longitude); setIsLocating(false); },
+        (pos) => { 
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          onSearchLocation(lat, lng);
+          const detectedCity = findClosestCityFromCoords(lat, lng);
+          if (detectedCity) setSelectedCity(detectedCity);
+          setIsLocating(false); 
+        },
         () => { onSearchLocation(DEFAULT_LAT, DEFAULT_LNG); setIsLocating(false); }
       );
     } else { onSearchLocation(DEFAULT_LAT, DEFAULT_LNG); setIsLocating(false); }
@@ -163,7 +219,6 @@ export default function ActionPanel({
       onClick={() => panelState > 0 && setPanelState(prev => prev === 2 ? 1 : 0)}
       className={`fixed inset-x-0 bottom-0 z-[2000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible text-gray-900`}
     >
-      {/* DRAG HANDLE */}
       <div 
         onMouseDown={(e) => { e.stopPropagation(); dragStartY.current = e.clientY; }}
         onMouseUp={(e) => { e.stopPropagation(); handleDragEnd(e.clientY); }}
@@ -207,9 +262,9 @@ export default function ActionPanel({
           {showDomesticRow && actionType !== 'yurt_disi_nakliye' && (
             <div className="grid grid-cols-4 gap-2 animate-in slide-in-from-top-2">
                <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> Evden Eve</button>
-               <button onClick={() => { setActiveTransportFilter('tir'); onFilterApply('tir'); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={14}/> Tır</button>
-               <button onClick={() => { setActiveTransportFilter('kamyon'); onFilterApply('kamyon'); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> Kamyon</button>
-               <button onClick={() => { setActiveTransportFilter('kamyonet'); onFilterApply('kamyonet'); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={14}/> Kamyonet</button>
+               <button onClick={() => handleTransportTypeClick('tir')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={14}/> Tır</button>
+               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> Kamyon</button>
+               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={14}/> Kamyonet</button>
             </div>
           )}
           {activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
@@ -225,7 +280,6 @@ export default function ActionPanel({
             <div className="flex gap-2 animate-in slide-in-from-top-2">
               <button onClick={() => onFilterApply('sarj_istasyonu')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> İstasyon</button>
               <button onClick={() => onFilterApply('seyyar_sarj')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
-                {/* 🔥 GEZİCİ ŞARJ İKONU: SAF BEYAZ ve PARLAK */}
                 <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> Gezici Şarj
               </button>
             </div>
@@ -243,17 +297,26 @@ export default function ActionPanel({
         </div>
 
         {panelState > 0 && (
-          <div className="flex items-center gap-2 mb-4 py-2 shrink-0">
-              <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="appearance-none bg-black text-white pl-4 pr-10 py-3 rounded-2xl text-[10px] font-black uppercase focus:outline-none border border-white/10 shadow-lg active:scale-95 transition-transform">
-                  <option value="">TÜRKİYE (İL)</option>
-                  {CITIES.map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
-              </select>
-              <button onClick={() => setSortMode(s => s === 'distance' ? 'rating' : s === 'rating' ? 'price_asc' : s === 'price_asc' ? 'price_desc' : 'distance')} className={`px-4 py-3 rounded-2xl text-[10px] font-black border transition-all shrink-0 flex items-center gap-2 shadow-lg active:scale-95 ${sortMode !== 'distance' ? 'bg-gray-900 text-white border-black' : 'bg-white/80 text-gray-700 border-white/20'}`}>
-                 <ArrowUpDown size={14} /> {sortMode === 'distance' ? 'YAKIN' : sortMode === 'rating' ? 'PUAN' : sortMode === 'price_asc' ? 'UCUZ' : 'PAHALI'}
-              </button>
-              <button onClick={findMyLocation} className={`px-4 py-3 text-white rounded-2xl shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : 'bg-blue-600'}`}>
-                 {isLocating ? <Loader2 size={18} className="animate-spin"/> : <LocateFixed size={18} />}
-              </button>
+          <div className="flex items-center gap-2 mb-4 py-2 shrink-0 overflow-x-auto no-scrollbar">
+              <div className="relative shrink-0 w-[130px] shadow-lg rounded-2xl active:scale-95 transition-transform">
+                <select 
+                  value={selectedCity} 
+                  onChange={handleCityChange} 
+                  className={`w-full appearance-none ${activeThemeColor} text-white pl-3 pr-8 py-3 rounded-2xl text-[9px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
+                >
+                  <option value="">{selectedCity ? selectedCity.toUpperCase() : "MEVCUT KONUM"}</option>
+                  {CITY_COORDINATES && Object.keys(CITY_COORDINATES).map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
+                </select>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={12} /></div>
+              </div>
+
+              <div className="flex bg-white/80 p-1 rounded-2xl shrink-0 border border-white/40 shadow-sm gap-1">
+                <button onClick={() => setSortMode('distance')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1 ${sortMode === 'distance' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500 hover:${activeThemeText}`}`}><Navigation size={12}/> YAKIN</button>
+                <button onClick={() => setSortMode('price_asc')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1 ${sortMode === 'price_asc' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500 hover:${activeThemeText}`}`}><TrendingDown size={12}/> UCUZ</button>
+                <button onClick={() => setSortMode('rating')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500 hover:${activeThemeText}`}`}><ThumbsUp size={12}/> PUAN</button>
+              </div>
+
+              <button onClick={findMyLocation} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : activeThemeColor}`}>{isLocating ? <Loader2 size={16} className="animate-spin"/> : <LocateFixed size={16} />}</button>
           </div>
         )}
 
@@ -263,11 +326,11 @@ export default function ActionPanel({
                 const isSelected = activeDriverId === driver._id;
                 const p = getPricing(driver);
                 const sub = driver.service?.subType || '';
+                const isMobileCharge = sub === 'seyyar_sarj';
                 
-                // 🔥 İKON ARKA PLAN VE RENK MANTIĞI DÜZELTİLDİ
                 let iconBg = 'bg-gray-600'; 
                 if (sub === 'istasyon') iconBg = 'bg-blue-800';
-                else if (sub === 'seyyar_sarj') iconBg = 'bg-cyan-600'; // BUTON RENGİYLE EŞİTLENDİ (CYAN)
+                else if (sub === 'seyyar_sarj') iconBg = 'bg-cyan-600';
                 else if (sub.includes('kurtarma') || sub === 'vinc') iconBg = 'bg-red-600';
                 else if (['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(sub)) iconBg = 'bg-emerald-600';
                 else if (['nakliye', 'kamyon', 'tir', 'evden_eve', 'yurt_disi_nakliye'].some(t => sub.includes(t))) iconBg = 'bg-purple-600';
@@ -277,17 +340,15 @@ export default function ActionPanel({
                     <div className="flex justify-between items-start text-gray-900">
                         <div className="flex gap-4 flex-1">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
-                               {sub === 'seyyar_sarj' ? (
-                                 <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" />
-                               ) : (
-                                 sub === 'istasyon' ? <Zap size={24} strokeWidth={2.5} /> : <Truck size={24} strokeWidth={2.5} />
-                               )}
+                               {sub === 'seyyar_sarj' ? ( <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" /> ) : ( sub === 'istasyon' ? <Zap size={24} strokeWidth={2.5} /> : <Truck size={24} strokeWidth={2.5} /> )}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <h4 className="font-black text-sm uppercase truncate leading-tight">{driver.businessName}</h4>
                                 <div className="flex items-center gap-1 mt-1">
                                     {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
-                                    {driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>}
+                                    {/* 🔥 GEZİCİ ŞARJ İÇİN ADRES/MESAFE GİZLEME */}
+                                    {!isMobileCharge && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>}
+                                    {isMobileCharge && <span className="text-[9px] text-cyan-600 font-black ml-1 uppercase">Türkiye Geneli</span>}
                                 </div>
                                 {driver.service?.tags?.some((t:any) => t.includes('teker')) && (
                                   <div className="mt-2 text-[8px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-black uppercase w-fit tracking-tighter">
@@ -301,7 +362,12 @@ export default function ActionPanel({
                     {isSelected && (
                     <div className="mt-6 pt-6 border-t border-white/20 space-y-4 animate-in fade-in slide-in-from-top-2">
                         <div className="grid grid-cols-2 gap-2 text-gray-900"><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Açılış</div><div className="text-sm font-black">₺{p.opening}</div></div><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Birim</div><div className="text-sm font-black">₺{p.unit}</div></div></div>
-                        <button onClick={(e) => { e.stopPropagation(); window.open(`http://googleusercontent.com/maps.google.com/maps?q=${driver.location?.coordinates[1]},${driver.location?.coordinates[0]}`, '_blank'); }} className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"><MapIcon size={16} /> HARİTADA GİT (ROTA)</button>
+                        
+                        {/* 🔥 GEZİCİ ŞARJ İÇİN ROTA BUTONUNU GİZLEME (OPSİYONEL) VEYA KONUMU DEĞİŞTİRME */}
+                        {!isMobileCharge && (
+                          <button onClick={(e) => { e.stopPropagation(); window.open(`http://googleusercontent.com/maps.google.com/maps?q=${driver.location?.coordinates[1]},${driver.location?.coordinates[0]}`, '_blank'); }} className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"><MapIcon size={16} /> HARİTADA GİT (ROTA)</button>
+                        )}
+                        
                         <div className="flex gap-2"><button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button><button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${(driver.phoneNumber || '').replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button></div>
                     </div>)}
                 </div>

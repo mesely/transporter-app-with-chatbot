@@ -1,188 +1,217 @@
 /**
- * @file gizlilik/page.tsx
- * @description Transporter 2026 Statik Gizlilik ve Kullanım Şartları.
- * Özellikler: Çift Dil Desteği (TR/EN), Detaylı Hukuki Metin, Resmi Tipografi.
+ * @file app/privacy/page.tsx
+ * @description Transport 245 Resmi Gizlilik ve Kullanıcı Sözleşmesi Sayfası.
+ * Özellikler: KVKK ve Kullanıcı Sözleşmesi tam metinleri, Çift Dil Altyapısı.
  */
 
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Globe } from 'lucide-react';
+import { ArrowLeft, Globe, ShieldCheck, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 const CONTENT: any = {
   tr: {
-    title: "Kullanım Şartları ve Gizlilik Politikası",
-    subtitle: "Resmi Belge No: TR-2026-V1 • Yayım: 11 Şubat 2026",
-    intro: "İşbu metin, Transporter platformunun kullanımına dair yasal hak ve yükümlülüklerinizi, 6563 sayılı Kanun ve KVKK mevzuatı uyarınca kelimesi kelimesine içermektedir.",
-    contactTitle: "Resmi İletişim",
-    sections: [
+    title: "Yasal Merkez",
+    subtitle: "Transport 245 • Sürüm 2.0 • Güncelleme: 14 Şubat 2026",
+    intro: "Aşağıdaki metinler, Transport 245 platformunun kullanımına ilişkin yasal haklarınızı, KVKK aydınlatma metnini ve Kullanıcı Sözleşmesini eksiksiz olarak içermektedir.",
+    contactTitle: "Yasal İletişim",
+    
+    // BÖLÜM 1: KVKK
+    kvkkTitle: "BÖLÜM 1: KİŞİSEL VERİLERİN KORUNMASI (KVKK)",
+    kvkkSections: [
       {
-        h: "1. Platformun Hukuki Niteliği",
-        p: "Transporter, kullanıcıların lojistik ihtiyaçları (oto kurtarma, nakliye, mobil şarj vb.) için bağımsız hizmet sağlayıcılarla bağlantı kurmasını sağlayan bir teknoloji pazar yeridir. Platform, 6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun kapsamında 'Aracı Hizmet Sağlayıcı' sıfatına sahiptir. Transporter, sunulan hizmetlerin icracısı veya tarafı olmayıp, bağımsız taraflar arasında kurulan ticari ve hukuki ilişkiden doğabilecek uyuşmazlıklardan doğrudan sorumlu tutulamaz."
+        h: "1. Veri Sorumlusu",
+        p: "Kişisel verileriniz, mobil uygulamanın işletmecisi olan Platform (Transport 245) tarafından, 6698 sayılı KVKK’ya uygun olarak işlenmektedir."
       },
       {
-        h: "2. Veri İşleme ve Kişisel Verilerin Korunması",
-        p: "6698 sayılı KVKK kapsamında Transporter, hizmetin sunulabilmesi için şu verileri işlemektedir: (i) Konum Verisi: En yakın hizmet biriminin tespiti için anlık GPS verileriniz kullanılır. (ii) İletişim Verileri: Sürücülerin tarafınıza ulaşabilmesi için telefon numaranız paylaşılır. (iii) Cihaz Tanımlayıcılar: Bildirim ve sistem güvenliği için Push Token verileri kaydedilir. Bu veriler, rızanız dışında üçüncü şahıslara reklam veya pazarlama amacıyla asla satılmaz."
+        h: "2. İşlenen Kişisel Veriler",
+        p: "Uygulama kapsamında şu veriler işlenir: (a) Kullanıcıya Ait Veriler: Kimlik (ad, soyad), İletişim (tel, e-posta), Profil bilgileri, Kullanım kayıtları ve Konum bilgisi. (b) Hizmet Sağlayıcılara Ait Veriler: Firma adı, İşyeri telefonu, Adres/Konum ve Tanıtım bilgileri. (c) Ödeme Bilgileri: İşlemler Apple/Google üzerinden yapıldığından kart bilgileri Platform tarafından saklanmaz."
       },
       {
-        h: "3. Ücretlendirme ve Mali Sorumluluk",
-        p: "Platformda görüntülenen ücretler, hizmet sağlayıcılar tarafından beyan edilen baz/taban tarifelerdir. Yol durumu, mesafe ve ek talepler doğrultusunda oluşabilecek nihai ücret, hizmet anında kullanıcı ve sürücü arasında netleşir. Transporter, ödeme işlemlerinde doğrudan bir taraf değildir; tüm mali süreçler ve faturalandırma hizmeti sunan tüzel/gerçek kişi ile kullanıcı arasındadır."
+        h: "3. Kişisel Verilerin Kaynakları",
+        p: "Kişisel veriler; (a) Kullanıcı Beyanı (kendi rızanızla girdiğiniz bilgiler), (b) Kullanıcı Tarafından Eklenen Veriler, (c) Herkese Açık Kaynaklar (Google vb. platformlardan elde edilen kamuya açık firma bilgileri) yoluyla toplanır."
       },
       {
-        h: "4. Hizmet Kusurları ve Garanti Sınırları",
-        p: "Transporter, üçüncü kişilerin sunduğu hizmetin kesintisizliği, kalitesi veya güvenliği konusunda mutlak bir garanti vermez. Hizmet sırasında meydana gelebilecek kaza, hasar, gecikme veya emtia kaybı durumlarında hukuki sorumluluk münhasıran hizmeti sunan firmaya/kişiye aittir. Kullanıcı, bu risklerin bilincinde olarak platformu kullanmayı kabul eder."
+        h: "4. İşlenme Amaçları",
+        p: "Verileriniz; hizmetlerin sunulması, hesap güvenliği, eşleştirme faaliyetleri, abonelik takibi, talep yönetimi, performans geliştirme, hukuki yükümlülükler ve kötüye kullanımın önlenmesi amacıyla işlenir."
       },
       {
-        h: "5. Sosyal Sorumluluk Politikası",
-        p: "Platform, sürdürülebilirlik ilkeleri gereği elde edilen net hizmet komisyon gelirlerinin %10'unu çevre koruma, sokak hayvanları ve eğitim projelerine bağışlamayı taahhüt eder. Bağış miktarları ve ilgili kuruluşlar periyodik olarak kurumsal raporlarda ilan edilmektedir."
+        h: "5. Hukuki Sebepler",
+        p: "KVKK Madde 5 uyarınca; sözleşmenin kurulması ve ifası, hukuki yükümlülüklerin yerine getirilmesi, meşru menfaat ve gerektiğinde açık rıza sebeplerine dayanılır."
       },
       {
-        h: "6. Hesap Feshi ve Veri İmhası",
-        p: "Apple ve Google Store politikaları uyarınca; kullanıcılar diledikleri zaman 'Profil > Ayarlar' sekmesi altından hesaplarını kalıcı olarak silme hakkına sahiptir. Silme işlemi onaylandığında, yasal saklama zorunluluğu olan veriler haricindeki tüm kişisel veriler 24 saat içerisinde sistemlerden geri döndürülemez şekilde silinmektedir."
+        h: "6. Verilerin Aktarılması",
+        p: "Kişisel veriler; yasal yükümlülükler kapsamında kamu kurumlarına ve abonelik süreçleri için uygulama mağazalarına aktarılabilir. Verileriniz üçüncü kişilere satılmaz veya ticari amaçla paylaşılmaz."
       },
       {
-        h: "7. Kullanıcı Yükümlülükleri",
-        p: "Kullanıcı, platformu kötüye kullanmayacağını, yanıltıcı konum bilgisi göndermeyeceğini ve hizmet sağlayıcılara karşı nezaket kuralları çerçevesinde hareket edeceğini kabul eder. Aksi durumlarda Transporter, kullanıcının erişimini tek taraflı olarak kısıtlama hakkını saklı tutar."
+        h: "7. Saklama Süresi",
+        p: "Veriler, işlenme amacının gerektirdiği süre ve yasal saklama süreleri boyunca muhafaza edilir. Hesap silindiğinde, yasal zorunluluk dışındaki veriler silinir veya anonim hale getirilir."
       },
       {
-        h: "8. Yürürlük ve Değişiklikler",
-        p: "Bu sözleşme, dijital onay ile yürürlüğe girer. Transporter, değişen mevzuat veya sistem güncellemeleri doğrultusunda bu maddeleri güncelleme hakkına sahiptir. Güncel metin her zaman bu sayfa üzerinden erişilebilir olacaktır."
+        h: "8. İlgili Kişinin Hakları (Madde 11)",
+        p: "Kullanıcılar; verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltme isteme, silinmesini talep etme ve zararın giderilmesini isteme haklarına sahiptir."
+      },
+      {
+        h: "9. Başvuru ve Yürürlük",
+        p: "Taleplerinizi uygulama içi kanallardan iletebilirsiniz. Bu metin yayımlandığı tarihte yürürlüğe girer ve uygulamayı kullanarak bu metni kabul etmiş sayılırsınız."
+      }
+    ],
+
+    // BÖLÜM 2: SÖZLEŞME
+    agreementTitle: "BÖLÜM 2: KULLANICI SÖZLEŞMESİ",
+    agreementSections: [
+      {
+        h: "1. Platformun Niteliği",
+        p: "Platform (Transport 245), kullanıcılar ile hizmet sağlayıcıları bir araya getiren aracı bir teknoloji platformudur. Hizmetlerin doğrudan sağlayıcısı değildir ve taraflar arasındaki uyuşmazlıklardan sorumlu tutulamaz."
+      },
+      {
+        h: "2. Kullanıcı Hesabı",
+        p: "Kullanıcı, doğru ve güncel bilgilerle hesap oluşturmalıdır. Hesap güvenliğinden ve yapılan tüm işlemlerden kullanıcı bizzat sorumludur."
+      },
+      {
+        h: "3. Kullanım Koşulları",
+        p: "Kullanıcı, uygulamayı hukuka ve genel ahlaka uygun kullanacağını kabul eder. Yanıltıcı bilgi veya sistem güvenliğini tehlikeye atan durumlarda hesap askıya alınabilir."
+      },
+      {
+        h: "4. İçerik ve Sorumluluk",
+        p: "Platform, içeriklerin doğruluğunu garanti etmez. Hizmet kesintileri, veri kayıpları veya taraflar arası anlaşmazlıklardan sorumlu değildir."
+      },
+      {
+        h: "5. Ücretlendirme ve Abonelik (ÖNEMLİ)",
+        p: "Uygulamanın temel kullanımı, ilk kayıt tarihinden itibaren 12 (on iki) ay süreyle ÜCRETSİZDİR. Ücretsiz sürenin sonunda, hizmetlerden yararlanmaya devam etmek için yıllık abonelik (1 ABD Doları karşılığı yerel para birimi) gereklidir. Ödemeler Apple App Store veya Google Play Store üzerinden tahsil edilir. Platform kart bilgisi saklamaz. İptal edilmedikçe mağaza kuralları gereği otomatik yenilenir."
+      },
+      {
+        h: "6. Veri Kaynakları",
+        p: "Bilgiler; Google/herkese açık kaynaklar, Platform tarafından eklenen veriler ve kullanıcılar tarafından girilen verilerden oluşur. Platform bu verileri bilgilendirme amacıyla kullanır."
+      },
+      {
+        h: "7. Bağış Politikası",
+        p: "Platform, elde edilen gelirlerin %10’unu sosyal sorumluluk kapsamında belirlenen yardım kuruluşlarına bağışlamayı hedefler."
+      },
+      {
+        h: "8. Gizlilik ve Hesap Silme",
+        p: "Kullanıcı verileri KVKK metnine uygun korunur. Kullanıcı dilediği zaman hesabını silebilir; yasal zorunluluk haricindeki veriler imha edilir."
+      },
+      {
+        h: "9. Yürürlük",
+        p: "Uygulamayı kullanmaya başlamanız, bu sözleşme hükümlerini okuduğunuz ve kabul ettiğiniz anlamına gelir. Güncel metin her zaman bu sayfada mevcuttur."
       }
     ]
   },
   en: {
-    title: "Terms of Use and Privacy Policy",
-    subtitle: "Official Document No: TR-2026-V1 • Published: Feb 11, 2026",
-    intro: "This text contains your legal rights and obligations regarding the use of the Transporter platform, verbatim in accordance with Law No. 6563 and GDPR/KVKK regulations.",
-    contactTitle: "Official Contact",
-    sections: [
-      {
-        h: "1. Legal Nature of the Platform",
-        p: "Transporter is a technology marketplace that enables users to connect with independent service providers for logistics needs (towing, shipping, mobile charging, etc.). The platform acts as an 'Intermediary Service Provider' within the scope of relevant e-commerce laws. Transporter is not the executor of the services provided and cannot be held directly responsible for disputes arising from the commercial and legal relationship established between independent parties."
-      },
-      {
-        h: "2. Data Processing and Protection",
-        p: "Transporter processes the following data to provide services: (i) Location Data: Your real-time GPS data is used to identify the nearest service unit. (ii) Contact Data: Your phone number is shared so that drivers can reach you. (iii) Device Identifiers: Push Token data is recorded for notifications and system security. This data is never sold to third parties for advertising or marketing purposes without your consent."
-      },
-      {
-        h: "3. Pricing and Financial Liability",
-        p: "The fees displayed on the platform are base/floor tariffs declared by service providers. The final fee, which may occur based on road conditions, distance, and additional requests, is clarified between the user and the driver at the time of service. Transporter is not a direct party to payment transactions; all financial processes and billing are between the user and the entity providing the service."
-      },
-      {
-        h: "4. Service Defects and Warranty Limits",
-        p: "Transporter does not provide an absolute guarantee regarding the continuity, quality, or safety of the services provided by third parties. In case of accidents, damages, delays, or loss of goods that may occur during the service, the legal liability belongs exclusively to the company/individual providing the service. The user agrees to use the platform being aware of these risks."
-      },
-      {
-        h: "5. Social Responsibility Policy",
-        p: "According to sustainability principles, the platform commits to donating 10% of its net service commission income to environmental protection, animal rights, and education projects. Donation amounts and related organizations are periodically announced in corporate reports."
-      },
-      {
-        h: "6. Account Termination and Data Deletion",
-        p: "In accordance with Apple and Google Store policies; users have the right to permanently delete their accounts at any time under the 'Profile > Settings' tab. Once the deletion is confirmed, all personal data except for those with legal retention requirements are irrevocably deleted from systems within 24 hours."
-      },
-      {
-        h: "7. User Obligations",
-        p: "The user agrees not to misuse the platform, not to send misleading location information, and to act within the rules of courtesy towards service providers. In contrary cases, Transporter reserves the right to unilaterally restrict the user's access."
-      },
-      {
-        h: "8. Enforcement and Amendments",
-        p: "This agreement enters into force with digital confirmation. Transporter reserves the right to update these articles in line with changing legislation or system updates. The current text will always be accessible through this page."
-      }
+    title: "Legal Center",
+    subtitle: "Transport 245 • Version 2.0 • Updated: Feb 14, 2026",
+    intro: "The texts below explicitly cover your legal rights regarding the use of the Transport 245 platform, the Privacy Policy (KVKK), and the User Agreement.",
+    contactTitle: "Legal Contact",
+    kvkkTitle: "PART 1: PRIVACY POLICY (GDPR/KVKK)",
+    kvkkSections: [
+      { h: "1. Data Controller", p: "Your personal data is processed by the Platform operator (Transport 245) in accordance with relevant laws." },
+      { h: "2. Processed Data", p: "We process User Data (ID, Contact, Location) and Service Provider Data (Business Name, Address). Financial data is handled by App Stores." },
+      // ... (English Summary for brevity, fully expandable if needed)
+    ],
+    agreementTitle: "PART 2: USER AGREEMENT",
+    agreementSections: [
+      { h: "1. Nature of Platform", p: "Transport 245 is an intermediary technology platform connecting users with providers. It is not the direct provider of services." },
+      { h: "5. Pricing & Subscription", p: "Usage is FREE for the first 12 months. Afterwards, an annual subscription fee of 1 USD (local currency equivalent) applies via App Stores." }
     ]
   }
 };
 
-export default function PrivacyPolicy() {
+export default function PrivacyPage() {
   const router = useRouter();
   const [lang, setLang] = useState<'tr' | 'en'>('tr');
   const t = CONTENT[lang];
 
   return (
-    <div className="w-full min-h-screen bg-[#fdfdfd] text-slate-900 overflow-y-auto">
+    <div className="w-full min-h-screen bg-[#f8fafc] text-slate-900 overflow-y-auto font-sans">
       
-      {/* HEADER - SABİT */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4 flex items-center justify-between shadow-sm">
+      {/* HEADER */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
         <button 
           onClick={() => router.push('/')}
-          className="text-slate-900 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:opacity-60 transition-opacity"
+          className="text-slate-900 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:text-blue-600 transition-colors"
         >
-          <ArrowLeft size={16} /> {lang === 'tr' ? 'Geri' : 'Back'}
+          <ArrowLeft size={16} /> {lang === 'tr' ? 'Ana Sayfaya Dön' : 'Back to Home'}
         </button>
         
-        <div className="flex items-center gap-3">
-          <Image src="/favicon.ico" width={24} height={24} alt="Transporter" />
-          <span className="font-black text-xs uppercase tracking-tighter italic">Transporter 2026</span>
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={20} className="text-blue-600"/>
+          <span className="font-black text-xs uppercase tracking-tighter italic">Transport 245</span>
         </div>
 
-        {/* DİL DEĞİŞTİRİCİ */}
         <button 
           onClick={() => setLang(lang === 'tr' ? 'en' : 'tr')}
-          className="flex items-center gap-2 bg-slate-900 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-cyan-600 transition-colors shadow-lg"
+          className="flex items-center gap-2 bg-slate-900 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg"
         >
           <Globe size={14} /> {lang === 'tr' ? 'EN' : 'TR'}
         </button>
       </nav>
 
-      <main className="max-w-3xl mx-auto px-6 py-16">
+      <main className="max-w-4xl mx-auto px-6 py-12">
         
-        {/* ANA BAŞLIK ALANI */}
-        <div className="mb-20 text-center">
-          <div className="flex items-center justify-center gap-4 mb-6">
-
-             <h1 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900">
-               {t.title}
-             </h1>
-          </div>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em]">
-            {t.subtitle}
-          </p>
-        </div>
-
-        {/* METİN İÇERİĞİ */}
-        <div className="space-y-16">
-          
-          <div className="border-l-4 border-cyan-500 pl-8 py-2">
-            <p className="font-bold text-slate-800 text-[15px] leading-relaxed italic">
-              "{t.intro}"
-            </p>
-          </div>
-
-          {t.sections.map((section: any, idx: number) => (
-            <section key={idx} className="space-y-4">
-              <h3 className="font-black text-slate-900 uppercase text-sm tracking-widest">
-                {section.h}
-              </h3>
-              <p className="text-slate-600 text-[14px] leading-[1.8] text-justify font-medium">
-                {section.p}
-              </p>
-            </section>
-          ))}
-        </div>
-
-        {/* ALT İLETİŞİM BÖLÜMÜ */}
-        <div className="border-t border-slate-100 mt-24 pt-20 pb-32">
-           <div className="text-center space-y-4">
-              <h3 className="font-black text-slate-900 uppercase text-lg italic tracking-tighter">
-                {t.contactTitle}
-              </h3>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em]">
-                {lang === 'tr' ? 'Yasal Talepleriniz İçin' : 'For Legal Inquiries'}
-              </p>
-              <a 
-                href="mailto:privacy@transporter.com" 
-                className="text-slate-900 font-black text-xl hover:text-cyan-600 transition-colors block"
-              >
-                privacy@transporter.com
-              </a>
+        {/* BAŞLIK */}
+        <div className="mb-16 text-center space-y-4">
+           <h1 className="text-4xl font-black uppercase italic tracking-tighter text-slate-900">{t.title}</h1>
+           <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em]">{t.subtitle}</p>
+           <div className="max-w-2xl mx-auto border-l-4 border-blue-500 pl-6 py-2 mt-8 text-left">
+             <p className="font-bold text-slate-700 text-sm leading-relaxed italic">"{t.intro}"</p>
            </div>
         </div>
 
-        {/* FOOTER NOTU */}
-        <div className="text-center opacity-20 pb-10">
-           <p className="text-[8px] font-black uppercase tracking-[0.5em]">
-             Transporter Sovereign Platform • Intellectual Property 2026
+        <div className="space-y-20">
+          
+          {/* BÖLÜM 1: KVKK */}
+          <div className="bg-white rounded-[2.5rem] p-8 sm:p-12 shadow-xl border border-slate-100">
+            <div className="flex items-center gap-4 mb-8 border-b border-slate-100 pb-6">
+              <div className="p-3 bg-green-100 rounded-2xl text-green-700"><ShieldCheck size={28}/></div>
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">{t.kvkkTitle}</h2>
+            </div>
+            <div className="space-y-8">
+              {t.kvkkSections.map((section: any, idx: number) => (
+                <section key={idx} className="space-y-2">
+                  <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> {section.h}
+                  </h3>
+                  <p className="text-slate-600 text-sm leading-relaxed font-medium pl-3.5 border-l border-slate-200">
+                    {section.p}
+                  </p>
+                </section>
+              ))}
+            </div>
+          </div>
+
+          {/* BÖLÜM 2: SÖZLEŞME */}
+          <div className="bg-white rounded-[2.5rem] p-8 sm:p-12 shadow-xl border border-slate-100">
+            <div className="flex items-center gap-4 mb-8 border-b border-slate-100 pb-6">
+              <div className="p-3 bg-blue-100 rounded-2xl text-blue-700"><FileText size={28}/></div>
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">{t.agreementTitle}</h2>
+            </div>
+            <div className="space-y-8">
+              {t.agreementSections.map((section: any, idx: number) => (
+                <section key={idx} className={`space-y-2 ${section.h.includes('Ücret') ? 'bg-blue-50/50 p-6 rounded-3xl border border-blue-100' : ''}`}>
+                  <h3 className={`font-black uppercase text-xs tracking-widest flex items-center gap-2 ${section.h.includes('Ücret') ? 'text-blue-700' : 'text-slate-900'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${section.h.includes('Ücret') ? 'bg-blue-600' : 'bg-slate-900'}`}></span> {section.h}
+                  </h3>
+                  <p className={`text-sm leading-relaxed font-medium pl-3.5 border-l ${section.h.includes('Ücret') ? 'text-blue-800 border-blue-200' : 'text-slate-600 border-slate-200'}`}>
+                    {section.p}
+                  </p>
+                </section>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* İLETİŞİM & FOOTER */}
+        <div className="mt-24 pt-10 border-t border-slate-200 text-center space-y-6">
+           <h3 className="font-black text-slate-900 uppercase text-lg italic tracking-tighter">{t.contactTitle}</h3>
+           <a href="mailto:legal@transport245.com" className="text-slate-900 font-black text-2xl hover:text-blue-600 transition-colors block">
+             legal@transport245.com
+           </a>
+           <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] pt-8">
+             Transport 245 Sovereign Platform • Intellectual Property 2026
            </p>
         </div>
 
