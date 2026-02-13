@@ -2,8 +2,9 @@
  * @file page.tsx
  * @description Transport 245 Master Orchestrator.
  * GÜNCELLEME: Marka ismi "Transport 245" olarak revize edildi.
- * GÜNCELLEME: Gezici Şarj için harita sınırı bypass edildi (Türkiye Geneli Veri Çekimi).
- * MANTIK: Sidebar ve ActionPanel arası karşılıklı kapanma senkronizasyonu sağlandı.
+ * GÜNCELLEME: Gezici Şarj (seyyar_sarj) için harita sınırları tamamen kaldırıldı (Türkiye Geneli).
+ * GÜNCELLEME: Alt kategori hiyerarşisi (Tır, Kamyon, Kamyonet) filtrelemeye eklendi.
+ * MANTIK: Sidebar ve ActionPanel arası karşılıklı kapanma senkronizasyonu korunmuştur.
  */
 
 'use client';
@@ -16,6 +17,14 @@ import TopBar from '../components/home/TopBar';
 import ActionPanel from '../components/home/ActionPanel';
 import Sidebar from '../components/home/Sidebar';
 import ProfileModal from '../components/ProfileModal';
+
+// --- ALT KATEGORİ HİYERARŞİSİ (Filtreleme İçin) ---
+const CATEGORY_MAP: Record<string, string[]> = {
+  tir: ['tenteli', 'frigorifik', 'lowbed', 'konteyner', 'acik_kasa'],
+  kamyon: ['6_teker', '8_teker', '10_teker', '12_teker', 'kirkayak'],
+  kamyonet: ['panelvan', 'acik_kasa', 'kapali_kasa'],
+  yolcu: ['minibus', 'otobus', 'midibus', 'vip_tasima']
+};
 
 // --- LOADER BİLEŞENİ ---
 const LOADING_MESSAGES = [
@@ -93,7 +102,7 @@ export default function Home() {
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string, zoom: number) => {
     setLoading(true);
     try {
-      // 🔥 FIX: Gezici Şarj seçiliyse koordinat/zoom kısıtlaması olmadan tüm listeyi çek (Türkiye Geneli)
+      // 🔥 FIX: Gezici Şarj seçiliyse koordinat/zoom kısıtlaması olmadan TÜM veriyi çek (Türkiye Geneli)
       let url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=${zoom}`;
       
       if (type === 'seyyar_sarj') {
@@ -110,6 +119,7 @@ export default function Home() {
     }
   }, []);
 
+  // Başlangıç Yüklemesi (Ankara Merkezli)
   useEffect(() => {
     if (!searchCoords) fetchDrivers(39.9334, 32.8597, 'kurtarici', 6);
   }, [fetchDrivers, searchCoords]); 
@@ -123,18 +133,29 @@ export default function Home() {
 
       let matchesType = false;
 
+      // 1. ÖZEL DURUMLAR (Gezici Şarj, Yurt Dışı, Evden Eve, İstasyon)
       if (actionType === 'seyyar_sarj') matchesType = s.subType === 'seyyar_sarj';
       else if (actionType === 'yurt_disi_nakliye') matchesType = s.subType === 'yurt_disi_nakliye';
       else if (actionType === 'evden_eve') matchesType = s.subType === 'evden_eve';
       else if (actionType === 'sarj_istasyonu') matchesType = s.subType === 'istasyon';
+      
+      // 2. ANA KATEGORİLER (KURTARICI, NAKLIYE, SARJ, YOLCU)
       else if (actionType === 'kurtarici') matchesType = s.mainType === 'KURTARICI';
       else if (actionType === 'nakliye') matchesType = s.mainType === 'NAKLIYE';
       else if (actionType === 'sarj') matchesType = s.mainType === 'SARJ';
       else if (actionType === 'yolcu') matchesType = s.mainType === 'YOLCU';
+      
+      // 3. HİYERARŞİK FİLTRELEME (Tır seçiliyse frigorifik de görünsün)
+      else if (CATEGORY_MAP[actionType]) {
+        matchesType = s.subType === actionType || CATEGORY_MAP[actionType].includes(s.subType);
+      }
+      
+      // 4. DİREKT EŞLEŞME
       else matchesType = s.subType === actionType;
 
       if (!matchesType) return false;
 
+      // TAG (Etiket) Filtresi (Örn: 6 Teker, 8 Teker)
       if (activeTags.length > 0) {
         return activeTags.some(tag => (s.tags || []).includes(tag));
       }

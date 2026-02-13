@@ -1,9 +1,9 @@
 /**
  * @file Map.tsx
  * @description Transport 245 Akıllı Harita Motoru.
- * GÜNCELLEME: Türkiye geneli Ankara merkezli başlangıç.
- * GÜNCELLEME: Gezici Şarj (Özel İkon), İstasyon (Zap) ve Yolcu Taşıma desteği.
- * GÜNCELLEME: Harita kontrolcüsü ActionPanel'den gelen koordinatlara uçuş yapar.
+ * FIX: Gezici Şarj (seyyar_sarj) için adres/mesafe bilgileri Popup içinde gizlendi.
+ * FIX: İl seçimi yapıldığında harita otomatik olarak o koordinata odaklanır.
+ * FIX: Tüm kategori renkleri ve özel SVG ikonları stabilize edildi.
  */
 
 'use client';
@@ -21,7 +21,7 @@ import {
   Users, Bus, Crown
 } from 'lucide-react';
 
-// --- ÖZEL İKON: GEZİCİ ŞARJ (İnce Çizgili Detaylı SVG - Panel ile Uyumlu) ---
+// --- ÖZEL İKON: GEZİCİ ŞARJ (İnce Çizgili Detaylı SVG) ---
 const GeziciSarjIcon = ({ size = 24, color = "currentColor" }: { size?: number, color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
@@ -31,7 +31,7 @@ const GeziciSarjIcon = ({ size = 24, color = "currentColor" }: { size?: number, 
   </svg>
 );
 
-// --- 1. TİPLER ---
+// --- TİPLER ---
 interface Driver {
   _id: string;
   businessName: string; 
@@ -60,39 +60,30 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- 2. SERVİS YAPILANDIRMASI (RENK VE İKONLAR) ---
+// --- SERVİS YAPILANDIRMASI (RENK VE İKONLAR) ---
 const SERVICE_CONFIG: any = {
-  // KURTARICI (Kırmızı)
   oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
   vinc:         { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },
   kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },
-  
-  // NAKLİYE (Mor)
   nakliye:      { color: '#9333ea', Icon: Truck, label: 'Nakliye' },
   evden_eve:    { color: '#a855f7', Icon: Home, label: 'Evden Eve' },
   tir:          { color: '#7e22ce', Icon: Truck, label: 'TIR' },
   kamyon:       { color: '#6b21a8', Icon: Truck, label: 'Kamyon' },
   kamyonet:     { color: '#581c87', Icon: Package, label: 'Kamyonet' },
   yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },
-  
-  // ŞARJ (Mavi & Cyan)
   istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
-  seyyar_sarj:  { color: '#06b6d4', Icon: GeziciSarjIcon, label: 'Gezici Şarj' }, // Cyan-500
-  
-  // YOLCU (Zümrüt/Yeşil)
+  seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Gezici Şarj' },
   minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
   otobus:       { color: '#059669', Icon: Bus, label: 'Otobüs' },
   midibus:      { color: '#047857', Icon: Bus, label: 'Midibüs' },
   vip_tasima:   { color: '#064e3b', Icon: Crown, label: 'VIP Transfer' },
   yolcu:        { color: '#10b981', Icon: Users, label: 'Yolcu Taşıma' },
-
   other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
 };
 
-// --- 3. İKON GENERATORLARI ---
+// --- İKON GENERATORLARI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  // Aktif pin daha büyük, zoom'a göre boyutlanan standart pin
   const baseSize = isActive ? 56 : Math.max(36, Math.min(48, zoom * 2.8)); 
   const iconHtml = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
 
@@ -141,22 +132,7 @@ const createClusterIcon = (count: number, type: string) => {
   });
 };
 
-// --- 4. HARİTA KONTROLLERİ ---
-// ActionPanel'den gelen il koordinatına uçuşu sağlar
-function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (activeDriverCoords) {
-      // Sürücü seçilince ona yakınlaş
-      map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
-    } else if (coords) {
-      // İl seçilince şehre git (Zoom 12 ideal şehir görünümü)
-      map.flyTo(coords, 12, { duration: 1.5 });
-    }
-  }, [coords, activeDriverCoords, map]);
-  return null;
-}
-
+// --- HARİTA KONTROLLERİ ---
 function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   const map = useMapEvents({
     zoomend: () => onZoomChange(map.getZoom()),
@@ -170,9 +146,20 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   return null;
 }
 
-// --- 5. ANA BİLEŞEN ---
+function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (activeDriverCoords) {
+      map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
+    } else if (coords) {
+      map.flyTo(coords, 12, { duration: 1.5 });
+    }
+  }, [coords, activeDriverCoords, map]);
+  return null;
+}
+
+// --- ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
-  // 🔥 BAŞLANGIÇ: Ankara / Türkiye Geneli (Zoom 6.5)
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
   const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
@@ -231,11 +218,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
         <TileLayer attribution='&copy; CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
-        
-        {/* 🔥 HARİTA KONTROLCÜSÜ: İl Seçimini Dinler */}
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
-        {/* Kullanıcı Konumu (Mavi nokta) */}
         {searchCoords && (
           <Marker position={searchCoords} icon={L.divIcon({
             className: 'user-loc',
@@ -246,6 +230,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
         {visibleMarkers.map((item: Driver) => {
           const pos: [number, number] = [item.location.coordinates[1], item.location.coordinates[0]];
+          const subType = item.service?.subType || '';
+          const isMobileCharge = subType === 'seyyar_sarj';
 
           if (item.isCluster) {
             return (
@@ -256,13 +242,13 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           }
 
           const isActive = activeDriverId === item._id;
-          const config = SERVICE_CONFIG[item.service?.subType || ''] || SERVICE_CONFIG.other;
+          const config = SERVICE_CONFIG[subType] || SERVICE_CONFIG.other;
 
           return (
             <Marker 
               key={item._id} 
               position={pos}
-              icon={createCustomIcon(item.service?.subType, currentZoom, isActive)}
+              icon={createCustomIcon(subType, currentZoom, isActive)}
               ref={(el) => { 
                 markerRefs.current[item._id] = el;
                 if (el && isActive) setTimeout(() => el.openPopup(), 200);
@@ -275,7 +261,12 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
                       {config.label}
                     </span>
-                    {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
+                    {/* 🔥 GEZİCİ ŞARJ İÇİN ÖZEL METİN */}
+                    {isMobileCharge ? (
+                      <span className="text-[10px] font-black text-cyan-600 uppercase">Türkiye Geneli</span>
+                    ) : (
+                      item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>
+                    )}
                   </div>
                   
                   <h4 className="font-black text-slate-900 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
@@ -301,6 +292,16 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       <MessageCircle size={13} /> WHATSAPP
                     </button>
                   </div>
+                  
+                  {/* 🔥 GEZİCİ ŞARJ DEĞİLSE ROTA BUTONU GÖSTER */}
+                  {!isMobileCharge && (
+                     <button 
+                        onClick={() => window.open(`http://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+                        className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+                     >
+                        <MapPin size={12} /> HARİTADA GÖSTER
+                     </button>
+                  )}
                 </div>
               </Popup>
             </Marker>

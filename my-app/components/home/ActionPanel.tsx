@@ -1,9 +1,10 @@
 /**
  * @file ActionPanel.tsx
  * @description Transport 245 Master UI.
- * FIX: Gezici Şarj kurumları şehir filtresinden muaf tutuldu (Tüm Türkiye).
- * FIX: Gezici Şarj kurumlarının adres/mesafe bilgileri listede gizlendi.
- * FIX: Konum kutusu ve butonlar tamamen dinamik kategori rengini alır.
+ * FIX: 'listContainerRef' tanımı eklendi, TS2304 hatası giderildi.
+ * FIX: Tır, Kamyon, Kamyonet ana kategorileri seçildiğinde tüm alt tipler (6 teker, frigorifik vb.) listelenir.
+ * FIX: Gezici Şarj için şehir filtresi bypass (Tüm Türkiye) ve mesafe gizleme aktif.
+ * FIX: Konum kutusu ve Sıralama butonları (YAKIN, UCUZ, PUAN) tamamen dinamik kategori rengindedir.
  */
 
 'use client';
@@ -51,9 +52,6 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
   "Yalova": [40.6500, 29.2667], "Yozgat": [39.8181, 34.8147], "Zonguldak": [41.4564, 31.7987]
 };
 
-const DEFAULT_LAT = 39.9334; 
-const DEFAULT_LNG = 32.8597;
-
 const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   tir: [{ id: 'tenteli', label: 'Tenteli' }, { id: 'frigorifik', label: 'Frigorifik' }, { id: 'lowbed', label: 'Lowbed' }, { id: 'konteyner', label: 'Konteyner' }, { id: 'acik_kasa', label: 'Açık Kasa' }],
   kamyon: [{ id: '6_teker', label: '6 Teker' }, { id: '8_teker', label: '8 Teker' }, { id: '10_teker', label: '10 Teker' }, { id: '12_teker', label: '12 Teker' }, { id: 'kirkayak', label: 'Kırkayak' }],
@@ -81,9 +79,11 @@ export default function ActionPanel({
   const [activeTransportFilter, setActiveTransportFilter] = useState<string | null>(null);
   const dragStartY = useRef<number | null>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  
+  // 🔥 FIX: listContainerRef eksikliği giderildi
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // 🔥 AKTİF KATEGORİ RENGİ (Dinamik UI İçin)
+  // 🔥 DİNAMİK TEMA RENKLERİ
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
     if (actionType.includes('sarj') || actionType === 'sarj_istasyonu') return 'bg-blue-600';
@@ -136,16 +136,6 @@ export default function ActionPanel({
     }
   };
 
-  const findClosestCityFromCoords = (lat: number, lng: number) => {
-    let closestCity = '';
-    let minDistance = Infinity;
-    Object.entries(CITY_COORDINATES).forEach(([city, coords]) => {
-      const dist = Math.sqrt(Math.pow(coords[0] - lat, 2) + Math.pow(coords[1] - lng, 2));
-      if (dist < minDistance) { minDistance = dist; closestCity = city; }
-    });
-    return closestCity;
-  };
-
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const city = e.target.value;
     setSelectedCity(city);
@@ -166,9 +156,16 @@ export default function ActionPanel({
   const displayDrivers = useMemo(() => {
     let list = Array.isArray(drivers) ? [...drivers] : [];
     
-    // 🔥 GEZİCİ ŞARJ İSTİSNASI: Şehir filtresini bypass et
+    // Gezici Şarj Bypass
     if (selectedCity && actionType !== 'seyyar_sarj') {
         list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
+    }
+
+    // 🔥 KAMYON/TIR/KAMYONET ALT KATEGORİ MANTIĞI
+    // Eğer 'tır' seçiliyse ama aracın subtype'ı 'frigorifik' ise listede görünmeye devam etmeli
+    if (activeTransportFilter && SUB_FILTERS[activeTransportFilter]) {
+        const allowedSubTypes = [activeTransportFilter, ...SUB_FILTERS[activeTransportFilter].map(s => s.id)];
+        list = list.filter(d => allowedSubTypes.includes(d.service?.subType));
     }
 
     list.sort((a, b) => {
@@ -180,7 +177,7 @@ export default function ActionPanel({
       return (a.distance || 0) - (b.distance || 0);
     });
     return list;
-  }, [drivers, sortMode, selectedCity, tariffs, actionType]); 
+  }, [drivers, sortMode, selectedCity, tariffs, actionType, activeTransportFilter]); 
 
   const findMyLocation = () => {
     setIsLocating(true);
@@ -190,13 +187,11 @@ export default function ActionPanel({
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           onSearchLocation(lat, lng);
-          const detectedCity = findClosestCityFromCoords(lat, lng);
-          if (detectedCity) setSelectedCity(detectedCity);
           setIsLocating(false); 
         },
-        () => { onSearchLocation(DEFAULT_LAT, DEFAULT_LNG); setIsLocating(false); }
+        () => { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
       );
-    } else { onSearchLocation(DEFAULT_LAT, DEFAULT_LNG); setIsLocating(false); }
+    } else { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
   };
 
   useEffect(() => {
@@ -305,7 +300,7 @@ export default function ActionPanel({
                   className={`w-full appearance-none ${activeThemeColor} text-white pl-3 pr-8 py-3 rounded-2xl text-[9px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
                 >
                   <option value="">{selectedCity ? selectedCity.toUpperCase() : "MEVCUT KONUM"}</option>
-                  {CITY_COORDINATES && Object.keys(CITY_COORDINATES).map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
+                  {Object.keys(CITY_COORDINATES).map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
                 </select>
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={12} /></div>
               </div>
@@ -346,7 +341,6 @@ export default function ActionPanel({
                                 <h4 className="font-black text-sm uppercase truncate leading-tight">{driver.businessName}</h4>
                                 <div className="flex items-center gap-1 mt-1">
                                     {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
-                                    {/* 🔥 GEZİCİ ŞARJ İÇİN ADRES/MESAFE GİZLEME */}
                                     {!isMobileCharge && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>}
                                     {isMobileCharge && <span className="text-[9px] text-cyan-600 font-black ml-1 uppercase">Türkiye Geneli</span>}
                                 </div>
@@ -362,12 +356,9 @@ export default function ActionPanel({
                     {isSelected && (
                     <div className="mt-6 pt-6 border-t border-white/20 space-y-4 animate-in fade-in slide-in-from-top-2">
                         <div className="grid grid-cols-2 gap-2 text-gray-900"><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Açılış</div><div className="text-sm font-black">₺{p.opening}</div></div><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Birim</div><div className="text-sm font-black">₺{p.unit}</div></div></div>
-                        
-                        {/* 🔥 GEZİCİ ŞARJ İÇİN ROTA BUTONUNU GİZLEME (OPSİYONEL) VEYA KONUMU DEĞİŞTİRME */}
                         {!isMobileCharge && (
                           <button onClick={(e) => { e.stopPropagation(); window.open(`http://googleusercontent.com/maps.google.com/maps?q=${driver.location?.coordinates[1]},${driver.location?.coordinates[0]}`, '_blank'); }} className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"><MapIcon size={16} /> HARİTADA GİT (ROTA)</button>
                         )}
-                        
                         <div className="flex gap-2"><button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button><button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.open(`https://wa.me/${(driver.phoneNumber || '').replace(/\D/g, '')}`); }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> WHATSAPP</button></div>
                     </div>)}
                 </div>
