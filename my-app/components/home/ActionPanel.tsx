@@ -1,9 +1,11 @@
 /**
  * @file ActionPanel.tsx
  * @description Transport 245 Master UI - Sürücü Arama ve Listeleme Paneli.
- * FIX: Alt özellik (tag) detayları dikey (alt alta) yerine yatay (yan yana) ve sarılı (wrap) şekilde düzenlendi.
- * FIX: Panel büyüyüp küçülürken (resize) oluşan titreme (flickering) sorununu çözmek için CSS transition optimizasyonu ve 'will-change' ipucu eklendi.
- * NOTE: Sadece seçili olan tag'lerin gösterilmesi mantığı zaten mevcuttu, yatay düzen ile bu daha net hale getirildi.
+ * FIX: İşletme isimleri harita panelinde taşmaması için max 4 sözcük ve daha küçük puntoyla sınırlandı.
+ * FIX: "Yakın" filtre butonu kaldırıldı (varsayılan olarak mesafe sıralaması kalmaya devam eder).
+ * FIX: Gezici Şarj ve Yolcu Taşıma öğelerine tıklandığında harita odaklanması engellendi, sadece liste içinde açılır.
+ * FIX: Alt özellik (tag) detayları yatay ve sarılı (wrap) şekilde düzenlendi.
+ * FIX: Panel büyüyüp küçülürken oluşan titreme sorunları için CSS optimizasyonları yapıldı.
  */
 
 'use client';
@@ -150,6 +152,7 @@ export default function ActionPanel({
 }: ActionPanelProps) {
   
   const [panelState, setPanelState] = useState<0 | 1 | 2 | 3>(1); 
+  const [localSelectedId, setLocalSelectedId] = useState<string | null>(null); // 🔥 FIX: Haritayı tetiklemeyen özel seçim state'i
   
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
@@ -182,12 +185,14 @@ export default function ActionPanel({
     return 'text-purple-600'; 
   }, [actionType]);
 
+  // 🔥 FIX: Scroll behavior güncellendi, hem global hem de local seçimleri takip eder.
   useEffect(() => {
-    if (activeDriverId) {
+    const targetId = activeDriverId || localSelectedId;
+    if (targetId) {
       if (panelState < 2) setPanelState(2);
-      setTimeout(() => { itemRefs.current[activeDriverId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
+      setTimeout(() => { itemRefs.current[targetId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
     }
-  }, [activeDriverId]);
+  }, [activeDriverId, localSelectedId]);
 
   const handleMainCategoryClick = (category: string) => {
     setPanelState(current => (current <= 1 ? 2 : current));
@@ -290,10 +295,15 @@ export default function ActionPanel({
 
   const sizeClass = panelState === 3 ? 'h-[92vh]' : panelState === 2 ? 'h-[55vh]' : panelState === 1 ? 'h-36' : 'h-14'; 
 
+  // 🔥 FIX: İsim biçimlendirme fonksiyonu eklendi (Maksimum 4 kelime)
+  const formatTitle = (name?: string) => {
+    if (!name) return '';
+    return name.split(' ').filter(Boolean).slice(0, 4).join(' ');
+  };
+
   return (
     <div 
       onClick={() => panelState > 1 && setPanelState(prev => prev === 3 ? 2 : 1)}
-      // 🔥 FIX: Titreme sorunu için transition özellikleri optimize edildi ve will-change eklendi.
       className={`fixed inset-x-0 bottom-0 z-[2000] transition-[height,transform,opacity] duration-500 cubic-bezier(0.32, 0.72, 0, 1) will-change-[height,transform] rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] overflow-hidden text-gray-900`}
     >
       <div 
@@ -306,7 +316,6 @@ export default function ActionPanel({
       >
         <div className="w-16 h-1.5 bg-gray-400/50 rounded-full shadow-sm"></div>
 
-        {/* Dinamik Boyut Kontrol Okları */}
         <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1 z-[2002]">
           <button 
             onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.max(p - 1, 0) as 0|1|2|3); }}
@@ -403,8 +412,8 @@ export default function ActionPanel({
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={12} /></div>
               </div>
 
+              {/* 🔥 FIX: YAKIN butonu kaldırıldı */}
               <div className="flex bg-white/80 p-1 rounded-2xl shrink-0 border border-white/40 shadow-sm gap-1">
-                <button onClick={() => setSortMode('distance')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1 ${sortMode === 'distance' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500 hover:${activeThemeText}`}`}><Navigation size={12}/> YAKIN</button>
                 <button onClick={() => setSortMode('price_asc')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1 ${sortMode === 'price_asc' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500 hover:${activeThemeText}`}`}><TrendingDown size={12}/> UCUZ</button>
                 <button onClick={() => setSortMode('rating')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500 hover:${activeThemeText}`}`}><ThumbsUp size={12}/> PUAN</button>
               </div>
@@ -416,7 +425,8 @@ export default function ActionPanel({
         <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain contain-content transform-gpu">
           {loading ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">Yükleniyor...</p></div> ) : (
             displayDrivers.map((driver) => {
-                const isSelected = activeDriverId === driver._id;
+                // 🔥 FIX: Özel kategoriler için sadece ActionPanel'de açılsın diye 'localSelectedId' state'ini kullanıyoruz
+                const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const p = getPricing(driver);
                 const sub = driver.service?.subType || '';
                 
@@ -447,30 +457,51 @@ export default function ActionPanel({
                 else if (['nakliye', 'kamyon', 'tir', 'evden_eve', 'yurt_disi_nakliye'].some(t => sub.includes(t))) iconBg = 'bg-purple-600';
 
                 return (
-                <div key={driver._id} ref={el => { itemRefs.current[driver._id] = el; }} onClick={(e) => { e.stopPropagation(); onSelectDriver(isSelected ? null : driver._id); }} className={`bg-white/80 backdrop-blur-md rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 cursor-pointer active:scale-[0.98] ${isSelected ? 'border-green-500 ring-4 ring-green-500/10' : 'border-white/40'}`}>
+                <div 
+                    key={driver._id} 
+                    ref={el => { itemRefs.current[driver._id] = el; }} 
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (isSelected) {
+                            onSelectDriver(null);
+                            setLocalSelectedId(null);
+                        } else {
+                            // 🔥 FIX: Haritada Yönlendirmesini Engelleyen Mantık
+                            if (isSpecialCategory) {
+                                onSelectDriver(null); // Haritadaki odaklanmayı iptal eder
+                                setLocalSelectedId(driver._id); // ActionPanel içinde kartı açar
+                            } else {
+                                setLocalSelectedId(null);
+                                onSelectDriver(driver._id); // Normal haritada flyTo işlemini tetikler
+                            }
+                        }
+                    }} 
+                    className={`bg-white/80 backdrop-blur-md rounded-[2.5rem] p-6 mb-4 shadow-xl border transition-all duration-300 cursor-pointer active:scale-[0.98] ${isSelected ? 'border-green-500 ring-4 ring-green-500/10' : 'border-white/40'}`}
+                >
                     <div className="flex justify-between items-start text-gray-900">
-                        <div className="flex gap-4 flex-1">
+                        <div className="flex gap-4 flex-1 overflow-hidden">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
                                {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={24} strokeWidth={2.5} /> )}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <h4 className="font-black text-sm uppercase truncate leading-tight">{driver.businessName}</h4>
+                                {/* 🔥 FIX: İsimlerin taşmasını engellemek için metin 4 kelimeyle sınırlandı ve punto küçültüldü */}
+                                <h4 className="font-black text-[11px] sm:text-xs uppercase truncate leading-tight w-full" title={driver.businessName}>
+                                    {formatTitle(driver.businessName)}
+                                </h4>
                                 <div className="flex items-center gap-1 mt-1">
                                     {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
                                     
-                                    {!isSpecialCategory && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>}
+                                    {!isSpecialCategory && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1 shrink-0">{(driver.distance / 1000).toFixed(1)} km</span>}
                                     
-                                    {/* Adres Gösterimi (Tam Adres, Çoklu Satır) */}
                                     {!isSpecialCategory && driver.address?.fullText && (
                                         <span className="text-[9px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
                                             {driver.address.fullText}
                                         </span>
                                     )}
 
-                                    {isSpecialCategory && <span className={`text-[9px] font-black ml-1 uppercase opacity-80 ${isPassenger ? 'text-emerald-600' : 'text-cyan-600'}`}>Türkiye Geneli</span>}
+                                    {isSpecialCategory && <span className={`text-[9px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : 'text-cyan-600'}`}>Türkiye Geneli</span>}
                                 </div>
                                 
-                                {/* 🔥 FIX: Detaylı Alt Özellik (Tag) Bilgileri - YATAY DÜZEN (flex-wrap gap-2) */}
                                 {driver.service?.tags?.length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-2 items-start">
                                     {driver.service.tags.map((tag: string) => {
@@ -489,7 +520,7 @@ export default function ActionPanel({
                             </div>
                         </div>
                         {!isSpecialCategory && (
-                          <div className="text-right shrink-0"><div className="text-xl font-black leading-none">₺{p.unit}</div><div className="text-[8px] text-gray-400 font-bold uppercase mt-1">/Birim</div></div>
+                          <div className="text-right shrink-0 ml-2"><div className="text-xl font-black leading-none">₺{p.unit}</div><div className="text-[8px] text-gray-400 font-bold uppercase mt-1">/Birim</div></div>
                         )}
                     </div>
                     {isSelected && (
