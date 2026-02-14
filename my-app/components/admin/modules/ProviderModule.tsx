@@ -3,6 +3,10 @@
  * @description Transport 245 Yönetici Paneli - Kurum/Sürücü Yönetim Modülü.
  * GÜNCELLEME: Yolcu Taşıma, 8 Teker ve Gezici Şarj tam entegrasyonu.
  * GÜNCELLEME: mainType (NAKLIYE/KURTARICI/SARJ/YOLCU) mapping sistemi eklendi.
+ * FIX: Kamyon/TIR alt tipleri seçildiğinde mainType 'KURTARICI' yerine 'NAKLIYE' olarak, subType ise seçilen araç tipi (kamyon/tir) olarak ayarlandı.
+ * FIX: Backend 'service' nested objesi payload'a eklendi. (mainType hatası çözüldü)
+ * FIX: "Web Sitesi (Opsiyonel)" alanı eklendi ve backend'e "website" parametresi olarak bağlandı.
+ * FIX: Alt kategorilerin (Otobüs, VIP, vb.) listede doğru ikonla (Bus, Crown vb.) görünmesi sağlandı.
  * FIX: listContainerRef hatası giderildi.
  */
 
@@ -57,7 +61,7 @@ const SERVICE_OPTIONS = [
   },
   { id: 'evden_eve', label: 'EVDEN EVE', icon: Home, color: 'bg-pink-600', hover: 'hover:border-pink-400', subs: [] },
   { 
-    id: 'yolcu_tasima', label: 'YOLCU TAŞIMA', icon: Users, color: 'bg-emerald-600', hover: 'hover:border-emerald-400',
+    id: 'yolcu', label: 'YOLCU TAŞIMA', icon: Users, color: 'bg-emerald-600', hover: 'hover:border-emerald-400',
     subs: [
       { id: 'minibus', label: 'MİNİBÜS', icon: CarFront },
       { id: 'otobus', label: 'OTOBÜS', icon: Bus },
@@ -83,10 +87,10 @@ export default function ProviderModule() {
 
   const [formData, setFormData] = useState<any>({
     businessName: '', email: '', phoneNumber: '', city: 'İzmir', district: '', address: '',
-    serviceTypes: [] as string[], openingFee: 350, pricePerUnit: 40, filterTags: [] as string[]
+    serviceTypes: [] as string[], openingFee: 350, pricePerUnit: 40, filterTags: [] as string[],
+    website: '' 
   });
 
-  // 🔥 FIX: listContainerRef tanımlandı
   const listContainerRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
@@ -134,11 +138,9 @@ export default function ProviderModule() {
   const toggleServiceType = (id: string) => {
     setFormData((prev: any) => {
       const isSelected = prev.serviceTypes.includes(id);
-      // Tekil seçim mantığı: Seçiliyse boşalt, değilse yeni id'yi ata
       let newTypes = isSelected ? [] : [id];
       
       let newTags = [...prev.filterTags];
-      // Eğer seçim kaldırıldıysa veya yeni seçim yapıldıysa eski tagleri temizle
       if (isSelected || newTypes.length > 0) {
          newTags = [];
       }
@@ -169,29 +171,44 @@ export default function ProviderModule() {
     const endpoint = isEditing ? `${API_URL}/users/${formData._id}` : `${API_URL}/users`;
     
     try {
-      const mappedServiceType = formData.serviceTypes[0];
-      let mappedMain = 'NAKLIYE'; // Varsayılan
+      const selectedMain = formData.serviceTypes[0]; // örn: 'yolcu_tasima' veya 'kamyon'
+      let mappedMain = 'NAKLIYE'; 
 
-      // 🔥 mainType Mapping Mantığı
-      if (['yurt_disi_nakliye'].includes(mappedServiceType)) mappedMain = 'YURT_DISI';
-      else if (['oto_kurtarma', 'vinc'].includes(mappedServiceType)) mappedMain = 'KURTARICI';
-      else if (['istasyon', 'seyyar_sarj'].includes(mappedServiceType)) mappedMain = 'SARJ';
-      else if (['yolcu_tasima'].includes(mappedServiceType)) mappedMain = 'YOLCU';
+      // 🔥 1. ANA KATEGORİ (mainType) ATAMASI
+      if (['oto_kurtarma', 'vinc'].includes(selectedMain)) mappedMain = 'KURTARICI';
+      else if (['istasyon', 'seyyar_sarj'].includes(selectedMain)) mappedMain = 'SARJ';
+      else if (['yolcu'].includes(selectedMain)) mappedMain = 'YOLCU';
+      else if (['yurt_disi_nakliye'].includes(selectedMain)) mappedMain = 'YURT_DISI';
+      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selectedMain)) mappedMain = 'NAKLIYE'; // Bu satır eklendi.
+
+      // 🔥 2. ALT KATEGORİ (subType) ATAMASI
+      // Eğer kullanıcı bir alt özellik (örneğin 'tenteli' veya '10_teker') seçtiyse, subType o özellik olur.
+      // Alt özellik seçmediyse, seçtiği ana kategori ismi kalır (örneğin 'kamyon').
+      const mappedSubType = formData.filterTags.length > 0 ? selectedMain : selectedMain;
+
+      // 🔥 3. BACKEND UYUMLU PAYLOAD
+      const payload = {
+        ...formData, 
+        firstName: formData.businessName, 
+        mainType: mappedMain, 
+        serviceType: mappedSubType, 
+        service: {
+           mainType: mappedMain,
+           subType: mappedSubType,
+           tags: formData.filterTags
+        },
+        role: 'provider',
+        website: formData.website, 
+        pricing: {
+          openingFee: Number(formData.openingFee),
+          pricePerUnit: Number(formData.pricePerUnit)
+        }
+      };
 
       const res = await fetch(endpoint, {
         method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          ...formData, 
-          firstName: formData.businessName, 
-          mainType: mappedMain, 
-          serviceType: mappedServiceType, 
-          role: 'provider',
-          pricing: {
-            openingFee: Number(formData.openingFee),
-            pricePerUnit: Number(formData.pricePerUnit)
-          }
-        })
+        body: JSON.stringify(payload)
       });
       
       if (res.ok) { 
@@ -208,6 +225,7 @@ export default function ProviderModule() {
   };
 
   const openEdit = (p: any) => {
+    // Verileri okurken subType'a öncelik veriyoruz, yoksa serviceType'ı alıyoruz
     setFormData({
       _id: p._id,
       businessName: p.businessName || p.firstName || '',
@@ -216,10 +234,11 @@ export default function ProviderModule() {
       city: p.address?.city || 'İzmir',
       district: p.address?.district || '',
       address: p.address?.fullText || '',
-      serviceTypes: p.service?.subType ? [p.service.subType] : [],
+      serviceTypes: p.service?.mainType === 'YOLCU' || p.service?.mainType === 'YOLCU_TASIMA' ? ['yolcu_tasima'] : (p.service?.subType ? [p.service.subType] : (p.serviceType ? [p.serviceType] : [])),
       openingFee: p.pricing?.openingFee || 350,
       pricePerUnit: p.pricing?.pricePerUnit || 40,
-      filterTags: p.service?.tags || []
+      filterTags: p.service?.tags || [],
+      website: p.website || p.link || '' 
     });
     setIsEditing(true);
     setShowModal(true);
@@ -248,7 +267,7 @@ export default function ProviderModule() {
             </button>
           )}
           <button 
-            onClick={() => { setIsEditing(false); setFormData({businessName:'', email:'', phoneNumber:'', city:'İzmir', district:'', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[]}); setShowModal(true); }}
+            onClick={() => { setIsEditing(false); setFormData({businessName:'', email:'', phoneNumber:'', city:'İzmir', district:'', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }}
             className="flex-1 md:flex-none bg-slate-900 hover:bg-blue-600 text-white px-8 py-4 rounded-[2rem] text-xs font-black uppercase flex items-center justify-center gap-3 shadow-xl"
           >
             <Plus size={20} /> Yeni Kurum
@@ -284,8 +303,26 @@ export default function ProviderModule() {
           <div className="col-span-full flex flex-col items-center py-20"><Loader2 className="animate-spin mb-4" size={40}/></div>
         ) : (
           providers.filter(p => (p.businessName || p.firstName || p.email || '').toLowerCase().includes(searchTerm.toLowerCase())).map((p) => {
-            const ui = SERVICE_OPTIONS.find(o => o.id === (p.service?.subType)) || SERVICE_OPTIONS[0];
+            
+            // 🔥 Alt Kategorilerde Doğru İkonu Bulma (Deep Search)
+            let uiConfig = SERVICE_OPTIONS.find(o => o.id === p.service?.subType || o.id === p.serviceType);
+            let subIcon = null;
+
+            if (!uiConfig) {
+              for (const opt of SERVICE_OPTIONS) {
+                const match = opt.subs.find(s => s.id === p.service?.subType || s.id === p.serviceType);
+                if (match) {
+                  uiConfig = opt; // Ana kategorinin rengini al
+                  subIcon = match.icon; // Alt kategorinin ikonunu al
+                  break;
+                }
+              }
+            }
+            if (!uiConfig) uiConfig = SERVICE_OPTIONS[0]; // Fallback
+
+            const DisplayIcon = subIcon || uiConfig.icon;
             const isSelected = selectedProviders.includes(p._id);
+
             return (
               <div 
                 key={p._id} 
@@ -296,13 +333,13 @@ export default function ProviderModule() {
                 
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-4">
-                    <div className={`w-16 h-16 ${ui.color} text-white rounded-2xl flex items-center justify-center shadow-lg`}>
-                      <ui.icon size={32} strokeWidth={1.5}/>
+                    <div className={`w-16 h-16 ${uiConfig.color} text-white rounded-2xl flex items-center justify-center shadow-lg`}>
+                      <DisplayIcon size={32} strokeWidth={1.5}/>
                     </div>
                     <div>
                       <h3 className="font-black text-slate-800 text-lg uppercase truncate max-w-[150px] leading-tight">{p.businessName || p.firstName}</h3>
                       <div className="flex gap-1 mt-1 flex-wrap">
-                        <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">{p.service?.subType}</span>
+                        <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType}</span>
                         {p.service?.tags?.map((t:string) => <span key={t} className="text-[8px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{t.replace('_',' ')}</span>)}
                       </div>
                     </div>
@@ -349,6 +386,9 @@ export default function ProviderModule() {
                   <input placeholder="İLÇE" value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none"/>
                 </div>
                 <textarea placeholder="TAM ADRES..." value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-medium text-xs outline-none h-32 resize-none"/>
+                
+                <input placeholder="WEB SİTESİ LİNKİ (Opsiyonel)" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none"/>
+
               </div>
 
               <div className="space-y-6">

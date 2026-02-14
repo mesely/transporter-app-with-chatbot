@@ -1,21 +1,24 @@
 /**
  * @file ActionPanel.tsx
- * @description Transport 245 Master UI.
- * FIX: Liste sınırı yok, tüm veriler listelenir.
- * FIX: "Mobil Şarj" için FİYAT BİLGİSİ GİZLENDİ.
- * FIX: "Mobil Şarj" için "MESAJ AT" yerine "SİTEYE GİT" butonu eklendi.
- * FIX: Diğer kategorilerde "MESAJ AT" (SMS) butonu aktif.
+ * @description Transport 245 Master UI - Sürücü Arama ve Listeleme Paneli.
+ * FIX: Alt özellik (tag) detayları dikey (alt alta) yerine yatay (yan yana) ve sarılı (wrap) şekilde düzenlendi.
+ * FIX: Panel büyüyüp küçülürken (resize) oluşan titreme (flickering) sorununu çözmek için CSS transition optimizasyonu ve 'will-change' ipucu eklendi.
+ * NOTE: Sadece seçili olan tag'lerin gösterilmesi mantığı zaten mevcuttu, yatay düzen ile bu daha net hale getirildi.
  */
 
 'use client';
 
 import { 
   Truck, Zap, Star, MapPin, Wrench, 
-  ChevronDown, LocateFixed, Loader2, 
+  ChevronDown, ChevronUp, LocateFixed, Loader2, 
   Navigation, Globe, CarFront, Anchor, Home, 
   Package, Container, ArrowUpDown, Map as MapIcon,
   Check, Phone, MessageCircle, Info, Users, Bus, Crown,
-  TrendingDown, ThumbsUp 
+  TrendingDown, ThumbsUp, 
+  Layers,
+  Box,
+  Archive,
+  Snowflake
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
@@ -55,6 +58,53 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
 const DEFAULT_LAT = 39.9334; 
 const DEFAULT_LNG = 32.8597;
 
+// --- SERVICE_OPTIONS VE ALT SEÇENEKLER ---
+const SERVICE_OPTIONS = [
+  { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
+  { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'bg-rose-600', subs: [] },
+  { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'bg-indigo-600', subs: [] },
+  { 
+    id: 'tir', label: 'TIR', icon: Container, color: 'bg-violet-600',
+    subs: [
+      { id: 'tenteli', label: 'TENTELİ', icon: Archive },
+      { id: 'frigorifik', label: 'FRİGORİFİK', icon: Snowflake },
+      { id: 'lowbed', label: 'LOWBED', icon: Layers },
+      { id: 'konteyner', label: 'KONTEYNER', icon: Container },
+      { id: 'acik_kasa', label: 'AÇIK KASA', icon: Box }
+    ]
+  },
+  { 
+    id: 'kamyon', label: 'KAMYON', icon: Truck, color: 'bg-purple-600',
+    subs: [
+      { id: '6_teker', label: '6 TEKER', icon: Truck },
+      { id: '8_teker', label: '8 TEKER', icon: Truck },
+      { id: '10_teker', label: '10 TEKER', icon: Truck },
+      { id: '12_teker', label: '12 TEKER', icon: Truck },
+      { id: 'kirkayak', label: 'KIRKAYAK', icon: Layers }
+    ]
+  },
+  { 
+    id: 'kamyonet', label: 'KAMYONET', icon: Package, color: 'bg-fuchsia-600',
+    subs: [
+      { id: 'panelvan', label: 'PANELVAN', icon: CarFront },
+      { id: 'acik_kasa', label: 'AÇIK KASA', icon: Box },
+      { id: 'kapali_kasa', label: 'KAPALI KASA', icon: Archive }
+    ]
+  },
+  { id: 'evden_eve', label: 'EVDEN EVE', icon: Home, color: 'bg-pink-600', subs: [] },
+  { 
+    id: 'yolcu_tasima', label: 'YOLCU TAŞIMA', icon: Users, color: 'bg-emerald-600',
+    subs: [
+      { id: 'minibus', label: 'MİNİBÜS', icon: CarFront },
+      { id: 'otobus', label: 'OTOBÜS', icon: Bus },
+      { id: 'midibus', label: 'MİDİBÜS', icon: Bus },
+      { id: 'vip_tasima', label: 'VIP TRANSFER', icon: Crown }
+    ]
+  },
+  { id: 'istasyon', label: 'İSTASYON', icon: Navigation, color: 'bg-blue-600', subs: [] },
+  { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'bg-cyan-500', subs: [] },
+];
+
 const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   tir: [{ id: 'tenteli', label: 'Tenteli' }, { id: 'frigorifik', label: 'Frigorifik' }, { id: 'lowbed', label: 'Lowbed' }, { id: 'konteyner', label: 'Konteyner' }, { id: 'acik_kasa', label: 'Açık Kasa' }],
   kamyon: [{ id: '6_teker', label: '6 Teker' }, { id: '8_teker', label: '8 Teker' }, { id: '10_teker', label: '10 Teker' }, { id: '12_teker', label: '12 Teker' }, { id: 'kirkayak', label: 'Kırkayak' }],
@@ -62,7 +112,23 @@ const SUB_FILTERS: Record<string, { id: string, label: string }[]> = {
   yolcu: [{ id: 'minibus', label: 'Minibüs' }, { id: 'otobus', label: 'Otobüs' }, { id: 'midibus', label: 'Midibüs' }, { id: 'vip_tasima', label: 'VIP' }]
 };
 
-// 🔥 TİP TANIMLAMASI
+// Alt Özellikler için Detaylı Bilgi Veritabanı
+const TAG_DETAILS: Record<string, { tasima: string, kapasite: string }> = {
+  'tenteli': { tasima: 'Paletli yük, Genel kargo', kapasite: '24 ton' },
+  'frigorifik': { tasima: 'Gıda, İlaç, Soğuk zincir', kapasite: '22-24 ton' },
+  'lowbed': { tasima: 'Ağır iş makineleri, Proje yükleri', kapasite: '30-100+ ton' },
+  'konteyner': { tasima: 'Konteyner taşımacılığı', kapasite: '20-30 ton' },
+  'acik_kasa': { tasima: 'Demir-çelik, Makine, Vinç', kapasite: '22-24 ton' },
+  '6_teker': { tasima: 'Paletli yük, Kısa mesafe', kapasite: '15-20 ton' },
+  '8_teker': { tasima: 'İnşaat malzemesi, Hafriyat', kapasite: '18-22 ton' },
+  '10_teker': { tasima: 'İç, Ağır taşıma, Uzun mesafe', kapasite: '20-25 ton' },
+  '12_teker': { tasima: 'Ağır ve uzun yol, Fabrika yükleri', kapasite: '20-25 ton' },
+  'kirkayak': { tasima: 'Ağır sanayi, Büyük hacim', kapasite: '25-30 ton' },
+  'panelvan': { tasima: 'Kargo, Eşya, Hafif yük', kapasite: '1-3 ton' },
+  'kapali_kasa': { tasima: 'Ev eşyası, Koli, Tekstil', kapasite: '3-5 ton' },
+};
+
+// TİP TANIMLAMASI
 interface ActionPanelProps {
   onSearchLocation: (lat: number, lng: number) => void;
   onFilterApply: (type: string) => void;
@@ -83,7 +149,8 @@ export default function ActionPanel({
   drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen 
 }: ActionPanelProps) {
   
-  const [panelState, setPanelState] = useState<0 | 1 | 2>(0); 
+  const [panelState, setPanelState] = useState<0 | 1 | 2 | 3>(1); 
+  
   const [tariffs, setTariffs] = useState<any[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [selectedCity, setSelectedCity] = useState(''); 
@@ -117,13 +184,13 @@ export default function ActionPanel({
 
   useEffect(() => {
     if (activeDriverId) {
-      if (panelState === 0) setPanelState(1);
+      if (panelState < 2) setPanelState(2);
       setTimeout(() => { itemRefs.current[activeDriverId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
     }
   }, [activeDriverId]);
 
   const handleMainCategoryClick = (category: string) => {
-    setPanelState(current => (current === 0 ? 1 : current));
+    setPanelState(current => (current <= 1 ? 2 : current));
     setActiveTransportFilter(null); onTagsChange([]); 
     
     if (category === 'kurtarici') {
@@ -171,7 +238,9 @@ export default function ActionPanel({
   const displayDrivers = useMemo(() => {
     let list = Array.isArray(drivers) ? [...drivers] : [];
     
-    if (selectedCity && actionType !== 'seyyar_sarj') {
+    const isSpecialAction = actionType === 'seyyar_sarj' || actionType === 'yolcu' || ['minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(actionType);
+    
+    if (selectedCity && !isSpecialAction) {
         list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
     }
 
@@ -214,30 +283,47 @@ export default function ActionPanel({
   const handleDragEnd = (y: number) => {
     if (dragStartY.current === null) return;
     const diff = dragStartY.current - y; 
-    if (diff > 40) { if (panelState === 0) setPanelState(1); else if (panelState === 1) setPanelState(2); } 
-    else if (diff < -40) { if (panelState === 2) setPanelState(1); else if (panelState === 1) setPanelState(0); }
+    if (diff > 40) { setPanelState(p => Math.min(p + 1, 3) as 0|1|2|3); } 
+    else if (diff < -40) { setPanelState(p => Math.max(p - 1, 0) as 0|1|2|3); }
     dragStartY.current = null;
   };
 
-  const sizeClass = panelState === 2 ? 'h-[92vh]' : panelState === 1 ? 'h-[55vh]' : 'h-36'; 
+  const sizeClass = panelState === 3 ? 'h-[92vh]' : panelState === 2 ? 'h-[55vh]' : panelState === 1 ? 'h-36' : 'h-14'; 
 
   return (
     <div 
-      onClick={() => panelState > 0 && setPanelState(prev => prev === 2 ? 1 : 0)}
-      className={`fixed inset-x-0 bottom-0 z-[2000] transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] pt-2 overflow-visible text-gray-900`}
+      onClick={() => panelState > 1 && setPanelState(prev => prev === 3 ? 2 : 1)}
+      // 🔥 FIX: Titreme sorunu için transition özellikleri optimize edildi ve will-change eklendi.
+      className={`fixed inset-x-0 bottom-0 z-[2000] transition-[height,transform,opacity] duration-500 cubic-bezier(0.32, 0.72, 0, 1) will-change-[height,transform] rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] overflow-hidden text-gray-900`}
     >
       <div 
         onMouseDown={(e) => { e.stopPropagation(); dragStartY.current = e.clientY; }}
         onMouseUp={(e) => { e.stopPropagation(); handleDragEnd(e.clientY); }}
         onTouchStart={(e) => { e.stopPropagation(); dragStartY.current = e.touches[0].clientY; }}
         onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
-        onClick={(e) => { e.stopPropagation(); setPanelState(prev => prev === 2 ? 1 : prev === 1 ? 2 : 1); }}
-        className="w-full flex justify-center py-6 cursor-grab active:cursor-grabbing shrink-0 z-[2001] hover:opacity-80 transition-opacity"
+        onClick={(e) => { e.stopPropagation(); setPanelState(p => p === 3 ? 1 : p + 1 as 0|1|2|3); }}
+        className="relative w-full flex justify-center py-5 cursor-grab active:cursor-grabbing shrink-0 z-[2001] hover:opacity-80 transition-opacity"
       >
-        <div className="w-16 h-1.5 bg-gray-400/40 rounded-full shadow-sm"></div>
+        <div className="w-16 h-1.5 bg-gray-400/50 rounded-full shadow-sm"></div>
+
+        {/* Dinamik Boyut Kontrol Okları */}
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1 z-[2002]">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.max(p - 1, 0) as 0|1|2|3); }}
+            className={`p-1.5 rounded-full bg-white shadow-md transition-all active:scale-90 ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
+          >
+            <ChevronDown size={18} strokeWidth={3} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.min(p + 1, 3) as 0|1|2|3); }}
+            className={`p-1.5 rounded-full bg-white shadow-md transition-all active:scale-90 ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
+          >
+            <ChevronUp size={18} strokeWidth={3} />
+          </button>
+        </div>
       </div>
 
-      <div onClick={(e) => e.stopPropagation()} className="px-6 pb-6 flex flex-col h-full overflow-hidden relative">
+      <div onClick={(e) => e.stopPropagation()} className={`px-6 pb-6 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-4">
           <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
             <Wrench size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">Kurtarıcı</span>
@@ -287,7 +373,7 @@ export default function ActionPanel({
             <div className="flex gap-2 animate-in slide-in-from-top-2">
               <button onClick={() => onFilterApply('sarj_istasyonu')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'sarj_istasyonu' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> İstasyon</button>
               <button onClick={() => onFilterApply('seyyar_sarj')} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
-                <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> Mobil Şarj
+                <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> Gezici Şarj
               </button>
             </div>
           )}
@@ -327,19 +413,37 @@ export default function ActionPanel({
           </div>
         )}
 
-        <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
+        <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain contain-content transform-gpu">
           {loading ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">Yükleniyor...</p></div> ) : (
             displayDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id;
                 const p = getPricing(driver);
                 const sub = driver.service?.subType || '';
+                
                 const isMobileCharge = sub === 'seyyar_sarj';
+                const isPassenger = ['minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(sub);
+                const isSpecialCategory = isMobileCharge || isPassenger;
+                
+                let uiConfig = SERVICE_OPTIONS.find(o => o.id === sub);
+                let subIcon = null;
+
+                if (!uiConfig) {
+                  for (const opt of SERVICE_OPTIONS) {
+                    const match = opt.subs.find(s => s.id === sub);
+                    if (match) {
+                      uiConfig = opt;
+                      subIcon = match.icon;
+                      break;
+                    }
+                  }
+                }
+                const DisplayIcon = subIcon || uiConfig?.icon || Truck;
                 
                 let iconBg = 'bg-gray-600'; 
                 if (sub === 'istasyon') iconBg = 'bg-blue-800';
-                else if (sub === 'seyyar_sarj') iconBg = 'bg-cyan-600';
+                else if (isMobileCharge) iconBg = 'bg-cyan-600';
                 else if (sub.includes('kurtarma') || sub === 'vinc') iconBg = 'bg-red-600';
-                else if (['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(sub)) iconBg = 'bg-emerald-600';
+                else if (isPassenger) iconBg = 'bg-emerald-600';
                 else if (['nakliye', 'kamyon', 'tir', 'evden_eve', 'yurt_disi_nakliye'].some(t => sub.includes(t))) iconBg = 'bg-purple-600';
 
                 return (
@@ -347,42 +451,60 @@ export default function ActionPanel({
                     <div className="flex justify-between items-start text-gray-900">
                         <div className="flex gap-4 flex-1">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
-                               {sub === 'seyyar_sarj' ? ( <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" /> ) : ( sub === 'istasyon' ? <Zap size={24} strokeWidth={2.5} /> : <Truck size={24} strokeWidth={2.5} /> )}
+                               {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={24} strokeWidth={2.5} /> )}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <h4 className="font-black text-sm uppercase truncate leading-tight">{driver.businessName}</h4>
                                 <div className="flex items-center gap-1 mt-1">
                                     {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
-                                    {!isMobileCharge && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>}
-                                    {isMobileCharge && <span className="text-[9px] text-cyan-600 font-black ml-1 uppercase">Türkiye Geneli</span>}
+                                    
+                                    {!isSpecialCategory && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1">{(driver.distance / 1000).toFixed(1)} km</span>}
+                                    
+                                    {/* Adres Gösterimi (Tam Adres, Çoklu Satır) */}
+                                    {!isSpecialCategory && driver.address?.fullText && (
+                                        <span className="text-[9px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
+                                            {driver.address.fullText}
+                                        </span>
+                                    )}
+
+                                    {isSpecialCategory && <span className={`text-[9px] font-black ml-1 uppercase opacity-80 ${isPassenger ? 'text-emerald-600' : 'text-cyan-600'}`}>Türkiye Geneli</span>}
                                 </div>
-                                {driver.service?.tags?.some((t:any) => t.includes('teker')) && (
-                                  <div className="mt-2 text-[8px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-black uppercase w-fit tracking-tighter">
-                                    {driver.service.tags.find((t:any) => t.includes('teker')).replace('_',' ')} Mevcut
+                                
+                                {/* 🔥 FIX: Detaylı Alt Özellik (Tag) Bilgileri - YATAY DÜZEN (flex-wrap gap-2) */}
+                                {driver.service?.tags?.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-2 items-start">
+                                    {driver.service.tags.map((tag: string) => {
+                                      const details = TAG_DETAILS[tag];
+                                      if (!details) return null;
+                                      return (
+                                        <div key={tag} className="text-[8px] text-gray-500 flex flex-col leading-tight bg-gray-50 p-1.5 rounded-lg border border-gray-100">
+                                          <span className="font-black uppercase text-gray-700">{tag.replace('_', ' ')}</span>
+                                          <span><span className="font-bold">Taşıma:</span> {details.tasima}</span>
+                                          <span><span className="font-bold">Kapasite:</span> {details.kapasite}</span>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 )}
                             </div>
                         </div>
-                        {/* 🔥 FIX: MOBİL ŞARJ İÇİN FİYAT GİZLENDİ */}
-                        {!isMobileCharge && (
+                        {!isSpecialCategory && (
                           <div className="text-right shrink-0"><div className="text-xl font-black leading-none">₺{p.unit}</div><div className="text-[8px] text-gray-400 font-bold uppercase mt-1">/Birim</div></div>
                         )}
                     </div>
                     {isSelected && (
                     <div className="mt-6 pt-6 border-t border-white/20 space-y-4 animate-in fade-in slide-in-from-top-2">
-                        {/* 🔥 FIX: MOBİL ŞARJ İÇİN DETAYLI FİYAT GİZLENDİ */}
-                        {!isMobileCharge && (
+                        {!isSpecialCategory && (
                           <div className="grid grid-cols-2 gap-2 text-gray-900"><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Açılış</div><div className="text-sm font-black">₺{p.opening}</div></div><div className="bg-gray-100/50 p-3 rounded-2xl text-center"><div className="text-[8px] font-black text-gray-400 uppercase mb-1">Birim</div><div className="text-sm font-black">₺{p.unit}</div></div></div>
                         )}
-                        {!isMobileCharge && (
+                        {!isSpecialCategory && (
                           <button onClick={(e) => { e.stopPropagation(); window.open(`http://googleusercontent.com/maps.google.com/maps?q=${driver.location?.coordinates[1]},${driver.location?.coordinates[0]}`, '_blank'); }} className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"><MapIcon size={16} /> HARİTADA GİT (ROTA)</button>
                         )}
                         <div className="flex gap-2">
                           <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
                           
-                          {/* 🔥 FIX: MOBİL ŞARJ İÇİN 'SİTEYE GİT', DİĞERLERİ İÇİN 'MESAJ AT' */}
-                          {isMobileCharge ? (
-                            <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || 'https://transport245.com', '_blank'); }} className="flex-1 bg-cyan-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Globe size={14}/> SİTEYE GİT</button>
+                          {isSpecialCategory ? (
+                            <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || driver.link || 'https://transport245.com', '_blank'); }} className={`flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 ${iconBg}`}><Globe size={14}/> SİTEYE GİT</button>
                           ) : (
                             <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> MESAJ AT</button>
                           )}

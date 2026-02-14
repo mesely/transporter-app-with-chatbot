@@ -1,9 +1,10 @@
 /**
  * @file Map.tsx
  * @description Transport 245 Akıllı Harita Motoru.
- * FIX: Gezici Şarj (seyyar_sarj) için adres/mesafe bilgileri Popup içinde gizlendi.
+ * FIX: Yolcu Taşıma ve Gezici Şarj kategorisindeki sürücüler haritada (marker olarak) gizlendi.
  * FIX: İl seçimi yapıldığında harita otomatik olarak o koordinata odaklanır.
  * FIX: Tüm kategori renkleri ve özel SVG ikonları stabilize edildi.
+ * FIX: Marker ve popup mantığı, gizlenen kategorileri dışlayacak şekilde güncellendi.
  */
 
 'use client';
@@ -38,6 +39,8 @@ interface Driver {
   distance?: number;
   phoneNumber?: string;
   rating?: number;
+  website?: string;
+  link?: string;
   location: {
     coordinates: [number, number]; // [lng, lat]
   };
@@ -169,18 +172,24 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     return d ? [d.location.coordinates[1], d.location.coordinates[0]] as [number, number] : null;
   }, [activeDriverId, drivers]);
 
+  // 🔥 FIX: Gizlenecek Kategorileri Belirle
+  const hiddenCategories = ['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'];
+
   const visibleMarkers = useMemo(() => {
-    if (!drivers.length) return [];
-    if (currentZoom >= 12) return drivers.map(d => ({ ...d, isCluster: false }));
+    // 🔥 FIX: Haritada gösterilmeyecek kategorileri (Yolcu Taşıma ve Gezici Şarj) filtrele
+    const mapDrivers = drivers.filter(d => !hiddenCategories.includes(d.service?.subType || ''));
+
+    if (!mapDrivers.length) return [];
+    if (currentZoom >= 12) return mapDrivers.map(d => ({ ...d, isCluster: false }));
 
     const result: Driver[] = [];
     const processed = new Set<string>();
     const threshold = 100 / Math.pow(2, currentZoom); 
 
-    drivers.forEach((d) => {
+    mapDrivers.forEach((d) => {
       if (processed.has(d._id) || d._id === activeDriverId) return;
       
-      const clusterGroup = drivers.filter(other => {
+      const clusterGroup = mapDrivers.filter(other => {
         if (processed.has(other._id) || other._id === activeDriverId) return false;
         const distLat = Math.abs(d.location.coordinates[1] - other.location.coordinates[1]);
         const distLng = Math.abs(d.location.coordinates[0] - other.location.coordinates[0]);
@@ -205,7 +214,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     });
 
     if (activeDriverId) {
-        const active = drivers.find(d => d._id === activeDriverId);
+        const active = mapDrivers.find(d => d._id === activeDriverId);
         if (active) result.push({ ...active, isCluster: false });
     }
 
@@ -231,7 +240,9 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
         {visibleMarkers.map((item: Driver) => {
           const pos: [number, number] = [item.location.coordinates[1], item.location.coordinates[0]];
           const subType = item.service?.subType || '';
-          const isMobileCharge = subType === 'seyyar_sarj';
+          
+          // 🔥 FIX: Bu kategoriler zaten visibleMarkers'a filtrelenmiş olsa da, ek güvenlik için kontrol
+          if (hiddenCategories.includes(subType)) return null;
 
           if (item.isCluster) {
             return (
@@ -261,12 +272,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
                       {config.label}
                     </span>
-                    {/* 🔥 GEZİCİ ŞARJ İÇİN ÖZEL METİN */}
-                    {isMobileCharge ? (
-                      <span className="text-[10px] font-black text-cyan-600 uppercase">TÜRKİYE GENELİ</span>
-                    ) : (
-                      item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>
-                    )}
+                    {/* Normal kategori mesafe gösterimi */}
+                    {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
                   </div>
                   
                   <h4 className="font-black text-slate-900 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
@@ -285,7 +292,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     >
                       <Phone size={13} /> ARA
                     </button>
-                    {/* WhatsApp yerine MESAJ AT butonu */}
+                    
+                    {/* Normal kategori mesaj at butonu */}
                     <button 
                       onClick={() => window.location.href=`sms:${item.phoneNumber}`}
                       className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
@@ -294,15 +302,13 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     </button>
                   </div>
                   
-                  {/* 🔥 GEZİCİ ŞARJ DEĞİLSE ROTA BUTONU GÖSTER */}
-                  {!isMobileCharge && (
-                     <button 
-                        onClick={() => window.open(`http://googleusercontent.com/maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
-                        className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
-                     >
-                        <MapPin size={12} /> HARİTADA GÖSTER
-                     </button>
-                  )}
+                  {/* Normal kategori rota butonu */}
+                  <button 
+                    onClick={() => window.open(`http://googleusercontent.com/maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+                    className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+                  >
+                    <MapPin size={12} /> HARİTADA GÖSTER
+                  </button>
                 </div>
               </Popup>
             </Marker>

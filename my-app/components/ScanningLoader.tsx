@@ -9,11 +9,7 @@ const LOADING_MESSAGES = [
     sub: "Tır, Kamyon ve Kamyonetler taranıyor...",
     icon: Truck
   },
-  {
-    text: "Yolda mı kaldınız? Transporter her an yanınızda.",
-    sub: "En yakın çekici ve vinç operatörleri bulunuyor...",
-    icon: LifeBuoy
-  },
+  
   {
     text: "Transporter 6563 Sayılı Kanun Uyarınca Aracı Hizmet Sağlayıcıdır.",
     sub: "Güvenliğiniz için tüm süreçler kayıt altına alınmaktadır.",

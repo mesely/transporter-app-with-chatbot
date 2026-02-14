@@ -1,9 +1,11 @@
 /**
  * @file profile/page.tsx
  * @description Transport 245 Driver Profile & Registration.
- * FIX: Profile Editing (PUT vs POST logic) implemented.
+ * FIX: 'mainType' ve 'subType' atama hiyerarşisi çözüldü (Örn: mainType: YOLCU_TASIMA, subType: otobus).
+ * FIX: Kamyon/TIR alt tipleri seçildiğinde mainType 'KURTARICI' yerine 'NAKLIYE' olarak, subType ise seçilen araç tipi (kamyon/tir) olarak ayarlandı.
+ * FIX: Backend 'service' nested objesi payload'a eklendi.
+ * FIX: "Web Sitesi (Opsiyonel)" alanı eklendi ve backend'e "website" parametresi olarak bağlandı.
  * FIX: KVKK & Contract links redirect to /privacy page.
- * FIX: 8 Teker and Passenger Transport categories integrated.
  */
 
 'use client';
@@ -75,7 +77,7 @@ const getColorClasses = (colorName: string, isSelected: boolean) => {
 
 export default function ProfilePage() {
   const [isSaved, setIsSaved] = useState(false);
-  const [loading, setLoading] = useState(true); // Veri çekilirken başlar
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
@@ -84,10 +86,10 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
     city: 'İstanbul', address: '', filterTags: [] as string[],
-    openingFee: '350', pricePerUnit: '40' 
+    openingFee: '350', pricePerUnit: '40',
+    website: '' 
   });
 
-  // --- 🔥 PROFİL ÇEKME / DÜZENLEME MANTIĞI ---
   useEffect(() => {
     const fetchExistingProfile = async () => {
       try {
@@ -100,14 +102,16 @@ export default function ProfilePage() {
               businessName: data.businessName || data.firstName || '',
               email: data.email || '',
               phoneNumber: data.phoneNumber || '',
-              serviceTypes: data.serviceType ? [data.serviceType] : [],
+              // Geçmiş veriyi okurken eğer tags varsa serviceType'ı ana kategori olarak algılasın
+              serviceTypes: data.service?.mainType === 'YOLCU_TASIMA' ? ['yolcu_tasima'] : (data.service?.subType ? [data.service.subType] : (data.serviceType ? [data.serviceType] : [])),
               city: data.address?.city || 'İstanbul',
               address: data.address?.fullText || '',
               filterTags: data.service?.tags || [],
               openingFee: data.pricing?.openingFee?.toString() || '350',
-              pricePerUnit: data.pricing?.pricePerUnit?.toString() || '40'
+              pricePerUnit: data.pricing?.pricePerUnit?.toString() || '40',
+              website: data.link || data.website || '' 
             });
-            setAgreed(true); // Mevcut kullanıcı zaten onaylamıştır
+            setAgreed(true); 
           }
         }
       } catch (err) { console.log("Profil çekilemedi, yeni kayıt modunda."); }
@@ -119,10 +123,10 @@ export default function ProfilePage() {
   const toggleService = (id: string, hasSubs: boolean) => {
     setFormData(prev => {
       const isSelected = prev.serviceTypes.includes(id);
-      let newTypes = isSelected ? [] : [id]; // Tekil Seçim (Radio Mantığı)
+      let newTypes = isSelected ? [] : [id]; 
       let newTags = [...prev.filterTags];
       if (isSelected || newTypes.length > 0) {
-         newTags = []; // Kategori değişirse tagleri temizle
+         newTags = []; 
       }
       return { ...prev, serviceTypes: newTypes, filterTags: newTags };
     });
@@ -143,19 +147,32 @@ export default function ProfilePage() {
     
     setSaving(true);
     try {
-      const subType = formData.serviceTypes[0];
-      let mappedMain = 'NAKLIYE'; // Varsayılan
+      const selectedMain = formData.serviceTypes[0]; // örn: 'yolcu_tasima' veya 'kamyon'
+      let mappedMain = 'NAKLIYE'; 
 
-      if (['oto_kurtarma', 'vinc'].includes(subType)) mappedMain = 'KURTARICI';
-      else if (['istasyon', 'seyyar_sarj'].includes(subType)) mappedMain = 'SARJ';
-      else if (['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType)) mappedMain = 'YOLCU';
-      else if (['yurt_disi_nakliye'].includes(subType)) mappedMain = 'YURT_DISI';
+      // 🔥 1. ANA KATEGORİ (mainType) ATAMASI
+      if (['oto_kurtarma', 'vinc'].includes(selectedMain)) mappedMain = 'KURTARICI';
+      else if (['istasyon', 'seyyar_sarj'].includes(selectedMain)) mappedMain = 'SARJ';
+      else if (['yolcu_tasima'].includes(selectedMain)) mappedMain = 'YOLCU_TASIMA';
+      else if (['yurt_disi_nakliye'].includes(selectedMain)) mappedMain = 'YURT_DISI';
+      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selectedMain)) mappedMain = 'NAKLIYE'; // Bu satır eklendi.
+
+      // 🔥 2. ALT KATEGORİ (subType) ATAMASI
+      // Eğer kullanıcı bir alt özellik (örneğin 'tenteli' veya '10_teker') seçtiyse, subType o özellik olur.
+      // Alt özellik seçmediyse, seçtiği ana kategori ismi kalır (örneğin 'kamyon').
+      const mappedSubType = formData.filterTags.length > 0 ? selectedMain : selectedMain;
 
       const payload = { 
         ...formData,
-        firstName: formData.businessName, // Backend uyumluluğu
-        mainType: mappedMain,
-        serviceType: subType, // Backend serviceType bekliyor olabilir
+        firstName: formData.businessName, 
+        mainType: mappedMain,  
+        serviceType: mappedSubType,  
+        service: {             
+           mainType: mappedMain,      // Örn: "NAKLIYE"
+           subType: mappedSubType,    // Örn: "kamyon"
+           tags: formData.filterTags  // Örn: ["10_teker"]
+        },
+        website: formData.website,
         role: 'provider',
         pricing: { 
           openingFee: Number(formData.openingFee), 
@@ -239,6 +256,10 @@ export default function ProfilePage() {
                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">E-Posta</label>
                    <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none" placeholder="iletisim@sirket.com"/>
                 </div>
+                <div className="md:col-span-2 space-y-1">
+                   <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Web Sitesi Lİnkİ (Opsiyonel)</label>
+                   <input value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 font-black text-sm outline-none" placeholder="https://www.sirketiniz.com"/>
+                </div>
              </div>
           </section>
 
@@ -281,7 +302,7 @@ export default function ProfilePage() {
              </div>
           </section>
 
-          {/* Sözleşme & Onay (Linkler /privacy'ye yönlendirildi) */}
+          {/* Sözleşme & Onay */}
           <div className="flex flex-col items-center gap-6 pt-6">
              <div className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border border-gray-200 shadow-sm">
                 <input type="checkbox" id="legal" className="hidden" checked={agreed} onChange={() => setAgreed(!agreed)}/>
