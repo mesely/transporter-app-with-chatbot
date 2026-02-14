@@ -15,7 +15,7 @@ export class UsersController {
     return this.usersService.create(body);
   }
 
-  // --- 2. ANA ARAMA ENDPOINT'İ (DÜZELTİLDİ) ---
+  // --- 2. ANA ARAMA ENDPOINT'İ (ACTION PANEL & MAP) ---
   @Get('nearby')
   async findNearby(
     @Query('lat') lat: string, 
@@ -26,24 +26,29 @@ export class UsersController {
     // Koordinatları güvenli parse et (Default İzmir)
     const latitude = parseFloat(lat) || 38.4237;
     const longitude = parseFloat(lng) || 27.1428;
-    const zoomLevel = parseInt(zoom) || 15;
+    // 🔥 FIX: Liste kısıtlamasını aşmak ve geniş alan taramak için varsayılan zoom 9 yapıldı
+    const zoomLevel = parseInt(zoom) || 9; 
 
-    // 🔥 ÖNEMLİ DEĞİŞİKLİK:
-    // Eskiden zoom < 11 ise başka yere yönlendiriyorduk.
-    // Artık 'findNearby' servisi içinde zoom kontrolü var.
-    // Uzaklaştıkça (Zoom 5-6-7) Ankara ve tüm Türkiye'yi getirecek olan fonksiyon budur.
-    
+    // Gezici Şarj / Mobil Şarj için servis içinde 'all' mantığı çalıştırılır
     return this.usersService.findNearby(latitude, longitude, type, zoomLevel);
   }
 
   // --- 3. YÖNETİM PANELİ & FİLTRELEME ---
   @Get('all')
   async findAllFiltered(@Query('city') city?: string, @Query('type') type?: string) {
+    // 🔥 FIX: Mobil Şarj ise şehir filtresini tamamen devre dışı bırakıp tümünü getir
+    if (type === 'seyyar_sarj') {
+      return this.usersService.findFiltered(undefined, type);
+    }
     return this.usersService.findFiltered(city, type);
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() data: any) {
+    // 🔥 FIX: Frontend 'website' gönderirse veritabanındaki 'link' sütununa eşle
+    if (data.website) {
+      data.link = data.website;
+    }
     return this.usersService.updateOne(id, data);
   }
 
@@ -85,7 +90,7 @@ export class UsersController {
             // Backend'de mapping var, o yüzden raw veriyi gönderiyoruz
             serviceType: item.serviceType || item.hizmetTipi || 'KURTARICI',
             filterTags: item.filters ? String(item.filters).split(',') : [],
-            link: item.link || item.website,
+            link: item.link || item.website, // 🟢 LİNK BURADA EKLİ
             
             lat: lat,
             lng: lng,
