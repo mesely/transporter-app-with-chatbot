@@ -80,7 +80,7 @@ export default function UserAgreementModal({ isOpen, onClose, readOnly = false }
 
           <section className="space-y-2">
             <h3 className="font-black text-gray-900 uppercase tracking-wide">7. Bağış Politikası</h3>
-            <p>Platform, gelirlerinin <strong>%10’unu</strong> sosyal sorumluluk kapsamında yardım kuruluşlarına bağışlamayı hedefler.</p>
+            <p>Platform, kazancın <strong>%10’una</strong> kadarı sosyal sorumluluk kapsamında yardım kuruluşlarına bağışlamayı hedefler.</p>
           </section>
 
           <section className="space-y-2">
