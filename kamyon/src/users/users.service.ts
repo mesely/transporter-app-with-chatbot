@@ -25,7 +25,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // --- 1. CREATE ---
+  // --- 1. CREATE VEYA UPDATE ---
   async create(data: any) {
     try {
       const cleanName = (data.firstName || data.businessName || '').trim();
@@ -44,16 +44,20 @@ export class UsersService implements OnModuleInit {
           link: data.website || data.link || '' 
         }).save();
       } else if (data.website || data.link) {
-        // 🔥 TS2339 Hatası Çözümü: Doğrudan veritabanı update sorgusu atılır, tip hatasına takılmaz.
         await this.userModel.updateOne(
           { _id: user._id }, 
           { $set: { link: data.website || data.link } }
         );
       }
 
+      // 🔥 FIX 1: KOORDİNAT OKUMA MANTIĞI DÜZELTİLDİ
+      // Sıkı bir kontrol yapıyoruz. Eğer frontend'den lat ve lng ayrı ayrı geldiyse öncelik veriyoruz.
       let coords: [number, number] = [35.6667, 39.1667]; 
-      if (data.location?.coordinates) coords = data.location.coordinates;
-      else if (data.lng && data.lat) coords = [parseFloat(data.lng), parseFloat(data.lat)];
+      if (data.lng && data.lat) {
+          coords = [parseFloat(data.lng), parseFloat(data.lat)];
+      } else if (data.location?.coordinates && Array.isArray(data.location.coordinates) && data.location.coordinates.length === 2) {
+          coords = [parseFloat(data.location.coordinates[0]), parseFloat(data.location.coordinates[1])];
+      }
 
       let mainType = 'KURTARICI';
       if (data.serviceType || data.service?.subType) {
@@ -67,6 +71,10 @@ export class UsersService implements OnModuleInit {
 
       const subTypeToSave = data.serviceType === 'MOBIL_UNIT' ? 'seyyar_sarj' : (data.serviceType || data.service?.subType || 'genel');
 
+      // 🔥 FIX 2: ADRES OBJESİ DOĞRU ŞEKİLDE PARSE EDİLDİ
+      // Frontend address'i string gönderiyor olabilir, obje gönderiyor olabilir. Hepsini garantiye alıyoruz.
+      const fullTextAddress = typeof data.address === 'string' ? data.address : (data.address?.fullText || '');
+
       // 2. Provider/Profile Şemasını Güncelle/Oluştur
       return this.providerModel.findOneAndUpdate(
         { user: user._id },
@@ -74,17 +82,36 @@ export class UsersService implements OnModuleInit {
           user: user._id,
           businessName: cleanName || 'İsimsiz İşletme',
           phoneNumber: rawPhone,
-          address: { fullText: data.address || '', city: data.city || 'Bilinmiyor', district: data.district || 'Merkez' },
-          service: { mainType, subType: subTypeToSave, tags: data.filterTags || data.service?.tags || [] },
-          pricing: { openingFee: Number(data.openingFee || data.pricing?.openingFee) || 350, pricePerUnit: Number(data.pricePerUnit || data.pricing?.pricePerUnit) || 40 },
-          location: { type: 'Point', coordinates: coords },
-          link: data.website || data.link || '', // Eğer Profile tablosunda loose type (esnek) varsa oraya da yazılır.
+          // 🔥 Adres objesi frontend'den gelen verilerle tam uyumlu eşleştirildi
+          address: { 
+            fullText: fullTextAddress, 
+            city: data.city || data.address?.city || 'Bilinmiyor', 
+            district: data.district || data.address?.district || 'Merkez' 
+          },
+          service: { 
+            mainType, 
+            subType: subTypeToSave, 
+            tags: data.filterTags || data.service?.tags || [] 
+          },
+          pricing: { 
+            openingFee: Number(data.openingFee || data.pricing?.openingFee) || 350, 
+            pricePerUnit: Number(data.pricePerUnit || data.pricing?.pricePerUnit) || 40 
+          },
+          // 🔥 Artık Türkiye'nin ortası değil, kesinleşmiş coords yazılacak
+          location: { 
+            type: 'Point', 
+            coordinates: coords 
+          },
+          link: data.website || data.link || '', 
           website: data.website || data.link || '',
           rating: 5.0 
         },
         { upsert: true, new: true }
       );
-    } catch (e) { return null; }
+    } catch (e) { 
+      this.logger.error("Kullanıcı oluşturulurken hata:", e);
+      return null; 
+    }
   }
 
   // --- 2. FIND NEARBY (HARİTA & LİSTE İÇİN) ---
@@ -124,7 +151,7 @@ export class UsersService implements OnModuleInit {
       // 🟢 User (newusers) tablosundaki "link" bilgisini Profile (provider) içine gömüyoruz
       {
         $lookup: {
-          from: 'newusers', // Mongoose koleksiyon adı (Eğer standart ise 'users' olarak değiştirin)
+          from: 'newusers', // Mongoose koleksiyon adı
           localField: 'user',
           foreignField: '_id',
           as: 'userData'

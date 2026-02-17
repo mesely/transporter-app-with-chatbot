@@ -1,32 +1,28 @@
 /**
  * @file profile/page.tsx
  * @description Transport 245 Driver Profile & Registration.
- * FIX: 'mainType' ve 'subType' atama hiyerarşisi çözüldü (Örn: mainType: YOLCU_TASIMA, subType: otobus).
- * FIX: Kamyon/TIR alt tipleri seçildiğinde mainType 'KURTARICI' yerine 'NAKLIYE' olarak, subType ise seçilen araç tipi (kamyon/tir) olarak ayarlandı.
- * FIX: Backend 'service' nested objesi payload'a eklendi.
- * FIX: "Web Sitesi (Opsiyonel)" alanı eklendi ve backend'e "website" parametresi olarak bağlandı.
- * FIX: KVKK & Contract links redirect to /privacy page.
+ * FIX: Kayıt sonrasında 'existingId' set edildi, böylece "Düzenle" deyip kaydedince mükerrer kayıt açmak yerine PUT (Güncelleme) yapar.
+ * FIX: Payload içerisine MongoDB GeoJSON formatına tam uyumlu 'location' objesi eklendi (Türkiye merkezine atma sorunu çözüldü).
+ * FIX: OpenStreetMap yerine Google Maps Geocoding API entegre edildi.
+ * FIX: İl ve İlçe verileri '/il_ilce.csv' dosyasından dinamik okunur.
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   CheckCircle2, Phone, MapPin, Truck, 
   Loader2, ShieldCheck, X, Anchor, CarFront, 
   Zap, Navigation, Globe, Home, Package, Container,
   Snowflake, Box, Layers, Archive, Check, Settings2, Wallet, 
-  ArrowRight, ChevronDown, Edit3, Save, RefreshCcw, Users, Bus, Crown
+  ArrowRight, ChevronDown, Edit3, Save, RefreshCcw, Users, Bus, Crown, LocateFixed
 } from 'lucide-react';
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
-
-const TURKEY_CITIES = [
-  "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
-];
+const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
 
 const SERVICE_OPTIONS = [
-  { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'red', subs: [] },
+  { id: 'oto_kurtarma', label: 'OTO KURTARMA', icon: CarFront, color: 'red', subs: [] },
   { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'rose', subs: [] },
   { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'indigo', subs: [] },
   { id: 'tir', label: 'TIR', icon: Container, color: 'violet', subs: [
@@ -75,20 +71,73 @@ const getColorClasses = (colorName: string, isSelected: boolean) => {
   return base[colorName] || base.blue;
 };
 
+const normalizeString = (str: string) => {
+  if (!str) return '';
+  return str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase().trim();
+};
+
 export default function ProfilePage() {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isLocating, setIsLocating] = useState(false); 
   const [agreed, setAgreed] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [existingId, setExistingId] = useState<string | null>(null);
 
+  const [cityData, setCityData] = useState<Record<string, string[]>>({});
+
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
-    city: 'İstanbul', address: '', filterTags: [] as string[],
+    city: 'İstanbul', district: 'Tuzla', streetAddress: '', 
+    filterTags: [] as string[],
     openingFee: '350', pricePerUnit: '40',
     website: '' 
   });
+
+  useEffect(() => {
+    const fetchCityData = async () => {
+      try {
+        const res = await fetch('/il_ilce.csv');
+        if (!res.ok) throw new Error('CSV dosyası bulunamadı');
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        
+        const dataMap: Record<string, string[]> = {};
+        
+        lines.forEach((line, index) => {
+          if (index === 0 || !line.trim()) return; 
+          const [il, ilce] = line.split(',');
+          if (il && ilce) {
+            const cleanIl = il.trim();
+            const cleanIlce = ilce.trim();
+            if (!dataMap[cleanIl]) dataMap[cleanIl] = [];
+            dataMap[cleanIl].push(cleanIlce);
+          }
+        });
+
+        Object.keys(dataMap).forEach(key => {
+            dataMap[key].sort();
+        });
+
+        setCityData(dataMap);
+      } catch (error) {
+        console.error('CSV Okuma Hatası:', error);
+      }
+    };
+    
+    fetchCityData();
+  }, []);
+
+  const availableDistricts = useMemo(() => {
+    return cityData[formData.city] || [];
+  }, [formData.city, cityData]);
+
+  useEffect(() => {
+    if (availableDistricts.length > 0 && !availableDistricts.includes(formData.district)) {
+      setFormData(prev => ({ ...prev, district: availableDistricts[0] }));
+    }
+  }, [formData.city, availableDistricts, formData.district]);
 
   useEffect(() => {
     const fetchExistingProfile = async () => {
@@ -102,10 +151,10 @@ export default function ProfilePage() {
               businessName: data.businessName || data.firstName || '',
               email: data.email || '',
               phoneNumber: data.phoneNumber || '',
-              // Geçmiş veriyi okurken eğer tags varsa serviceType'ı ana kategori olarak algılasın
               serviceTypes: data.service?.mainType === 'YOLCU_TASIMA' ? ['yolcu_tasima'] : (data.service?.subType ? [data.service.subType] : (data.serviceType ? [data.serviceType] : [])),
               city: data.address?.city || 'İstanbul',
-              address: data.address?.fullText || '',
+              district: data.address?.district || 'Tuzla', 
+              streetAddress: data.address?.fullText ? data.address.fullText.split(',')[0].trim() : '', 
               filterTags: data.service?.tags || [],
               openingFee: data.pricing?.openingFee?.toString() || '350',
               pricePerUnit: data.pricing?.pricePerUnit?.toString() || '40',
@@ -119,6 +168,76 @@ export default function ProfilePage() {
     };
     fetchExistingProfile();
   }, []);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Tarayıcınız konum servisini desteklemiyor.");
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
+        const data = await res.json();
+        
+        if (data.status === 'OK' && data.results.length > 0) {
+          const components = data.results[0].address_components;
+          
+          const getComp = (type: string) => {
+             const comp = components.find((c: any) => c.types.includes(type));
+             return comp ? comp.long_name : '';
+          };
+
+          const fetchedCity = getComp('administrative_area_level_1');
+          const fetchedDistrict = getComp('administrative_area_level_2') || getComp('locality') || getComp('sublocality_level_1');
+          
+          let matchedCity = '';
+          let matchedDistrict = '';
+
+          const normFetchedCity = normalizeString(fetchedCity);
+          const csvCities = Object.keys(cityData);
+          matchedCity = csvCities.find(c => normalizeString(c) === normFetchedCity || normFetchedCity.includes(normalizeString(c))) || '';
+
+          if (matchedCity) {
+            const normFetchedDistrict = normalizeString(fetchedDistrict);
+            const csvDistricts = cityData[matchedCity];
+            matchedDistrict = csvDistricts.find(d => normalizeString(d) === normFetchedDistrict || normFetchedDistrict.includes(normalizeString(d))) || csvDistricts[0];
+          }
+
+          const neighborhood = getComp('neighborhood');
+          const route = getComp('route');
+          const streetNumber = getComp('street_number');
+
+          const streetParts = [];
+          if (neighborhood) streetParts.push(`${neighborhood} Mah.`);
+          if (route) streetParts.push(route);
+          if (streetNumber) streetParts.push(`No: ${streetNumber}`);
+
+          const finalStreetAddress = streetParts.length > 0 ? streetParts.join(', ') : data.results[0].formatted_address.split(',')[0];
+
+          setFormData(prev => ({
+            ...prev,
+            city: matchedCity || prev.city,
+            district: matchedDistrict || prev.district,
+            streetAddress: finalStreetAddress
+          }));
+        } else {
+           alert("Adres tam olarak çözümlenemedi.");
+        }
+      } catch (error) {
+        alert("Konum bilgisi alınırken bir hata oluştu.");
+      } finally {
+        setIsLocating(false);
+      }
+    }, () => {
+      alert("Konum izni verilmedi.");
+      setIsLocating(false);
+    });
+  };
 
   const toggleService = (id: string, hasSubs: boolean) => {
     setFormData(prev => {
@@ -140,38 +259,68 @@ export default function ProfilePage() {
     }));
   };
 
+  const getCoordinatesFromAddress = async (fullAddress: string): Promise<{lat: number, lng: number} | null> => {
+    try {
+      const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
+      const data = await res.json();
+      if (data.status === 'OK' && data.results.length > 0) {
+        const location = data.results[0].geometry.location;
+        return { lat: location.lat, lng: location.lng };
+      }
+      return null;
+    } catch (error) {
+      console.error("Geocoding hatası:", error);
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     if (!agreed) return alert("Lütfen hizmet şartlarını ve KVKK metnini onaylayın.");
     if (formData.businessName.trim().length < 2) return alert("İşletme adı giriniz.");
     if (formData.serviceTypes.length === 0) return alert("Lütfen bir hizmet branşı seçiniz.");
+    if (!formData.city || !formData.district) return alert("Lütfen İl ve İlçe seçiminizi yapınız.");
     
     setSaving(true);
     try {
-      const selectedMain = formData.serviceTypes[0]; // örn: 'yolcu_tasima' veya 'kamyon'
+      const selectedMain = formData.serviceTypes[0];
       let mappedMain = 'NAKLIYE'; 
 
-      // 🔥 1. ANA KATEGORİ (mainType) ATAMASI
-      if (['oto_kurtarma', 'vinc'].includes(selectedMain)) mappedMain = 'KURTARICI';
+      if (['oto_kurtarma', 'vinc'].includes(selectedMain)) mappedMain = 'OTO KURTARMA';
       else if (['istasyon', 'seyyar_sarj'].includes(selectedMain)) mappedMain = 'SARJ';
       else if (['yolcu_tasima'].includes(selectedMain)) mappedMain = 'YOLCU_TASIMA';
       else if (['yurt_disi_nakliye'].includes(selectedMain)) mappedMain = 'YURT_DISI';
-      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selectedMain)) mappedMain = 'NAKLIYE'; // Bu satır eklendi.
+      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selectedMain)) mappedMain = 'NAKLIYE'; 
 
-      // 🔥 2. ALT KATEGORİ (subType) ATAMASI
-      // Eğer kullanıcı bir alt özellik (örneğin 'tenteli' veya '10_teker') seçtiyse, subType o özellik olur.
-      // Alt özellik seçmediyse, seçtiği ana kategori ismi kalır (örneğin 'kamyon').
       const mappedSubType = formData.filterTags.length > 0 ? selectedMain : selectedMain;
 
-      const payload = { 
+      const combinedAddress = formData.streetAddress ? `${formData.streetAddress}, ${formData.district}, ${formData.city}, Türkiye` : `${formData.district}, ${formData.city}, Türkiye`;
+
+      let coords = null;
+      if (formData.streetAddress) {
+        coords = await getCoordinatesFromAddress(combinedAddress);
+        if (!coords) {
+          let noNumberAddress = formData.streetAddress.replace(/(no|numara|kapı|daire|kat)\s*:?\s*[-/\d\w]+/gi, '').replace(/[,\-]/g, ' ').replace(/\s+/g, ' ').trim();
+          coords = await getCoordinatesFromAddress(`${noNumberAddress}, ${formData.district}, ${formData.city}, Türkiye`);
+        }
+      }
+
+      if (!coords) {
+        coords = await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
+      }
+
+      const payload: any = { 
         ...formData,
         firstName: formData.businessName, 
         mainType: mappedMain,  
         serviceType: mappedSubType,  
         service: {             
-           mainType: mappedMain,      // Örn: "NAKLIYE"
-           subType: mappedSubType,    // Örn: "kamyon"
-           tags: formData.filterTags  // Örn: ["10_teker"]
+           mainType: mappedMain,
+           subType: mappedSubType,
+           tags: formData.filterTags
         },
+        address: formData.streetAddress ? `${formData.streetAddress}, ${formData.district}, ${formData.city}` : `${formData.district}, ${formData.city}`,
+        city: formData.city, 
+        district: formData.district, 
         website: formData.website,
         role: 'provider',
         pricing: { 
@@ -179,6 +328,17 @@ export default function ProfilePage() {
           pricePerUnit: Number(formData.pricePerUnit) 
         }
       };
+
+      // 🔥 FIX: Koordinatlar MongoDB'nin direkt anlayacağı 'location' formatında ekleniyor.
+      if (coords) {
+        payload.location = {
+          type: "Point",
+          coordinates: [coords.lng, coords.lat] // MongoDB Formatı: [Boylam, Enlem]
+        };
+        // Backend yedek okuma ihtimaline karşı lat/lng'yi de gönderiyoruz
+        payload.lat = coords.lat;
+        payload.lng = coords.lng;
+      }
 
       const method = existingId ? 'PUT' : 'POST';
       const endpoint = existingId ? `${API_URL}/users/${existingId}` : `${API_URL}/users`;
@@ -188,6 +348,15 @@ export default function ProfilePage() {
       });
 
       if (res.ok) {
+        const responseData = await res.json();
+        
+        // 🔥 FIX: Backend'den dönen yeni profil ID'sini kaydediyoruz, böylece "Düzenle" diyince yeni kayıt açmaz.
+        if (responseData && responseData._id) {
+            setExistingId(responseData._id);
+        } else if (responseData && responseData.provider && responseData.provider._id) {
+            setExistingId(responseData.provider._id);
+        }
+
         setIsSaved(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
@@ -285,20 +454,48 @@ export default function ProfilePage() {
 
           {/* Tarife & Adres */}
           <section className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-xl">
-             <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Bölge & Fiyatlandırma</h3>
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Bölge & Fiyatlandırma</h3>
+                <button 
+                  onClick={handleUseCurrentLocation} 
+                  disabled={isLocating}
+                  className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+                >
+                  {isLocating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+                  Mevcut Konumu Kullan
+                </button>
+             </div>
+             
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 divide-x divide-gray-200">
                     <div className="px-4"><Wallet size={20} className="text-green-600"/></div>
                     <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Açılış (₺)</label><input type="number" value={formData.openingFee} onChange={e => setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
                     <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Birim (₺)</label><input type="number" value={formData.pricePerUnit} onChange={e => setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
                 </div>
+                
+                {/* İL SEÇİMİ */}
                 <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 pr-4">
                    <div className="p-4 bg-white rounded-2xl shadow-sm mr-4"><MapPin size={20} className="text-red-500"/></div>
-                   <select value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full bg-transparent font-black text-sm outline-none cursor-pointer uppercase">
-                      {TURKEY_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                   </select>
+                   <div className="flex-1">
+                      <label className="text-[8px] font-black text-gray-400 uppercase ml-1 block mb-0.5">İl</label>
+                      <select value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="w-full bg-transparent font-black text-sm outline-none cursor-pointer uppercase">
+                          {Object.keys(cityData).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                   </div>
                 </div>
-                <textarea placeholder="DETAYLI ADRES, DURAK VEYA ÇALIŞMA GÜZERGAHI..." value={formData.address} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-24 outline-none" onChange={e => setFormData({...formData, address: e.target.value})}/>
+
+                {/* İLÇE SEÇİMİ */}
+                <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 pr-4 md:col-span-1">
+                   <div className="flex-1 px-4 py-2">
+                      <label className="text-[8px] font-black text-gray-400 uppercase ml-1 block mb-0.5">İlçe</label>
+                      <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full bg-transparent font-black text-sm outline-none cursor-pointer uppercase">
+                          {availableDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                   </div>
+                </div>
+
+                {/* MAHALLE/SOKAK AÇIK UÇLU GİRİŞ */}
+                <textarea placeholder="MAHALLE, SOKAK, CADDE, NO... (Sadece Açık Adres Kısmını Giriniz)" value={formData.streetAddress} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-24 outline-none" onChange={e => setFormData({...formData, streetAddress: e.target.value})}/>
              </div>
           </section>
 

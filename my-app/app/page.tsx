@@ -29,7 +29,6 @@ const CATEGORY_MAP: Record<string, string[]> = {
 // --- LOADER BİLEŞENİ ---
 const LOADING_MESSAGES = [
   { text: "Transport 245 nakliye ihtiyacınızı anında karşılar.", sub: "Tır, Kamyon ve Kamyonetler taranıyor...", icon: Truck },
-  { text: "Yolda mı kaldınız? Transport 245 her an yanınızda.", sub: "En yakın çekici ve vinç operatörleri bulunuyor...", icon: LifeBuoy },
   { text: "Transport 245, 6563 Sayılı Kanun Uyarınca Aracı Hizmet Sağlayıcıdır.", sub: "Güvenliğiniz için tüm süreçler kayıt altına alınmaktadır.", icon: Scale },
   { text: "Görüşlerinizle Birlikte Gelişiyoruz.", sub: "İşlem sonunda şikayet ve öneri formunu doldurmayı unutmayın.", icon: MessageSquare },
   { text: "Sürücüler ve İstasyonlar Taranıyor...", sub: "Harita verileri ve fiyat tarifeleri güncelleniyor.", icon: MapPin }
