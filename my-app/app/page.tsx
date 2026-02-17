@@ -1,9 +1,7 @@
 /**
  * @file page.tsx
- * @description Transport 245 Master Orchestrator.
- * FIX: Sidebar (Menü) geçici olarak devre dışı bırakıldı ve ikon kaldırıldı.
- * FIX: Harita (Map) her zaman görünür ve aktif kalacak şekilde sabitlendi.
- * FIX: Gereksiz sidebar state ve callback'leri temizlendi.
+ * FIX: Sidebar kaldırıldı, yerine Settings butonu eklendi.
+ * Settings butonu → /settings sayfasına yönlendiriyor.
  */
 
 'use client';
@@ -16,9 +14,6 @@ import TopBar from '../components/home/TopBar';
 import ActionPanel from '../components/home/ActionPanel';
 
 import ProfileModal from '../components/ProfileModal';
-import SettingsModal from '../components/SettingsModal';
-import UserAgreementModal from '../components/UserAgreementModal';
-import KVKKModal from '../components/KVKKModal';
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -59,11 +54,7 @@ function ScanningLoader({ onFinish }: { onFinish: () => void }) {
 
 export default function Home() {
   const [showLoader, setShowLoader] = useState(true);
-
   const [showProfile, setShowProfile] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAgreement, setShowAgreement] = useState(false);
-  const [showKVKK, setShowKVKK] = useState(false);
 
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,19 +112,12 @@ export default function Home() {
     <main className="relative w-full h-screen overflow-hidden bg-white">
       {showLoader && <ScanningLoader onFinish={() => setShowLoader(false)} />}
 
+      {/* TopBar artık Settings butonu gösteriyor (Sidebar yerine) */}
       <TopBar
-        sidebarOpen={false} // 🔥 Sabitlendi
-        onMenuClick={() => {}} // 🔥 Sidebar butonu kaldırılacağı için boş bırakıldı
         onProfileClick={() => setShowProfile(true)}
       />
 
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          visibility: 'visible', // 🔥 Sidebar olmadığı için her zaman görünür
-          pointerEvents: 'auto', // 🔥 Her zaman tıklanabilir
-        }}
-      >
+      <div className="absolute inset-0 z-0">
         <Map
           searchCoords={searchCoords}
           drivers={filteredDrivers}
@@ -163,13 +147,10 @@ export default function Home() {
         activeDriverId={activeDriverId}
         onSelectDriver={setActiveDriverId}
         onStartOrder={() => {}}
-        isSidebarOpen={false} // 🔥 Sabitlendi
+        isSidebarOpen={false}
       />
 
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
-      <UserAgreementModal isOpen={showAgreement} onClose={() => setShowAgreement(false)} readOnly />
-      <KVKKModal isOpen={showKVKK} onClose={() => setShowKVKK(false)} readOnly />
     </main>
   );
 }

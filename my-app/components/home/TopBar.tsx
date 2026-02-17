@@ -1,27 +1,44 @@
-'use client';
-import { Menu, User } from 'lucide-react';
+/**
+ * @file TopBar.tsx
+ * FIX: Menu butonu kaldırıldı, yerine Settings butonu eklendi.
+ */
 
-export default function TopBar({ onMenuClick, onProfileClick, sidebarOpen }: any) {
+'use client';
+import { Settings, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface TopBarProps {
+  onProfileClick: () => void;
+}
+
+export default function TopBar({ onProfileClick }: TopBarProps) {
+  const router = useRouter();
+
   return (
     <div className="absolute top-0 left-0 right-0 z-[500] pointer-events-none">
       <div className="px-6 pt-11 flex items-center justify-between pointer-events-auto">
-        <button 
+        
+        {/* Settings butonu (eski Menu yerine) */}
+        <button
           type="button"
-          // 🔥 e.stopPropagation() ekleyerek tıklamanın haritaya sızmasını önlüyoruz
-          onClick={(e) => { 
-            console.log("[TopBar] Menu Button Clicked!");
-            e.preventDefault(); 
-            e.stopPropagation(); 
-            onMenuClick(); 
-          }} 
-          className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800 active:scale-95 transition-transform"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            router.push('/settings');
+          }}
+          className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800"
         >
-          <Menu className="w-6 h-6" />
+          <Settings className="w-6 h-6" />
         </button>
 
-        <button 
+        {/* Profile butonu */}
+        <button
           type="button"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onProfileClick(); }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onProfileClick();
+          }}
           className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800"
         >
           <User className="w-6 h-6" />
