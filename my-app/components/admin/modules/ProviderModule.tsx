@@ -1,18 +1,15 @@
 /**
  * @file ProviderModule.tsx
  * @description Transport 245 Yönetici Paneli - Kurum/Sürücü Yönetim Modülü.
- * GÜNCELLEME: Yolcu Taşıma, 8 Teker ve Gezici Şarj tam entegrasyonu.
- * GÜNCELLEME: mainType (NAKLIYE/KURTARICI/SARJ/YOLCU) mapping sistemi eklendi.
- * FIX: Kamyon/TIR alt tipleri seçildiğinde mainType 'KURTARICI' yerine 'NAKLIYE' olarak, subType ise seçilen araç tipi (kamyon/tir) olarak ayarlandı.
- * FIX: Backend 'service' nested objesi payload'a eklendi. (mainType hatası çözüldü)
- * FIX: "Web Sitesi (Opsiyonel)" alanı eklendi ve backend'e "website" parametresi olarak bağlandı.
- * FIX: Alt kategorilerin (Otobüs, VIP, vb.) listede doğru ikonla (Bus, Crown vb.) görünmesi sağlandı.
- * FIX: listContainerRef hatası giderildi.
+ * FIX: Sürücü listesinde adresin "boş / " olarak görünme sorunu çözüldü, doğrudan tam adres (fullText) gösteriliyor.
+ * FIX: 'openEdit' fonksiyonu adres objesini (fullText, city, district) hatasız çözümleyecek şekilde güçlendirildi.
+ * FIX: Google Maps Geocoding API entegre edildi. Adminlerin eklediği sürücülerin Türkiye merkezine atma sorunu çözüldü.
+ * FIX: İl ve İlçe verileri '/il_ilce.csv' dosyasından dinamik okunur.
  */
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Plus, Search, Phone, Edit, Trash2, MapPin, X, 
   Loader2, Truck, Zap, Anchor, CarFront, Globe, 
@@ -22,7 +19,9 @@ import {
 } from 'lucide-react';
 
 const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
 
+// Fallback için Türkiye İlleri
 const TURKEY_CITIES = [
   "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
 ];
@@ -85,13 +84,61 @@ export default function ProviderModule() {
   const [filterType, setFilterType] = useState('Tümü');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // CSV'den gelecek İl ve İlçe verileri için state
+  const [cityData, setCityData] = useState<Record<string, string[]>>({});
+
   const [formData, setFormData] = useState<any>({
-    businessName: '', email: '', phoneNumber: '', city: 'İzmir', district: '', address: '',
+    _id: '', businessName: '', email: '', phoneNumber: '', city: 'İstanbul', district: 'Tuzla', address: '',
     serviceTypes: [] as string[], openingFee: 350, pricePerUnit: 40, filterTags: [] as string[],
     website: '' 
   });
 
   const listContainerRef = useRef<HTMLDivElement>(null);
+
+  // CSV'yi Okuma İşlemi
+  useEffect(() => {
+    const fetchCityData = async () => {
+      try {
+        const res = await fetch('/il_ilce.csv');
+        if (!res.ok) throw new Error('CSV dosyası bulunamadı');
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        
+        const dataMap: Record<string, string[]> = {};
+        
+        lines.forEach((line, index) => {
+          if (index === 0 || !line.trim()) return; 
+          const [il, ilce] = line.split(',');
+          if (il && ilce) {
+            const cleanIl = il.trim();
+            const cleanIlce = ilce.trim();
+            if (!dataMap[cleanIl]) dataMap[cleanIl] = [];
+            dataMap[cleanIl].push(cleanIlce);
+          }
+        });
+
+        Object.keys(dataMap).forEach(key => {
+            dataMap[key].sort();
+        });
+
+        setCityData(dataMap);
+      } catch (error) {
+        console.error('CSV Okuma Hatası:', error);
+      }
+    };
+    
+    fetchCityData();
+  }, []);
+
+  const availableDistricts = useMemo(() => {
+    return cityData[formData.city] || [];
+  }, [formData.city, cityData]);
+
+  useEffect(() => {
+    if (availableDistricts.length > 0 && !availableDistricts.includes(formData.district)) {
+      setFormData((prev: any) => ({ ...prev, district: availableDistricts[0] }));
+    }
+  }, [formData.city, availableDistricts, formData.district]);
 
   const loadData = async () => {
     setLoading(true);
@@ -157,37 +204,72 @@ export default function ProviderModule() {
     }));
   };
 
+  const getCoordinatesFromAddress = async (fullAddress: string): Promise<{lat: number, lng: number} | null> => {
+    try {
+      const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
+      const data = await res.json();
+      
+      if (data.status === 'OK' && data.results.length > 0) {
+        const location = data.results[0].geometry.location;
+        return { lat: location.lat, lng: location.lng };
+      } else {
+        if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+           alert(`❌ GOOGLE API REDDETTİ: ${data.status}\n\nDetay: ${data.error_message}`);
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error("Geocoding hatası:", error);
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     const phoneRegex = /^0\d{10}$/;
     if (!phoneRegex.test(formData.phoneNumber)) {
       return alert("Hatalı Telefon Formatı! Numaranız 0 ile başlamalı ve toplam 11 haneli olmalıdır.");
     }
     
-    if (formData.serviceTypes.length === 0) {
-      return alert("Lütfen bir hizmet branşı seçiniz.");
-    }
+    if (formData.serviceTypes.length === 0) return alert("Lütfen bir hizmet branşı seçiniz.");
+    if (!formData.city || !formData.district) return alert("Lütfen İl ve İlçe seçiniz.");
 
     setLoading(true);
     const endpoint = isEditing ? `${API_URL}/users/${formData._id}` : `${API_URL}/users`;
     
     try {
-      const selectedMain = formData.serviceTypes[0]; // örn: 'yolcu_tasima' veya 'kamyon'
+      const selectedMain = formData.serviceTypes[0]; 
       let mappedMain = 'NAKLIYE'; 
 
-      // 🔥 1. ANA KATEGORİ (mainType) ATAMASI
       if (['oto_kurtarma', 'vinc'].includes(selectedMain)) mappedMain = 'KURTARICI';
       else if (['istasyon', 'seyyar_sarj'].includes(selectedMain)) mappedMain = 'SARJ';
-      else if (['yolcu'].includes(selectedMain)) mappedMain = 'YOLCU';
+      else if (['yolcu', 'yolcu_tasima'].includes(selectedMain)) mappedMain = 'YOLCU';
       else if (['yurt_disi_nakliye'].includes(selectedMain)) mappedMain = 'YURT_DISI';
-      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selectedMain)) mappedMain = 'NAKLIYE'; // Bu satır eklendi.
+      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selectedMain)) mappedMain = 'NAKLIYE';
 
-      // 🔥 2. ALT KATEGORİ (subType) ATAMASI
-      // Eğer kullanıcı bir alt özellik (örneğin 'tenteli' veya '10_teker') seçtiyse, subType o özellik olur.
-      // Alt özellik seçmediyse, seçtiği ana kategori ismi kalır (örneğin 'kamyon').
       const mappedSubType = formData.filterTags.length > 0 ? selectedMain : selectedMain;
 
-      // 🔥 3. BACKEND UYUMLU PAYLOAD
-      const payload = {
+      const combinedAddress = formData.address ? `${formData.address}, ${formData.district}, ${formData.city}, Türkiye` : `${formData.district}, ${formData.city}, Türkiye`;
+      let coords = null;
+      
+      if (formData.address) {
+        coords = await getCoordinatesFromAddress(combinedAddress);
+        if (!coords) {
+          let noNumberAddress = formData.address.replace(/(no|numara|kapı|daire|kat)\s*:?\s*[-/\d\w]+/gi, '').replace(/[,\-]/g, ' ').replace(/\s+/g, ' ').trim();
+          coords = await getCoordinatesFromAddress(`${noNumberAddress}, ${formData.district}, ${formData.city}, Türkiye`);
+        }
+      }
+
+      if (!coords) {
+        coords = await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
+      }
+
+      if (!coords) {
+         setLoading(false);
+         alert("⚠️ Girilen adresin harita koordinatları bulunamadı. Lütfen kontrol edin.");
+         return; 
+      }
+
+      const payload: any = {
         ...formData, 
         firstName: formData.businessName, 
         mainType: mappedMain, 
@@ -197,12 +279,21 @@ export default function ProviderModule() {
            subType: mappedSubType,
            tags: formData.filterTags
         },
+        address: formData.address ? `${formData.address}, ${formData.district}, ${formData.city}` : `${formData.district}, ${formData.city}`,
+        city: formData.city,
+        district: formData.district,
         role: 'provider',
         website: formData.website, 
         pricing: {
           openingFee: Number(formData.openingFee),
           pricePerUnit: Number(formData.pricePerUnit)
-        }
+        },
+        location: {
+          type: "Point",
+          coordinates: [coords.lng, coords.lat] // MongoDB GeoJSON Format
+        },
+        lat: coords.lat,
+        lng: coords.lng
       };
 
       const res = await fetch(endpoint, {
@@ -225,16 +316,23 @@ export default function ProviderModule() {
   };
 
   const openEdit = (p: any) => {
-    // Verileri okurken subType'a öncelik veriyoruz, yoksa serviceType'ı alıyoruz
+    // 🔥 FIX: Adresi hatasız şekilde parçalayıp form içine yerleştiriyoruz
+    let streetAddr = '';
+    if (typeof p.address === 'string') {
+      streetAddr = p.address.split(',')[0].trim();
+    } else if (p.address?.fullText) {
+      streetAddr = p.address.fullText.split(',')[0].trim();
+    }
+
     setFormData({
       _id: p._id,
       businessName: p.businessName || p.firstName || '',
       email: p.email || '',
       phoneNumber: p.phoneNumber || '',
-      city: p.address?.city || 'İzmir',
-      district: p.address?.district || '',
-      address: p.address?.fullText || '',
-      serviceTypes: p.service?.mainType === 'YOLCU' || p.service?.mainType === 'YOLCU_TASIMA' ? ['yolcu_tasima'] : (p.service?.subType ? [p.service.subType] : (p.serviceType ? [p.serviceType] : [])),
+      city: p.address?.city || p.city || 'İstanbul',
+      district: p.address?.district || p.district || 'Tuzla',
+      address: streetAddr,
+      serviceTypes: p.service?.mainType === 'YOLCU' || p.service?.mainType === 'YOLCU_TASIMA' ? ['yolcu'] : (p.service?.subType ? [p.service.subType] : (p.serviceType ? [p.serviceType] : [])),
       openingFee: p.pricing?.openingFee || 350,
       pricePerUnit: p.pricing?.pricePerUnit || 40,
       filterTags: p.service?.tags || [],
@@ -267,7 +365,7 @@ export default function ProviderModule() {
             </button>
           )}
           <button 
-            onClick={() => { setIsEditing(false); setFormData({businessName:'', email:'', phoneNumber:'', city:'İzmir', district:'', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }}
+            onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }}
             className="flex-1 md:flex-none bg-slate-900 hover:bg-blue-600 text-white px-8 py-4 rounded-[2rem] text-xs font-black uppercase flex items-center justify-center gap-3 shadow-xl"
           >
             <Plus size={20} /> Yeni Kurum
@@ -285,7 +383,10 @@ export default function ProviderModule() {
           <MapPin className="ml-4 text-slate-400" size={20} />
           <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none cursor-pointer uppercase appearance-none">
             <option value="Tümü">TÜM TÜRKİYE</option>
-            {TURKEY_CITIES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            {Object.keys(cityData).length > 0 
+              ? Object.keys(cityData).map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)
+              : TURKEY_CITIES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)
+            }
           </select>
         </div>
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-2 flex items-center">
@@ -304,7 +405,6 @@ export default function ProviderModule() {
         ) : (
           providers.filter(p => (p.businessName || p.firstName || p.email || '').toLowerCase().includes(searchTerm.toLowerCase())).map((p) => {
             
-            // 🔥 Alt Kategorilerde Doğru İkonu Bulma (Deep Search)
             let uiConfig = SERVICE_OPTIONS.find(o => o.id === p.service?.subType || o.id === p.serviceType);
             let subIcon = null;
 
@@ -312,16 +412,21 @@ export default function ProviderModule() {
               for (const opt of SERVICE_OPTIONS) {
                 const match = opt.subs.find(s => s.id === p.service?.subType || s.id === p.serviceType);
                 if (match) {
-                  uiConfig = opt; // Ana kategorinin rengini al
-                  subIcon = match.icon; // Alt kategorinin ikonunu al
+                  uiConfig = opt; 
+                  subIcon = match.icon; 
                   break;
                 }
               }
             }
-            if (!uiConfig) uiConfig = SERVICE_OPTIONS[0]; // Fallback
+            if (!uiConfig) uiConfig = SERVICE_OPTIONS[0]; 
 
             const DisplayIcon = subIcon || uiConfig.icon;
             const isSelected = selectedProviders.includes(p._id);
+
+            // 🔥 FIX: Adresi Listede Tam (fullText) Şekilde Gösterme
+            const displayAddress = typeof p.address === 'string' 
+              ? p.address 
+              : (p.address?.fullText || `${p.address?.city || ''} / ${p.address?.district || ''}`);
 
             return (
               <div 
@@ -333,26 +438,31 @@ export default function ProviderModule() {
                 
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-4">
-                    <div className={`w-16 h-16 ${uiConfig.color} text-white rounded-2xl flex items-center justify-center shadow-lg`}>
+                    <div className={`w-16 h-16 ${uiConfig.color} text-white rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>
                       <DisplayIcon size={32} strokeWidth={1.5}/>
                     </div>
-                    <div>
-                      <h3 className="font-black text-slate-800 text-lg uppercase truncate max-w-[150px] leading-tight">{p.businessName || p.firstName}</h3>
+                    <div className="overflow-hidden">
+                      <h3 className="font-black text-slate-800 text-lg uppercase truncate leading-tight">{p.businessName || p.firstName}</h3>
                       <div className="flex gap-1 mt-1 flex-wrap">
                         <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType}</span>
                         {p.service?.tags?.map((t:string) => <span key={t} className="text-[8px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{t.replace('_',' ')}</span>)}
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                  <div className="flex flex-col gap-2 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
                     <button onClick={() => openEdit(p)} className="p-2.5 bg-white text-slate-400 hover:text-blue-600 rounded-xl shadow-sm border border-slate-100"><Edit size={16}/></button>
                     <button onClick={(e) => handleDelete(e, p._id)} className="p-2.5 bg-white text-red-300 hover:text-red-600 rounded-xl shadow-sm border border-slate-100"><Trash2 size={16}/></button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3 text-[11px] font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl"><Phone size={14} className="text-green-500"/> {p.phoneNumber}</div>
-                  <div className="flex items-center gap-3 text-[11px] font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl"><MapPin size={14} className="text-red-500"/> {p.address?.city} / {p.address?.district}</div>
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl"><Phone size={14} className="text-green-500 shrink-0"/> {p.phoneNumber}</div>
+                  
+                  {/* 🔥 FIX: Adres Artık Boş '/' Yerine Tam Görünecek */}
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl overflow-hidden">
+                    <MapPin size={14} className="text-red-500 shrink-0"/> 
+                    <span className="truncate" title={displayAddress}>{displayAddress}</span>
+                  </div>
                 </div>
               </div>
             )
@@ -379,13 +489,21 @@ export default function ProviderModule() {
                   <input placeholder="E-POSTA" value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none"/>
                   <input placeholder="TELEFON" value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none"/>
                 </div>
+                
+                {/* İL VE İLÇE SEÇİMİ (CSV DESTEKLİ) */}
                 <div className="grid grid-cols-2 gap-4">
-                  <select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-black text-xs outline-none">
-                    {TURKEY_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-black text-xs outline-none cursor-pointer">
+                    {Object.keys(cityData).length > 0 
+                      ? Object.keys(cityData).map(c => <option key={c} value={c}>{c}</option>)
+                      : TURKEY_CITIES.map(c => <option key={c} value={c}>{c}</option>)
+                    }
                   </select>
-                  <input placeholder="İLÇE" value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none"/>
+                  <select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none cursor-pointer">
+                    {availableDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
                 </div>
-                <textarea placeholder="TAM ADRES..." value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-medium text-xs outline-none h-32 resize-none"/>
+
+                <textarea placeholder="MAHALLE, SOKAK, CADDE, NO... (Sadece Açık Adresi Giriniz)" value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-medium text-xs outline-none h-32 resize-none"/>
                 
                 <input placeholder="WEB SİTESİ LİNKİ (Opsiyonel)" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 font-bold text-xs outline-none"/>
 

@@ -1,10 +1,8 @@
 /**
  * @file profile/page.tsx
  * @description Transport 245 Driver Profile & Registration.
- * FIX: Kayıt sonrasında 'existingId' set edildi, böylece "Düzenle" deyip kaydedince mükerrer kayıt açmak yerine PUT (Güncelleme) yapar.
- * FIX: Payload içerisine MongoDB GeoJSON formatına tam uyumlu 'location' objesi eklendi (Türkiye merkezine atma sorunu çözüldü).
- * FIX: OpenStreetMap yerine Google Maps Geocoding API entegre edildi.
- * FIX: İl ve İlçe verileri '/il_ilce.csv' dosyasından dinamik okunur.
+ * FIX: Google Maps API hata mesajları (REQUEST_DENIED vb.) ekranda alert olarak gösterilecek şekilde güncellendi.
+ * FIX: Koordinat bulunamazsa Türkiye merkezine kayıt yapılması ENGELLENDİ (İşlem durdurulur).
  */
 
 'use client';
@@ -184,7 +182,13 @@ export default function ProfilePage() {
         const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
         const data = await res.json();
         
-        if (data.status === 'OK' && data.results.length > 0) {
+        // 🔥 HATA KONTROLÜ
+        if (data.status !== 'OK') {
+           alert(`Google Maps API Hatası: ${data.status}\nMesaj: ${data.error_message || 'Sebep belirtilmedi.'}\nGoogle Cloud Console'dan Geocoding API ve Faturalandırma ayarlarınızı kontrol edin.`);
+           return;
+        }
+
+        if (data.results.length > 0) {
           const components = data.results[0].address_components;
           
           const getComp = (type: string) => {
@@ -225,11 +229,9 @@ export default function ProfilePage() {
             district: matchedDistrict || prev.district,
             streetAddress: finalStreetAddress
           }));
-        } else {
-           alert("Adres tam olarak çözümlenemedi.");
         }
       } catch (error) {
-        alert("Konum bilgisi alınırken bir hata oluştu.");
+        alert("Konum bilgisi alınırken ağ hatası oluştu.");
       } finally {
         setIsLocating(false);
       }
@@ -259,15 +261,22 @@ export default function ProfilePage() {
     }));
   };
 
+  // 🔥 GÜNCELLEME: Hata mesajlarını alert olarak fırlatacak zeka eklendi.
   const getCoordinatesFromAddress = async (fullAddress: string): Promise<{lat: number, lng: number} | null> => {
     try {
       const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
       const data = await res.json();
+      
       if (data.status === 'OK' && data.results.length > 0) {
         const location = data.results[0].geometry.location;
         return { lat: location.lat, lng: location.lng };
+      } else {
+        // 🔥 KULLANICIYA HATA SEBEBİNİ GÖSTER:
+        if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+           alert(`❌ GOOGLE API REDDETTİ: ${data.status}\n\nDetay: ${data.error_message}\n\nLütfen Google Cloud Console'dan Geocoding API yetkilerini kontrol edin.`);
+        }
+        return null;
       }
-      return null;
     } catch (error) {
       console.error("Geocoding hatası:", error);
       return null;
@@ -308,6 +317,13 @@ export default function ProfilePage() {
         coords = await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
       }
 
+      // 🔥 FIX: Koordinat bulunamazsa kaydı durdur! Türkiye'nin ortasına atmasına izin verme.
+      if (!coords) {
+         setSaving(false);
+         alert("⚠️ Adresinizin harita koordinatları bulunamadı. Lütfen daha belirgin bir adres girin veya Google API ayarlarınızı kontrol edin.");
+         return; 
+      }
+
       const payload: any = { 
         ...formData,
         firstName: formData.businessName, 
@@ -326,19 +342,14 @@ export default function ProfilePage() {
         pricing: { 
           openingFee: Number(formData.openingFee), 
           pricePerUnit: Number(formData.pricePerUnit) 
-        }
-      };
-
-      // 🔥 FIX: Koordinatlar MongoDB'nin direkt anlayacağı 'location' formatında ekleniyor.
-      if (coords) {
-        payload.location = {
+        },
+        location: {
           type: "Point",
-          coordinates: [coords.lng, coords.lat] // MongoDB Formatı: [Boylam, Enlem]
-        };
-        // Backend yedek okuma ihtimaline karşı lat/lng'yi de gönderiyoruz
-        payload.lat = coords.lat;
-        payload.lng = coords.lng;
-      }
+          coordinates: [coords.lng, coords.lat]
+        },
+        lat: coords.lat,
+        lng: coords.lng
+      };
 
       const method = existingId ? 'PUT' : 'POST';
       const endpoint = existingId ? `${API_URL}/users/${existingId}` : `${API_URL}/users`;
@@ -349,8 +360,6 @@ export default function ProfilePage() {
 
       if (res.ok) {
         const responseData = await res.json();
-        
-        // 🔥 FIX: Backend'den dönen yeni profil ID'sini kaydediyoruz, böylece "Düzenle" diyince yeni kayıt açmaz.
         if (responseData && responseData._id) {
             setExistingId(responseData._id);
         } else if (responseData && responseData.provider && responseData.provider._id) {
@@ -373,7 +382,6 @@ export default function ProfilePage() {
     </div>
   );
 
-  // --- ÖZET GÖRÜNÜMÜ ---
   if (isSaved) return (
     <div className="fixed inset-0 w-full h-full bg-[#f8fafc] overflow-y-auto custom-scrollbar p-6">
       <div className="w-full max-w-2xl mx-auto space-y-8 pt-10 pb-32">
@@ -409,7 +417,6 @@ export default function ProfilePage() {
         </header>
 
         <div className="space-y-10">
-          {/* İletişim */}
           <section className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50">
              <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-600"></span> İletişim Bilgileri</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -432,7 +439,6 @@ export default function ProfilePage() {
              </div>
           </section>
 
-          {/* Hizmet Türü */}
           <section>
              <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 pl-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-600"></span> Hizmet Branşları</h3>
              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -452,7 +458,6 @@ export default function ProfilePage() {
              </div>
           </section>
 
-          {/* Tarife & Adres */}
           <section className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-xl">
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Bölge & Fiyatlandırma</h3>
@@ -473,7 +478,6 @@ export default function ProfilePage() {
                     <div className="flex-1 px-4"><label className="text-[9px] font-black text-gray-400 uppercase">Birim (₺)</label><input type="number" value={formData.pricePerUnit} onChange={e => setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div>
                 </div>
                 
-                {/* İL SEÇİMİ */}
                 <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 pr-4">
                    <div className="p-4 bg-white rounded-2xl shadow-sm mr-4"><MapPin size={20} className="text-red-500"/></div>
                    <div className="flex-1">
@@ -484,7 +488,6 @@ export default function ProfilePage() {
                    </div>
                 </div>
 
-                {/* İLÇE SEÇİMİ */}
                 <div className="bg-gray-50 rounded-3xl p-1 flex items-center border border-gray-200 pr-4 md:col-span-1">
                    <div className="flex-1 px-4 py-2">
                       <label className="text-[8px] font-black text-gray-400 uppercase ml-1 block mb-0.5">İlçe</label>
@@ -494,12 +497,10 @@ export default function ProfilePage() {
                    </div>
                 </div>
 
-                {/* MAHALLE/SOKAK AÇIK UÇLU GİRİŞ */}
                 <textarea placeholder="MAHALLE, SOKAK, CADDE, NO... (Sadece Açık Adres Kısmını Giriniz)" value={formData.streetAddress} className="md:col-span-2 w-full bg-gray-50 border border-gray-200 rounded-3xl p-6 font-bold text-sm h-24 outline-none" onChange={e => setFormData({...formData, streetAddress: e.target.value})}/>
              </div>
           </section>
 
-          {/* Sözleşme & Onay */}
           <div className="flex flex-col items-center gap-6 pt-6">
              <div className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border border-gray-200 shadow-sm">
                 <input type="checkbox" id="legal" className="hidden" checked={agreed} onChange={() => setAgreed(!agreed)}/>
@@ -517,7 +518,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ALT ÖZELLİK MODAL */}
         {activeFolder && (
             <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center sm:p-4">
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setActiveFolder(null)}></div>
