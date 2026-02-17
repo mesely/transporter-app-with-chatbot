@@ -1,9 +1,8 @@
 /**
  * @file page.tsx
- * @description Transport 245 Master Orchestrator
- * FIX: Sidebar açıkken Map tamamen unmount ediliyor → WKWebView crash engellendi.
- * FIX: grayscale/pointer-events-none CSS filtreleri kaldırıldı → GPU composite layer baskısı sıfırlandı.
- * FIX: capacitor.config.ts'de limitsiz allowNavigation wildcard kaldırıldı.
+ * FIX v4: İki fazlı sidebar açma sistemi.
+ * Faz 1 → Map unmount (mapMounted=false)
+ * Faz 2 → 80ms sonra Sidebar mount (sidebarOpen=true)
  */
 
 'use client';
@@ -21,7 +20,6 @@ import SettingsModal from '../components/SettingsModal';
 import UserAgreementModal from '../components/UserAgreementModal';
 import KVKKModal from '../components/KVKKModal';
 
-// Haritayı dinamik yüklüyoruz
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-50" />,
@@ -38,32 +36,22 @@ const CATEGORY_MAP: Record<string, string[]> = {
 
 function ScanningLoader({ onFinish }: { onFinish: () => void }) {
   const [progress, setProgress] = useState(0);
-
   useEffect(() => {
-    const timer = setInterval(
-      () => setProgress((old) => (old >= 100 ? 100 : old + 2)),
-      30
-    );
-    return () => clearInterval(timer);
+    const t = setInterval(() => setProgress((p) => (p >= 100 ? 100 : p + 2)), 30);
+    return () => clearInterval(t);
   }, []);
-
-  useEffect(() => {
-    if (progress >= 100) onFinish();
-  }, [progress, onFinish]);
+  useEffect(() => { if (progress >= 100) onFinish(); }, [progress, onFinish]);
 
   return (
-    <div className="fixed inset-0 w-full h-full z-[99999] bg-white flex flex-col items-center justify-center p-10 text-center">
-      <div className="bg-gray-50 p-8 rounded-[2.5rem] mb-8 border border-gray-100 shadow-sm">
+    <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center">
+      <div className="bg-gray-50 p-8 rounded-[2.5rem] mb-8 border border-gray-100">
         <Truck size={40} className="text-blue-600" />
       </div>
       <h2 className="text-xl font-black uppercase text-gray-900 tracking-tighter italic">
         Transport 245
       </h2>
       <div className="w-48 h-1 bg-gray-100 rounded-full mt-6 overflow-hidden">
-        <div
-          className="h-full bg-blue-600 transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
+        <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
     </div>
   );
@@ -71,11 +59,13 @@ function ScanningLoader({ onFinish }: { onFinish: () => void }) {
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mapMounted, setMapMounted] = useState(true);
+
+  const [showLoader, setShowLoader] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
   const [showKVKK, setShowKVKK] = useState(false);
-  const [showLoader, setShowLoader] = useState(true);
 
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,47 +74,41 @@ export default function Home() {
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
-  // 🔥 KRİTİK: Sidebar kapanırken haritanın hemen render edilmesini engelle
-  // Önce sidebar kapanır, 300ms sonra harita geri gelir → bellek spike'ı önlenir
-  const [mapVisible, setMapVisible] = useState(true);
-
   const renderCount = useRef(0);
   useEffect(() => {
     renderCount.current++;
-    console.log(
-      `[Transport 245] Render: ${renderCount.current}, Sidebar: ${sidebarOpen}`
-    );
+    console.log(`[Transport 245] Render: ${renderCount.current}, Sidebar: ${sidebarOpen}`);
   });
 
-  // Sidebar açılırken haritayı unmount et
-  useEffect(() => {
-    if (sidebarOpen) {
-      setMapVisible(false);
-      setActiveDriverId(null);
-    } else {
-      // Sidebar kapandıktan 300ms sonra haritayı geri getir
-      const t = setTimeout(() => setMapVisible(true), 300);
-      return () => clearTimeout(t);
-    }
-  }, [sidebarOpen]);
+  // Faz 1: haritayı kaldır → Faz 2: sidebar'ı aç
+  const openSidebar = useCallback(() => {
+    setActiveDriverId(null);
+    setMapMounted(false);
+    setTimeout(() => setSidebarOpen(true), 80);
+  }, []);
 
-  const fetchDrivers = useCallback(
-    async (lat: number, lng: number, type: string) => {
-      setLoading(true);
-      try {
-        let url = `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=9`;
-        if (type === 'seyyar_sarj') url = `${API_URL}/users/all?type=seyyar_sarj`;
-        const res = await fetch(url);
-        const data = await res.json();
-        setDrivers(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Fetch Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  // Sidebar kapat → haritayı geri getir
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+    setTimeout(() => setMapMounted(true), 200);
+  }, []);
+
+  const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
+    setLoading(true);
+    try {
+      const url =
+        type === 'seyyar_sarj'
+          ? `${API_URL}/users/all?type=seyyar_sarj`
+          : `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=9`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setDrivers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Fetch Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!searchCoords) fetchDrivers(39.9334, 32.8597, 'kurtarici');
@@ -134,20 +118,16 @@ export default function Home() {
     return drivers.filter((d) => {
       const s = d.service;
       if (!s) return false;
-      let matchesType = false;
-      if (actionType === 'seyyar_sarj') matchesType = s.subType === 'seyyar_sarj';
-      else if (actionType === 'kurtarici') matchesType = s.mainType === 'KURTARICI';
-      else if (actionType === 'nakliye') matchesType = s.mainType === 'NAKLIYE';
-      else if (actionType === 'yolcu') matchesType = s.mainType === 'YOLCU';
-      else if (CATEGORY_MAP[actionType]) {
-        matchesType =
-          s.subType === actionType ||
-          CATEGORY_MAP[actionType].includes(s.subType);
-      } else matchesType = s.subType === actionType;
-
-      if (!matchesType) return false;
-      if (activeTags.length > 0)
-        return activeTags.some((tag) => (s.tags || []).includes(tag));
+      let match = false;
+      if (actionType === 'seyyar_sarj')    match = s.subType === 'seyyar_sarj';
+      else if (actionType === 'kurtarici') match = s.mainType === 'KURTARICI';
+      else if (actionType === 'nakliye')   match = s.mainType === 'NAKLIYE';
+      else if (actionType === 'yolcu')     match = s.mainType === 'YOLCU';
+      else if (CATEGORY_MAP[actionType])
+        match = s.subType === actionType || CATEGORY_MAP[actionType].includes(s.subType);
+      else match = s.subType === actionType;
+      if (!match) return false;
+      if (activeTags.length > 0) return activeTags.some((t) => (s.tags || []).includes(t));
       return true;
     });
   }, [drivers, actionType, activeTags]);
@@ -158,20 +138,12 @@ export default function Home() {
 
       <TopBar
         sidebarOpen={sidebarOpen}
-        onMenuClick={() => setSidebarOpen(true)}
+        onMenuClick={openSidebar}
         onProfileClick={() => setShowProfile(true)}
       />
 
-      {/*
-        🔥 KRİTİK DEĞİŞİKLİK:
-        ❌ ESKİ: sidebarOpen ? 'pointer-events-none grayscale-[0.5]' : ''
-           Bu CSS filtreleri WKWebView'da yeni GPU composite layer açıyordu → CRASH
-
-        ✅ YENİ: Sidebar açıkken Map tamamen DOM'dan kaldırılıyor (mapVisible=false)
-           Böylece harita GPU kaynakları serbest bırakılıyor.
-      */}
       <div className="absolute inset-0 z-0">
-        {mapVisible && (
+        {mapMounted && !sidebarOpen && (
           <Map
             searchCoords={searchCoords}
             drivers={filteredDrivers}
@@ -187,14 +159,12 @@ export default function Home() {
         onSearchLocation={(lat, lng) => {
           setSearchCoords([lat, lng]);
           fetchDrivers(lat, lng, actionType);
-          setSidebarOpen(false);
+          closeSidebar();
         }}
         onFilterApply={(type) => {
           setActionType(type);
           setActiveTags([]);
-          const lat = searchCoords ? searchCoords[0] : 39.9;
-          const lng = searchCoords ? searchCoords[1] : 32.8;
-          fetchDrivers(lat, lng, type);
+          fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type);
         }}
         actionType={actionType}
         onActionChange={setActionType}
@@ -211,45 +181,24 @@ export default function Home() {
       {sidebarOpen && (
         <Sidebar
           isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          onClose={closeSidebar}
           onSelectAction={(type) => {
-            setSidebarOpen(false);
+            closeSidebar();
             setTimeout(
-              () =>
-                fetchDrivers(
-                  searchCoords?.[0] || 39.9,
-                  searchCoords?.[1] || 32.8,
-                  type
-                ),
-              400
+              () => fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type),
+              300
             );
           }}
-          onOpenProfile={() => {
-            setSidebarOpen(false);
-            setShowProfile(true);
-          }}
-          onOpenSettings={() => {
-            setSidebarOpen(false);
-            setShowSettings(true);
-          }}
-          onOpenAgreement={() => {
-            setSidebarOpen(false);
-            setShowAgreement(true);
-          }}
-          onOpenKVKK={() => {
-            setSidebarOpen(false);
-            setShowKVKK(true);
-          }}
+          onOpenProfile={() => { closeSidebar(); setShowProfile(true); }}
+          onOpenSettings={() => { closeSidebar(); setShowSettings(true); }}
+          onOpenAgreement={() => { closeSidebar(); setShowAgreement(true); }}
+          onOpenKVKK={() => { closeSidebar(); setShowKVKK(true); }}
         />
       )}
 
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
-      <UserAgreementModal
-        isOpen={showAgreement}
-        onClose={() => setShowAgreement(false)}
-        readOnly
-      />
+      <UserAgreementModal isOpen={showAgreement} onClose={() => setShowAgreement(false)} readOnly />
       <KVKKModal isOpen={showKVKK} onClose={() => setShowKVKK(false)} readOnly />
     </main>
   );
