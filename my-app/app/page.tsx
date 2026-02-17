@@ -1,8 +1,9 @@
 /**
  * @file page.tsx
- * FIX v4: İki fazlı sidebar açma sistemi.
- * Faz 1 → Map unmount (mapMounted=false)
- * Faz 2 → 80ms sonra Sidebar mount (sidebarOpen=true)
+ * @description Transport 245 Master Orchestrator.
+ * FIX: Sidebar (Menü) geçici olarak devre dışı bırakıldı ve ikon kaldırıldı.
+ * FIX: Harita (Map) her zaman görünür ve aktif kalacak şekilde sabitlendi.
+ * FIX: Gereksiz sidebar state ve callback'leri temizlendi.
  */
 
 'use client';
@@ -13,7 +14,6 @@ import { Truck } from 'lucide-react';
 
 import TopBar from '../components/home/TopBar';
 import ActionPanel from '../components/home/ActionPanel';
-import Sidebar from '../components/home/Sidebar';
 
 import ProfileModal from '../components/ProfileModal';
 import SettingsModal from '../components/SettingsModal';
@@ -50,18 +50,16 @@ function ScanningLoader({ onFinish }: { onFinish: () => void }) {
       <h2 className="text-xl font-black uppercase text-gray-900 tracking-tighter italic">
         Transport 245
       </h2>
-      <div className="w-48 h-1 bg-gray-100 rounded-full mt-6 overflow-hidden">
-        <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${progress}%` }} />
+      <div className="w-full max-w-[12rem] h-1 bg-gray-100 rounded-full mt-6 overflow-hidden">
+        <div className="h-full bg-blue-600" style={{ width: `${progress}%` }} />
       </div>
     </div>
   );
 }
 
 export default function Home() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mapMounted, setMapMounted] = useState(true);
-
   const [showLoader, setShowLoader] = useState(true);
+
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
@@ -77,21 +75,8 @@ export default function Home() {
   const renderCount = useRef(0);
   useEffect(() => {
     renderCount.current++;
-    console.log(`[Transport 245] Render: ${renderCount.current}, Sidebar: ${sidebarOpen}`);
+    console.log(`[Transport 245] Render: ${renderCount.current}`);
   });
-
-  // Faz 1: haritayı kaldır → Faz 2: sidebar'ı aç
-  const openSidebar = useCallback(() => {
-    setActiveDriverId(null);
-    setMapMounted(false);
-    setTimeout(() => setSidebarOpen(true), 80);
-  }, []);
-
-  // Sidebar kapat → haritayı geri getir
-  const closeSidebar = useCallback(() => {
-    setSidebarOpen(false);
-    setTimeout(() => setMapMounted(true), 200);
-  }, []);
 
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
     setLoading(true);
@@ -137,29 +122,32 @@ export default function Home() {
       {showLoader && <ScanningLoader onFinish={() => setShowLoader(false)} />}
 
       <TopBar
-        sidebarOpen={sidebarOpen}
-        onMenuClick={openSidebar}
+        sidebarOpen={false} // 🔥 Sabitlendi
+        onMenuClick={() => {}} // 🔥 Sidebar butonu kaldırılacağı için boş bırakıldı
         onProfileClick={() => setShowProfile(true)}
       />
 
-      <div className="absolute inset-0 z-0">
-        {mapMounted && !sidebarOpen && (
-          <Map
-            searchCoords={searchCoords}
-            drivers={filteredDrivers}
-            activeDriverId={activeDriverId}
-            onSelectDriver={setActiveDriverId}
-            onMapClick={() => setActiveDriverId(null)}
-            onStartOrder={() => {}}
-          />
-        )}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          visibility: 'visible', // 🔥 Sidebar olmadığı için her zaman görünür
+          pointerEvents: 'auto', // 🔥 Her zaman tıklanabilir
+        }}
+      >
+        <Map
+          searchCoords={searchCoords}
+          drivers={filteredDrivers}
+          activeDriverId={activeDriverId}
+          onSelectDriver={setActiveDriverId}
+          onMapClick={() => setActiveDriverId(null)}
+          onStartOrder={() => {}}
+        />
       </div>
 
       <ActionPanel
         onSearchLocation={(lat, lng) => {
           setSearchCoords([lat, lng]);
           fetchDrivers(lat, lng, actionType);
-          closeSidebar();
         }}
         onFilterApply={(type) => {
           setActionType(type);
@@ -175,26 +163,8 @@ export default function Home() {
         activeDriverId={activeDriverId}
         onSelectDriver={setActiveDriverId}
         onStartOrder={() => {}}
-        isSidebarOpen={sidebarOpen}
+        isSidebarOpen={false} // 🔥 Sabitlendi
       />
-
-      {sidebarOpen && (
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
-          onSelectAction={(type) => {
-            closeSidebar();
-            setTimeout(
-              () => fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type),
-              300
-            );
-          }}
-          onOpenProfile={() => { closeSidebar(); setShowProfile(true); }}
-          onOpenSettings={() => { closeSidebar(); setShowSettings(true); }}
-          onOpenAgreement={() => { closeSidebar(); setShowAgreement(true); }}
-          onOpenKVKK={() => { closeSidebar(); setShowKVKK(true); }}
-        />
-      )}
 
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
