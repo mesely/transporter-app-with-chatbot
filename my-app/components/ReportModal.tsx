@@ -1,6 +1,6 @@
 /**
  * @file ReportModal.tsx
- * @description Transporter Güvenlik ve Denetim Birimi Raporlama Sistemi.
+ * @description Transport Güvenlik ve Denetim Birimi Raporlama Sistemi.
  * Geliştirme: Kurumsal veri toplama, dinamik başlıklar ve mağduriyet detaylandırma.
  */
 
@@ -31,7 +31,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
 
   useEffect(() => {
     if (isOpen) {
-      const storedPhone = localStorage.getItem('Transporter_user_phone');
+      const storedPhone = localStorage.getItem('Transport_user_phone');
       if (storedPhone) setPhone(storedPhone);
       setSelectedTags([]); 
       setDetails('');
@@ -51,7 +51,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
     }
 
     setLoading(true);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://Transporter-app-with-chatbot.onrender.com';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://Transport-app-with-chatbot.onrender.com';
     
     const payload = {
       orderId: orderId,
@@ -76,7 +76,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
       });
 
       if (res.ok) {
-        alert("Raporunuz başarıyla Transporter Denetim Birimi'ne iletildi. Kayıt No: #" + Math.floor(Math.random()*100000));
+        alert("Raporunuz başarıyla Transport Denetim Birimi'ne iletildi. Kayıt No: #" + Math.floor(Math.random()*100000));
         onClose();
       } else {
         throw new Error("Sunucu yanıt vermedi");
@@ -182,7 +182,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
         </button>
 
         <p className="text-center mt-8 text-[8px] text-slate-300 font-black uppercase tracking-[0.3em] px-10 leading-loose">
-            Transporter 6563 Sayılı Kanun Uyarınca Denetim Mekanizmalarını İşletmektedir.
+            Transport 6563 Sayılı Kanun Uyarınca Denetim Mekanizmalarını İşletmektedir.
         </p>
 
       </div>

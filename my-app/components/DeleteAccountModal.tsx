@@ -70,7 +70,7 @@ export default function DeleteAccountModal({ isOpen, onClose, onConfirm }: Delet
 
         {/* Alt Bilgi */}
         <p className="mt-8 text-[8px] text-slate-300 font-black uppercase tracking-widest italic">
-           Transporter Security Policy 2026
+           Transport Security Policy 2026
         </p>
 
       </div>

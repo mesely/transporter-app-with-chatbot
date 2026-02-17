@@ -5,13 +5,13 @@ import { Zap, MapPin, Truck, ShieldCheck, LifeBuoy, MessageSquare, Scale } from 
 
 const LOADING_MESSAGES = [
   {
-    text: "Transporter nakliye ihtiyacınızı anında karşılar.",
+    text: "Transport nakliye ihtiyacınızı anında karşılar.",
     sub: "Tır, Kamyon ve Kamyonetler taranıyor...",
     icon: Truck
   },
   
   {
-    text: "Transporter 6563 Sayılı Kanun Uyarınca Aracı Hizmet Sağlayıcıdır.",
+    text: "Transport 6563 Sayılı Kanun Uyarınca Aracı Hizmet Sağlayıcıdır.",
     sub: "Güvenliğiniz için tüm süreçler kayıt altına alınmaktadır.",
     icon: Scale
   },
@@ -120,7 +120,7 @@ export default function ScanningLoader() {
       <div className="absolute bottom-8 flex items-center gap-2 bg-white/20 border border-white/40 backdrop-blur-lg px-6 py-2 rounded-full z-10 shadow-sm">
         <ShieldCheck size={14} className="text-blue-600" />
         <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em]">
-          Transporter <span className="text-gray-900">2026</span>
+          Transport <span className="text-gray-900">2026</span>
         </span>
       </div>
     </div>

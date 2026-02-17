@@ -20,10 +20,10 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     if (isOpen) {
       // LocalStorage'dan verileri çek
       setFormData({
-        name: localStorage.getItem('Transporter_user_name') || '',
-        phone: localStorage.getItem('Transporter_user_phone') || '',
-        email: localStorage.getItem('Transporter_user_email') || '',
-        city: localStorage.getItem('Transporter_user_city') || ''
+        name: localStorage.getItem('Transport_user_name') || '',
+        phone: localStorage.getItem('Transport_user_phone') || '',
+        email: localStorage.getItem('Transport_user_email') || '',
+        city: localStorage.getItem('Transport_user_city') || ''
       });
     }
   }, [isOpen]);
@@ -33,10 +33,10 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   };
 
   const handleSave = () => {
-    localStorage.setItem('Transporter_user_name', formData.name);
-    localStorage.setItem('Transporter_user_phone', formData.phone);
-    localStorage.setItem('Transporter_user_email', formData.email);
-    localStorage.setItem('Transporter_user_city', formData.city);
+    localStorage.setItem('Transport_user_name', formData.name);
+    localStorage.setItem('Transport_user_phone', formData.phone);
+    localStorage.setItem('Transport_user_email', formData.email);
+    localStorage.setItem('Transport_user_city', formData.city);
     onClose();
     // Opsiyonel: Bir toast mesajı gösterilebilir
   };

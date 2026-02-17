@@ -18,8 +18,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('Transporter_user_role');
-    localStorage.removeItem('Transporter_provider_id');
+    localStorage.removeItem('Transport_user_role');
+    localStorage.removeItem('Transport_provider_id');
     window.location.reload();
   };
 
@@ -116,7 +116,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
           
           <div className="text-center pt-2 pb-4">
-            <p className="text-[9px] text-gray-400/80 font-black uppercase tracking-[0.2em]">v2.4.5 • Transporter Glass</p>
+            <p className="text-[9px] text-gray-400/80 font-black uppercase tracking-[0.2em]">v2.4.5 • Transport Glass</p>
           </div>
 
         </div>
