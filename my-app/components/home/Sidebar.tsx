@@ -1,6 +1,7 @@
 /**
  * @file Sidebar.tsx
  * @description Transport 245 Sovereign Sidebar. 
+ * FIX: iOS (WebView) ortamlarında menü açılırken oluşan Thread 1: Signal SIGKILL (Çökme/Yeniden Başlama) sorunu için GPU bellek optimizasyonu yapıldı. Ağır 'backdrop-blur' değerleri hafifletildi ve donanım hızlandırma (transform-gpu, will-change) eklendi.
  * GÜNCELLEME: Marka adı Transport 245 yapıldı.
  * GÜNCELLEME: Yolcu Taşıma kategorileri eklendi.
  * GÜNCELLEME: KVKK ve Sözleşme modalları "readOnly" modunda açılacak şekilde ayarlandı.
@@ -94,25 +95,25 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
 
   return (
     <>
-      {/* OVERLAY */}
+      {/* OVERLAY: Blur efekti bellek koruması için kaldırıldı/hafifletildi */}
       <div 
-        className={`fixed inset-0 bg-black/15 backdrop-blur-[3px] z-[2000] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-black/30 z-[2000] transition-opacity duration-300 will-change-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
 
-      {/* SIDEBAR GÖVDESİ */}
-      <div className={`fixed top-0 left-0 h-full w-[85%] max-w-[360px] z-[2001] shadow-2xl border-r border-white/50 bg-white/25 backdrop-blur-[45px] transform transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* SIDEBAR GÖVDESİ: transform-gpu ve will-change eklenerek iOS çökmesi önlendi, ağır blur (45px -> 12px) düşürüldü */}
+      <div className={`fixed top-0 left-0 h-full w-[85%] max-w-[360px] z-[2001] shadow-2xl border-r border-white/50 bg-white/80 backdrop-blur-md transform-gpu will-change-transform transition-transform duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* HEADER */}
         <div className="p-6 shrink-0">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter italic">Menü</h2>
-            <button onClick={onClose} className="w-10 h-10 bg-white/70 border border-white/80 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-sm"><X size={20}/></button>
+            <button onClick={onClose} className="w-10 h-10 bg-white border border-white/80 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-sm"><X size={20}/></button>
           </div>
 
-          <div onClick={() => setShowProfile(true)} className="rounded-[2.2rem] p-5 border-2 border-white/90 bg-white/60 backdrop-blur-2xl shadow-xl cursor-pointer hover:bg-white/80 transition-all mb-6 text-gray-900">
+          <div onClick={() => setShowProfile(true)} className="rounded-[2.2rem] p-5 border border-white bg-white/90 shadow-lg cursor-pointer hover:bg-white transition-all mb-6 text-gray-900">
              <div className="flex items-center gap-4 text-gray-900">
-                <div className="w-14 h-14 bg-white border border-white/60 rounded-full flex items-center justify-center text-gray-400 shadow-inner"><UserCircle2 size={32} /></div>
+                <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-gray-400 shadow-inner"><UserCircle2 size={32} /></div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-black uppercase text-sm text-gray-900 truncate">{userName}</h3>
                   <p className="text-[9px] text-gray-500 font-black uppercase mt-0.5 flex items-center gap-1"><MapPin size={10} className="text-blue-500" /> Şehir Aktif</p>
@@ -120,9 +121,9 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
              </div>
           </div>
 
-          <div className="flex bg-black/10 p-1.5 rounded-2xl border border-white/40 backdrop-blur-md">
-            <button onClick={() => setActiveTab('tariff')} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase ${activeTab === 'tariff' ? 'bg-white text-gray-900 shadow-lg' : 'text-gray-600'}`}>Tarifeler</button>
-            <button onClick={() => setActiveTab('history')} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-lg' : 'text-gray-600'}`}>Geçmiş</button>
+          <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+            <button onClick={() => setActiveTab('tariff')} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase ${activeTab === 'tariff' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-500'}`}>Tarifeler</button>
+            <button onClick={() => setActiveTab('history')} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-500'}`}>Geçmiş</button>
           </div>
         </div>
 
@@ -130,7 +131,7 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
         <div className="flex-1 overflow-y-auto px-6 space-y-8 custom-scrollbar pb-10">
           {activeTab === 'tariff' && (
             <>
-              <div className="p-4 rounded-3xl bg-red-50/80 border border-red-200 flex items-start gap-3 shadow-sm">
+              <div className="p-4 rounded-3xl bg-red-50 border border-red-100 flex items-start gap-3 shadow-sm">
                 <Heart size={18} className="text-red-500 shrink-0 fill-red-500" />
                 <p className="text-[9px] font-black text-red-700 leading-tight uppercase">Kazancın %10'una kadarı yardım kuruluşlarına aktarılmaktadır.</p>
               </div>
@@ -139,10 +140,10 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
                 <div key={group} className="space-y-4 text-gray-900">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{group}</span>
                   {Object.entries(BASE_DATA).filter(([_, v]:any) => v.group === group).map(([key, val]: [string, any]) => (
-                    <div key={key} onClick={() => { onSelectAction(key); onClose(); }} className="bg-white/60 border-2 border-white/80 rounded-[2rem] p-5 cursor-pointer shadow-md active:scale-95 transition-all">
+                    <div key={key} onClick={() => { onSelectAction(key); onClose(); }} className="bg-white border border-gray-100 rounded-[2rem] p-5 cursor-pointer shadow-sm hover:shadow-md active:scale-95 transition-all">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
-                          <div className={`p-3.5 rounded-2xl ${val.color} border border-white/50 shadow-sm`}>{val.icon}</div>
+                          <div className={`p-3.5 rounded-2xl ${val.color} border border-white shadow-sm`}>{val.icon}</div>
                           <div>
                             <h4 className="font-black text-gray-900 text-xs uppercase leading-none">{val.label}</h4>
                             <p className="text-[9px] font-black text-blue-600 mt-1 uppercase">Birim: ₺{val.unit}/{val.unitLabel}</p>
@@ -160,14 +161,14 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
 
               <div className="space-y-3 pt-4 text-gray-900">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tercihler</span>
-                <div onClick={() => setNotifEnabled(!notifEnabled)} className="flex items-center justify-between p-4 rounded-[1.8rem] bg-white/60 border border-white/80 shadow-sm transition-all active:scale-[0.98]">
+                <div onClick={() => setNotifEnabled(!notifEnabled)} className="flex items-center justify-between p-4 rounded-[1.8rem] bg-white border border-gray-100 shadow-sm transition-all active:scale-[0.98]">
                   <div className="flex items-center gap-3">
                     <Bell size={18} className={notifEnabled ? 'text-blue-600' : 'text-gray-400'} />
                     <span className="text-xs font-black text-gray-700 uppercase">Bildirimler</span>
                   </div>
                   {notifEnabled ? <ToggleRight size={32} className="text-blue-600 fill-current"/> : <ToggleLeft size={32} className="text-gray-300"/>}
                 </div>
-                <div onClick={() => setLocationEnabled(!locationEnabled)} className="flex items-center justify-between p-4 rounded-[1.8rem] bg-white/60 border border-white/80 shadow-sm transition-all active:scale-[0.98]">
+                <div onClick={() => setLocationEnabled(!locationEnabled)} className="flex items-center justify-between p-4 rounded-[1.8rem] bg-white border border-gray-100 shadow-sm transition-all active:scale-[0.98]">
                   <div className="flex items-center gap-3">
                     <Locate size={18} className={locationEnabled ? 'text-blue-600' : 'text-gray-400'} />
                     <span className="text-xs font-black text-gray-700 uppercase">Konum Takibi</span>
@@ -177,16 +178,16 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setShowAgreement(true)} className="flex flex-col items-center gap-2 p-5 rounded-[2rem] bg-white/60 border border-white/80 text-gray-500 hover:text-blue-600 transition-all shadow-sm active:scale-95">
+                <button onClick={() => setShowAgreement(true)} className="flex flex-col items-center gap-2 p-5 rounded-[2rem] bg-white border border-gray-100 text-gray-500 hover:text-blue-600 transition-all shadow-sm active:scale-95">
                   <FileText size={20} /><span className="text-[8px] font-black uppercase tracking-tighter">Sözleşme</span>
                 </button>
-                <button onClick={() => setShowKVKK(true)} className="flex flex-col items-center gap-2 p-5 rounded-[2rem] bg-white/60 border border-white/80 text-gray-500 hover:text-green-600 transition-all shadow-sm active:scale-95">
+                <button onClick={() => setShowKVKK(true)} className="flex flex-col items-center gap-2 p-5 rounded-[2rem] bg-white border border-gray-100 text-gray-500 hover:text-green-600 transition-all shadow-sm active:scale-95">
                   <Shield size={20} /><span className="text-[8px] font-black uppercase tracking-tighter">KVKK</span>
                 </button>
               </div>
 
               <div className="pt-4 pb-6 px-1">
-                <button onClick={() => setShowDeleteModal(true)} className="w-full py-4 bg-red-50/60 border border-red-100 rounded-2xl text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-100 transition-all active:scale-95 shadow-sm">
+                <button onClick={() => setShowDeleteModal(true)} className="w-full py-4 bg-red-50 border border-red-100 rounded-2xl text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-100 transition-all active:scale-95 shadow-sm">
                   <Trash2 size={14} /> Hesabımı Sil
                 </button>
               </div>
@@ -207,7 +208,7 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
                   </div>
                ) : (
                   orders.map((order) => (
-                    <div key={order._id} className="rounded-[2rem] border-2 border-white/80 bg-white/60 backdrop-blur-md p-5 shadow-sm transition-all hover:bg-white active:scale-[0.98]">
+                    <div key={order._id} className="rounded-[2rem] border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-md active:scale-[0.98]">
                       <div className="flex justify-between items-start mb-4">
                         <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg uppercase border border-blue-100">{order.serviceType}</span>
                         <span className="text-[8px] font-black text-green-600 px-3 py-1 rounded-lg bg-green-50 uppercase tracking-tighter italic">Tamamlandı</span>
@@ -229,8 +230,8 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
         </div>
 
         {/* FOOTER */}
-        <div className="p-8 bg-white/40 border-t border-white/20 text-center shrink-0">
-          <button onClick={() => setShowSettings(true)} className="w-full flex items-center justify-center gap-2 py-4 rounded-[1.8rem] border-2 border-dashed border-blue-200 text-blue-600 text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all">
+        <div className="p-8 bg-gray-50 border-t border-gray-200 text-center shrink-0">
+          <button onClick={() => setShowSettings(true)} className="w-full flex items-center justify-center gap-2 py-4 rounded-[1.8rem] border-2 border-dashed border-blue-200 text-blue-600 text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all bg-white">
              <Settings size={16} /> Ayarlar
           </button>
           <div className="flex items-center gap-2 justify-center opacity-40 mt-4">
@@ -240,7 +241,7 @@ export default function Sidebar({ isOpen, onClose, onSelectAction, onReportClick
         </div>
       </div>
 
-      {/* MODALLAR (readOnly flagleri eklendi) */}
+      {/* MODALLAR */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
       <UserAgreementModal isOpen={showAgreement} onClose={() => setShowAgreement(false)} readOnly={true} />

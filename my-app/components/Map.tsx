@@ -1,10 +1,9 @@
 /**
  * @file Map.tsx
  * @description Transport 245 Akıllı Harita Motoru.
+ * FIX: Kümeleme mantığı sadece aynı subType içindekileri gruplayacak şekilde özelleştirildi.
  * FIX: Yolcu Taşıma ve Gezici Şarj kategorisindeki sürücüler haritada (marker olarak) gizlendi.
  * FIX: İl seçimi yapıldığında harita otomatik olarak o koordinata odaklanır.
- * FIX: Tüm kategori renkleri ve özel SVG ikonları stabilize edildi.
- * FIX: Marker ve popup mantığı, gizlenen kategorileri dışlayacak şekilde güncellendi.
  */
 
 'use client';
@@ -22,7 +21,7 @@ import {
   Users, Bus, Crown
 } from 'lucide-react';
 
-// --- ÖZEL İKON: GEZİCİ ŞARJ (İnce Çizgili Detaylı SVG) ---
+// --- ÖZEL İKON: GEZİCİ ŞARJ ---
 const GeziciSarjIcon = ({ size = 24, color = "currentColor" }: { size?: number, color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
@@ -63,7 +62,7 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- SERVİS YAPILANDIRMASI (RENK VE İKONLAR) ---
+// --- SERVİS YAPILANDIRMASI ---
 const SERVICE_CONFIG: any = {
   oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
   vinc:         { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },
@@ -172,11 +171,9 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     return d ? [d.location.coordinates[1], d.location.coordinates[0]] as [number, number] : null;
   }, [activeDriverId, drivers]);
 
-  // 🔥 FIX: Gizlenecek Kategorileri Belirle
   const hiddenCategories = ['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'];
 
   const visibleMarkers = useMemo(() => {
-    // 🔥 FIX: Haritada gösterilmeyecek kategorileri (Yolcu Taşıma ve Gezici Şarj) filtrele
     const mapDrivers = drivers.filter(d => !hiddenCategories.includes(d.service?.subType || ''));
 
     if (!mapDrivers.length) return [];
@@ -189,8 +186,15 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
     mapDrivers.forEach((d) => {
       if (processed.has(d._id) || d._id === activeDriverId) return;
       
+      const currentSubType = d.service?.subType;
+
+      // 🔥 FIX: clusterGroup filtresine 'subType' kontrolü eklendi
       const clusterGroup = mapDrivers.filter(other => {
         if (processed.has(other._id) || other._id === activeDriverId) return false;
+        
+        // Sadece aynı subType olanları kümele
+        if (other.service?.subType !== currentSubType) return false;
+
         const distLat = Math.abs(d.location.coordinates[1] - other.location.coordinates[1]);
         const distLng = Math.abs(d.location.coordinates[0] - other.location.coordinates[0]);
         return distLat < threshold && distLng < threshold;
@@ -204,7 +208,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           location: d.location,
           isCluster: true,
           count: clusterGroup.length,
-          clusterServiceType: d.service?.subType || 'other',
+          clusterServiceType: currentSubType || 'other',
           expansionZoom: currentZoom + 3
         } as Driver);
       } else {
@@ -241,7 +245,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           const pos: [number, number] = [item.location.coordinates[1], item.location.coordinates[0]];
           const subType = item.service?.subType || '';
           
-          // 🔥 FIX: Bu kategoriler zaten visibleMarkers'a filtrelenmiş olsa da, ek güvenlik için kontrol
           if (hiddenCategories.includes(subType)) return null;
 
           if (item.isCluster) {
@@ -272,7 +275,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
                       {config.label}
                     </span>
-                    {/* Normal kategori mesafe gösterimi */}
                     {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
                   </div>
                   
@@ -293,7 +295,6 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       <Phone size={13} /> ARA
                     </button>
                     
-                    {/* Normal kategori mesaj at butonu */}
                     <button 
                       onClick={() => window.location.href=`sms:${item.phoneNumber}`}
                       className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
@@ -302,9 +303,8 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     </button>
                   </div>
                   
-                  {/* Normal kategori rota butonu */}
                   <button 
-                    onClick={() => window.open(`http://googleusercontent.com/maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+                    onClick={() => window.open(`https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
                     className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
                   >
                     <MapPin size={12} /> HARİTADA GÖSTER
