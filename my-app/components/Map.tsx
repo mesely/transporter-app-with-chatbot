@@ -1,17 +1,17 @@
 /**
  * @file Map.tsx
- * @description Transport 245 Akıllı Harita Motoru.
- * FIX: Kümeleme mantığı sadece aynı subType içindekileri gruplayacak şekilde özelleştirildi.
- * FIX: Yolcu Taşıma ve Gezici Şarj kategorisindeki sürücüler haritada (marker olarak) gizlendi.
- * FIX: İl seçimi yapıldığında harita otomatik olarak o koordinata odaklanır.
+ * @description Transport 245 Performans Optimize Harita Motoru.
+ * FIX: React.memo ile sarmallanarak gereksiz re-render (ve iOS crash) engellendi.
+ * FIX: Google Maps link yapısı düzeltildi.
+ * PERFORMANS: Ağır animasyonlar ve gölge hesaplamaları iOS WebView için hafifletildi.
  */
 
 'use client';
 
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useState, useMemo, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 // --- ICONS ---
@@ -39,13 +39,10 @@ interface Driver {
   phoneNumber?: string;
   rating?: number;
   website?: string;
-  link?: string;
   location: {
-    coordinates: [number, number]; // [lng, lat]
+    coordinates: [number, number];
   };
-  address?: { city?: string; district?: string; };
   service?: { mainType: string; subType: string; tags: string[]; };
-  pricing?: { openingFee: number; pricePerUnit: number; };
   isCluster?: boolean;
   count?: number;
   expansionZoom?: number;
@@ -62,11 +59,9 @@ interface MapProps {
   onMapClick?: () => void;
 }
 
-// --- SERVİS YAPILANDIRMASI ---
 const SERVICE_CONFIG: any = {
   oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
   vinc:         { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },
-  kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },
   nakliye:      { color: '#9333ea', Icon: Truck, label: 'Nakliye' },
   evden_eve:    { color: '#a855f7', Icon: Home, label: 'Evden Eve' },
   tir:          { color: '#7e22ce', Icon: Truck, label: 'TIR' },
@@ -75,46 +70,39 @@ const SERVICE_CONFIG: any = {
   yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },
   istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
   seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Mobil Şarj' },
-  minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
-  otobus:       { color: '#059669', Icon: Bus, label: 'Otobüs' },
-  midibus:      { color: '#047857', Icon: Bus, label: 'Midibüs' },
-  vip_tasima:   { color: '#064e3b', Icon: Crown, label: 'VIP Transfer' },
-  yolcu:        { color: '#10b981', Icon: Users, label: 'Yolcu Taşıma' },
   other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
 };
 
-// --- İKON GENERATORLARI ---
+// --- İKON ÜRETİCİLERİ ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const baseSize = isActive ? 56 : Math.max(36, Math.min(48, zoom * 2.8)); 
-  const iconHtml = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
+  const baseSize = isActive ? 52 : Math.max(34, Math.min(44, zoom * 2.8)); 
+  const iconMarkup = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
 
   return L.divIcon({
-    className: `custom-pin-marker ${isActive ? 'z-[2000]' : ''}`,
+    className: `custom-pin-marker ${isActive ? 'active-z' : ''}`,
     html: `
       <div style="
         background-color: ${isActive ? '#16a34a' : config.color}; 
         width: ${baseSize}px; height: ${baseSize}px; 
         border-radius: 50% 50% 50% 0; transform: rotate(-45deg); 
-        border: ${isActive ? '4px' : '2px'} solid white; 
-        box-shadow: ${isActive ? '0 0 30px rgba(22,163,74,0.6)' : '0 4px 12px rgba(0,0,0,0.25)'}; 
-        display: flex; align-items: center; justify-content: center;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        border: 2px solid white; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        display: flex; align-items: center; justify-content: center;">
         <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
-          ${iconHtml}
+          ${iconMarkup}
         </div>
       </div>
     `,
     iconSize: [baseSize, baseSize], 
-    iconAnchor: [baseSize / 2, baseSize],
-    popupAnchor: [0, -baseSize] 
+    iconAnchor: [baseSize / 2, baseSize]
   });
 };
 
 const createClusterIcon = (count: number, type: string) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const size = 44 + (Math.min(count, 50) / 50) * 14;
-  const iconHtml = renderToStaticMarkup(<config.Icon size={size * 0.35} color="white" strokeWidth={3} />);
+  const size = 42;
+  const iconMarkup = renderToStaticMarkup(<config.Icon size={size * 0.35} color="white" strokeWidth={3} />);
 
   return L.divIcon({
     className: 'custom-cluster-marker',
@@ -122,11 +110,11 @@ const createClusterIcon = (count: number, type: string) => {
       <div style="
         background-color: ${config.color}; 
         width: ${size}px; height: ${size}px; 
-        border-radius: 50%; border: 3px solid rgba(255,255,255,0.9);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        border-radius: 50%; border: 2px solid white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <div style="margin-bottom: -2px;">${iconHtml}</div>
-        <div style="font-weight: 900; font-size: ${size * 0.28}px; color: white; line-height: 1; letter-spacing: -0.5px;">${count}</div>
+        <div style="margin-bottom: -2px;">${iconMarkup}</div>
+        <div style="font-weight: 900; font-size: 11px; color: white;">${count}</div>
       </div>
     `,
     iconSize: [size, size],
@@ -134,7 +122,7 @@ const createClusterIcon = (count: number, type: string) => {
   });
 };
 
-// --- HARİTA KONTROLLERİ ---
+// --- HARİTA KONTROL BİLEŞENLERİ ---
 function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   const map = useMapEvents({
     zoomend: () => onZoomChange(map.getZoom()),
@@ -152,19 +140,20 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
   const map = useMap();
   useEffect(() => {
     if (activeDriverCoords) {
-      map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
+      map.flyTo(activeDriverCoords, 16, { animate: true, duration: 1 });
     } else if (coords) {
-      map.flyTo(coords, 12, { duration: 1.5 });
+      map.flyTo(coords, 12, { animate: true, duration: 1.2 });
     }
   }, [coords, activeDriverCoords, map]);
   return null;
 }
 
-// --- ANA BİLEŞEN ---
-export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
+// --- ANA BİLEŞEN (MEMOİZE EDİLMİŞ) ---
+const Map = ({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) => {
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
-  const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
+  
+  const initialCenter = useMemo(() => searchCoords || [39.9334, 32.8597] as [number, number], []);
 
   const activeDriverCoords = useMemo(() => {
     const d = drivers.find(d => d._id === activeDriverId);
@@ -173,26 +162,22 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
   const hiddenCategories = ['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'];
 
+  // --- KÜMELEME MANTIĞI ---
   const visibleMarkers = useMemo(() => {
     const mapDrivers = drivers.filter(d => !hiddenCategories.includes(d.service?.subType || ''));
-
     if (!mapDrivers.length) return [];
     if (currentZoom >= 12) return mapDrivers.map(d => ({ ...d, isCluster: false }));
 
     const result: Driver[] = [];
     const processed = new Set<string>();
-    const threshold = 100 / Math.pow(2, currentZoom); 
+    const threshold = 120 / Math.pow(2, currentZoom); 
 
     mapDrivers.forEach((d) => {
       if (processed.has(d._id) || d._id === activeDriverId) return;
       
       const currentSubType = d.service?.subType;
-
-      // 🔥 FIX: clusterGroup filtresine 'subType' kontrolü eklendi
       const clusterGroup = mapDrivers.filter(other => {
         if (processed.has(other._id) || other._id === activeDriverId) return false;
-        
-        // Sadece aynı subType olanları kümele
         if (other.service?.subType !== currentSubType) return false;
 
         const distLat = Math.abs(d.location.coordinates[1] - other.location.coordinates[1]);
@@ -226,18 +211,24 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
   }, [drivers, currentZoom, activeDriverId]);
 
   return (
-    <div className="absolute inset-0 w-full h-full z-0 bg-[#f0f4f8]">
-      <MapContainer center={initialCenter} zoom={currentZoom} zoomControl={false} className="w-full h-full" minZoom={5} maxZoom={18}>
-        <TileLayer attribution='© CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+    <div className="absolute inset-0 w-full h-full z-0 bg-[#f8fafc]">
+      <MapContainer 
+        center={initialCenter} 
+        zoom={currentZoom} 
+        zoomControl={false} 
+        className="w-full h-full"
+        preferCanvas={true} // 🔥 GPU PERFORMANSI İÇİN KRİTİK
+      >
+        <TileLayer attribution='© CartoDB' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
         <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
 
         {searchCoords && (
           <Marker position={searchCoords} icon={L.divIcon({
-            className: 'user-loc',
-            html: `<div style="background-color:#2563eb; width:20px; height:20px; border-radius:50%; border:4px solid white; box-shadow:0 0 20px rgba(37,99,235,0.7); animation:pulse 2s infinite;"></div>`,
-            iconSize: [20, 20], iconAnchor: [10, 10]
+            className: 'user-loc-marker',
+            html: `<div style="background-color:#2563eb; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 15px rgba(37,99,235,0.5);"></div>`,
+            iconSize: [16, 16], iconAnchor: [8, 8]
           })} />
         )}
 
@@ -245,13 +236,14 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
           const pos: [number, number] = [item.location.coordinates[1], item.location.coordinates[0]];
           const subType = item.service?.subType || '';
           
-          if (hiddenCategories.includes(subType)) return null;
-
           if (item.isCluster) {
             return (
-              <Marker key={item._id} position={pos} 
+              <Marker 
+                key={item._id} 
+                position={pos} 
                 icon={createClusterIcon(item.count || 0, item.clusterServiceType || 'other')}
-                eventHandlers={{ click: (e) => e.target._map.flyTo(pos, item.expansionZoom) }} />
+                eventHandlers={{ click: (e) => e.target._map.flyTo(pos, item.expansionZoom) }} 
+              />
             );
           }
 
@@ -265,49 +257,47 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
               icon={createCustomIcon(subType, currentZoom, isActive)}
               ref={(el) => { 
                 markerRefs.current[item._id] = el;
-                if (el && isActive) setTimeout(() => el.openPopup(), 200);
+                if (el && isActive) setTimeout(() => el.openPopup(), 100);
               }}
               eventHandlers={{ click: () => onSelectDriver(item._id) }}
             >
-              <Popup className="custom-leaflet-popup" minWidth={280} closeButton={false}>
-                <div className="p-1 font-sans text-gray-900">
-                  <div className="flex justify-between items-start mb-2.5">
-                    <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
+              <Popup className="custom-leaflet-popup" minWidth={260} closeButton={false}>
+                <div className="p-1 font-sans">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9px] font-black text-white px-2 py-0.5 rounded uppercase" style={{ backgroundColor: config.color }}>
                       {config.label}
                     </span>
-                    {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
+                    {item.distance && <span className="text-[9px] font-bold text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
                   </div>
                   
-                  <h4 className="font-black text-slate-900 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
+                  <h4 className="font-black text-gray-900 text-sm uppercase mb-1">{item.businessName}</h4>
                   
-                  <div className="flex items-center gap-0.5 mb-4">
+                  <div className="flex items-center gap-0.5 mb-3">
                     {[1,2,3,4,5].map(s => (
-                      <Star key={s} size={11} className={s <= (item.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+                      <Star key={s} size={10} className={s <= (item.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
                     ))}
-                    <span className="text-[10px] font-bold text-gray-400 ml-1">({item.rating || 5}.0)</span>
                   </div>
                   
-                  <div className="flex gap-2 border-t border-gray-100 pt-3.5">
+                  <div className="flex gap-2 border-t pt-3">
                     <button 
                       onClick={() => { onStartOrder(item, 'call'); window.location.href=`tel:${item.phoneNumber}`; }}
-                      className="flex-1 bg-gray-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
+                      className="flex-1 bg-gray-900 text-white py-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"
                     >
-                      <Phone size={13} /> ARA
+                      <Phone size={12} /> ARA
                     </button>
-                    
                     <button 
                       onClick={() => window.location.href=`sms:${item.phoneNumber}`}
-                      className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
+                      className="flex-1 bg-green-600 text-white py-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"
                     >
-                      <MessageCircle size={13} /> MESAJ AT
+                      <MessageCircle size={12} /> SMS
                     </button>
                   </div>
                   
                   <button 
-                    onClick={() => window.open(`https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
-                    className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+                    onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+                    className="w-full mt-2 bg-gray-100 text-gray-500 py-2 rounded-lg text-[8px] font-black uppercase flex items-center justify-center gap-2"
                   >
-                    <MapPin size={12} /> HARİTADA GÖSTER
+                    <MapPin size={10} /> YOL TARİFİ
                   </button>
                 </div>
               </Popup>
@@ -317,4 +307,13 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
       </MapContainer>
     </div>
   );
-}
+};
+
+// --- 🔥 MEMOİZASYON KARŞILAŞTIRMASI ---
+export default React.memo(Map, (prev, next) => {
+  return (
+    prev.activeDriverId === next.activeDriverId &&
+    prev.drivers === next.drivers &&
+    prev.searchCoords === next.searchCoords
+  );
+});

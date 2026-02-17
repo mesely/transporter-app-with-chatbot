@@ -30,10 +30,12 @@ const config: CapacitorConfig = {
       resizeOnFullScreen: true
     }
   },
-  // 🛠️ Hatalı 'displayName' kaldırıldı, sadece geçerli özellikler kaldı.
   ios: {
     contentInset: 'always',
-    scrollEnabled: true
+    // ✅ Capacitor 4+ sürümlerinde doğru anahtar budur:
+    preferredContentMode: 'mobile',
+    // Bellek yönetimini kolaylaştırmak için kaydırmayı optimize eder
+    scrollEnabled: true,
   }
 };
 
