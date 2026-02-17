@@ -28,7 +28,7 @@ import KVKKModal from '../../components/KVKKModal';
 import ReportModal from '../../components/ReportModal';
 import RatingModal from '../../components/RatingModal';
 
-const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
 
 const BASE_DATA: any = {
   kurtarici: { open: 2000, unit: 45, unitLabel: 'km', label: 'Oto Kurtarma', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },
@@ -89,13 +89,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    const storedName = localStorage.getItem('transporter_user_name');
+    const storedName = localStorage.getItem('Transport_user_name');
     setUserName(storedName || 'Misafir Kullanıcı');
   }, []);
 
   useEffect(() => {
     if (activeTab === 'history') {
-      const myDeviceId = localStorage.getItem('transporter_device_id') || "";
+      const myDeviceId = localStorage.getItem('Transport_device_id') || "";
       setLoading(true);
       fetch(`${API_URL}/orders?customerId=${myDeviceId}`)
         .then(res => res.json())
@@ -106,7 +106,7 @@ export default function SettingsPage() {
   }, [activeTab]);
 
   const handleDeleteAccount = async () => {
-    const customerId = localStorage.getItem('transporter_device_id');
+    const customerId = localStorage.getItem('Transport_device_id');
     if (!customerId) { localStorage.clear(); window.location.href = '/'; return; }
     try {
       const res = await fetch(`${API_URL}/customers/${customerId}`, { method: 'DELETE' });

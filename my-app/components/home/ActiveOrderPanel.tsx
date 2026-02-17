@@ -17,7 +17,7 @@ export default function ActiveOrderPanel({ activeOrder, onComplete, onCancel }: 
   const checkOrderStatus = async () => {
     if (!activeOrder?._id) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://transporter-app-with-chatbot.onrender.com'}/orders/${activeOrder._id}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://Transport-app-with-chatbot.onrender.com'}/orders/${activeOrder._id}`);
       const data = await res.json();
       if (data) {
         if (data.status === 'CANCELLED') { 
@@ -39,7 +39,7 @@ export default function ActiveOrderPanel({ activeOrder, onComplete, onCancel }: 
   const handleCustomerConfirm = async () => {
     // 1. Backend'e "Bu iş bitti" bilgisini gönder
     try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://transporter-app-with-chatbot.onrender.com'}/orders/${activeOrder._id}/status`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://Transport-app-with-chatbot.onrender.com'}/orders/${activeOrder._id}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'COMPLETED' })

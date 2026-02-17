@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
-const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
 
 // --- KOORDİNAT VERİTABANI ---
 const CITY_COORDINATES: Record<string, [number, number]> = {

@@ -17,7 +17,7 @@ import {
   ArrowRight, Settings2
 } from 'lucide-react';
 
-const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
 
 const TURKEY_CITIES = [

@@ -43,7 +43,7 @@ export default function ConnectivityOverlay() {
         {/* HEADER BRANDING */}
         <div className="flex items-center gap-2 mb-8 opacity-40">
            <Bot size={16} className="text-indigo-950" />
-           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-950 italic">Transporter AI</span>
+           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-950 italic">Transport AI</span>
         </div>
 
         {/* MERKEZİ İKON PANELİ */}

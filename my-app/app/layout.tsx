@@ -6,19 +6,19 @@ import { Metadata } from "next";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Transporter 245 | Geleceğin Lojistik Ağı",
-  description: "Kurtarıcı, nakliye ve mobil şarj hizmetlerine anında erişin. Transporter 245 ile lojistik süreçleriniz güvende.",
+  title: "Transport 245 | Geleceğin Lojistik Ağı",
+  description: "Kurtarıcı, nakliye ve mobil şarj hizmetlerine anında erişin. Transport 245 ile lojistik süreçleriniz güvende.",
   openGraph: {
-    title: "Transporter 245 | Geleceğin Lojistik Ağı",
+    title: "Transport 245 | Geleceğin Lojistik Ağı",
     description: "Türkiye'nin en gelişmiş dijital lojistik pazaryeri.",
-    url: "https://Transporter 245.com",
-    siteName: "Transporter 245 AI",
+    url: "https://Transport 245.com",
+    siteName: "Transport 245 AI",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Transporter 245 Önizleme",
+        alt: "Transport 245 Önizleme",
       },
     ],
     locale: "tr_TR",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Transporter 245 | Geleceğin Lojistik Ağı",
+    title: "Transport 245 | Geleceğin Lojistik Ağı",
     description: "Anlık lojistik çözümler ve güvenilir ağ.",
     images: ["/og-image.png"],
   },
@@ -73,7 +73,7 @@ export default function RootLayout({
           
           <div className="mt-8 text-center space-y-3 relative z-10">
             <h1 className="text-slate-900 font-extrabold text-3xl uppercase italic tracking-tighter text-shadow-sm">
-              Transporter 245
+              Transport 245
             </h1>
             <div className="bg-white/50 border border-white/80 backdrop-blur-md px-5 py-2 rounded-2xl shadow-sm inline-block">
                <p className="text-cyan-600 text-[10px] font-black uppercase tracking-[0.4em] leading-none">
@@ -83,7 +83,7 @@ export default function RootLayout({
           </div>
 
           <div className="absolute bottom-10 opacity-20">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">Transporter 245 AI 2026</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">Transport 245 AI 2026</span>
           </div>
         </div>
 

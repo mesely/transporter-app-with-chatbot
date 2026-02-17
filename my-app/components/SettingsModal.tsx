@@ -18,8 +18,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('transporter_user_role');
-    localStorage.removeItem('transporter_provider_id');
+    localStorage.removeItem('Transporter_user_role');
+    localStorage.removeItem('Transporter_provider_id');
     window.location.reload();
   };
 

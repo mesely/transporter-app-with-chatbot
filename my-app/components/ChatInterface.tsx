@@ -1,6 +1,6 @@
 /**
  * @file ChatInterface.tsx
- * @description Transporter AI - Bakım ve Geliştirme Modu.
+ * @description Transport AI - Bakım ve Geliştirme Modu.
  * Bu sayfa geçici olarak kullanıma kapatılmıştır.
  */
 
@@ -26,7 +26,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
             <Bot className="text-white w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-white font-black text-xs uppercase italic tracking-tighter leading-none">Transporter AI</h3>
+            <h3 className="text-white font-black text-xs uppercase italic tracking-tighter leading-none">Transport AI</h3>
             <p className="text-cyan-400 text-[9px] font-bold uppercase mt-1 tracking-widest">Geliştirme Aşamasında</p>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
       {/* FOOTER BİLGİ */}
       <div className="p-8 text-center z-10">
         <p className="text-[9px] text-slate-300 font-bold uppercase tracking-[0.3em]">
-          Transporter AI © 2026 • Güvenli Lojistik Ağı
+          Transport AI © 2026 • Güvenli Lojistik Ağı
         </p>
       </div>
     </div>

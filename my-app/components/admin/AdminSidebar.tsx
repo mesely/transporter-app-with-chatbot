@@ -39,7 +39,7 @@ export default function AdminSidebar({ isOpen, onClose, activeTab, onTabChange }
                  <Box size={20} />
               </div>
               <div>
-                <h2 className="font-black tracking-tighter text-xl uppercase leading-none">Transporter</h2>
+                <h2 className="font-black tracking-tighter text-xl uppercase leading-none">Transport</h2>
                 <span className="text-[8px] font-black text-blue-600 tracking-[0.3em] uppercase">Control Panel</span>
               </div>
            </div>

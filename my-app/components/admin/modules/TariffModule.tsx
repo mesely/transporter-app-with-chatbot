@@ -13,7 +13,7 @@ import {
   Navigation, Loader2, Info, Users, Bus, Crown 
 } from 'lucide-react';
 
-const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
 
 // Frontend ile %100 uyumlu ID ve Konfigürasyon
 const SERVICE_TYPES = [

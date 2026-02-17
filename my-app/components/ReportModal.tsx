@@ -31,7 +31,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
 
   useEffect(() => {
     if (isOpen) {
-      const storedPhone = localStorage.getItem('transporter_user_phone');
+      const storedPhone = localStorage.getItem('Transporter_user_phone');
       if (storedPhone) setPhone(storedPhone);
       setSelectedTags([]); 
       setDetails('');
@@ -51,7 +51,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
     }
 
     setLoading(true);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://transporter-app-with-chatbot.onrender.com';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://Transporter-app-with-chatbot.onrender.com';
     
     const payload = {
       orderId: orderId,
