@@ -28,7 +28,7 @@ import KVKKModal from '../../components/KVKKModal';
 import ReportModal from '../../components/ReportModal';
 import RatingModal from '../../components/RatingModal';
 
-const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
+const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
 const BASE_DATA: any = {
   kurtarici: { open: 2000, unit: 45, unitLabel: 'km', label: 'Oto Kurtarma', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },

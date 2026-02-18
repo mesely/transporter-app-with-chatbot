@@ -20,7 +20,7 @@ import {
   Truck
 } from 'lucide-react';
 
-const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
+const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
 
 const SERVICE_OPTIONS = [

@@ -20,7 +20,7 @@ const Map = dynamic(() => import('../components/Map'), {
   loading: () => <div className="w-full h-full bg-gray-50" />,
 });
 
-const API_URL = 'https://Transport-app-with-chatbot.onrender.com';
+const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
 
 const CATEGORY_MAP: Record<string, string[]> = {
   tir: ['tenteli', 'frigorifik', 'lowbed', 'konteyner', 'acik_kasa'],
