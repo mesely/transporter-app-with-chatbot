@@ -304,11 +304,11 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   </div>
                   
                   <button 
-                    onClick={() => window.open(`https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
-                    className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
-                  >
-                    <MapPin size={12} /> HARİTADA GÖSTER
-                  </button>
+  onClick={() => window.open(`https://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+  className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+>
+  <MapPin size={12} /> HARİTADA GÖSTER
+</button>
                 </div>
               </Popup>
             </Marker>
