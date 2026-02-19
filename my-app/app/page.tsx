@@ -2,18 +2,21 @@
  * @file page.tsx
  * FIX: Sidebar kaldırıldı, yerine Settings butonu eklendi.
  * Settings butonu → /settings sayfasına yönlendiriyor.
+ * FIX: Eski gömülü ScanningLoader kaldırıldı, yeni nesil loader import edildi.
  */
 
 'use client';
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Truck } from 'lucide-react';
 
 import TopBar from '../components/home/TopBar';
 import ActionPanel from '../components/home/ActionPanel';
-
 import ProfileModal from '../components/ProfileModal';
+
+// 🔥 YENİ LOADER'I BURAYA IMPORT EDİYORUZ
+// Not: Dosya yolunu (path) kendi proje yapına göre düzenlemeyi unutma!
+import ScanningLoader from '../components/ScanningLoader'; 
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -28,29 +31,6 @@ const CATEGORY_MAP: Record<string, string[]> = {
   kamyonet: ['panelvan', 'acik_kasa', 'kapali_kasa'],
   yolcu: ['minibus', 'otobus', 'midibus', 'vip_tasima'],
 };
-
-function ScanningLoader({ onFinish }: { onFinish: () => void }) {
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setProgress((p) => (p >= 100 ? 100 : p + 2)), 30);
-    return () => clearInterval(t);
-  }, []);
-  useEffect(() => { if (progress >= 100) onFinish(); }, [progress, onFinish]);
-
-  return (
-    <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center">
-      <div className="bg-gray-50 p-8 rounded-[2.5rem] mb-8 border border-gray-100">
-        <Truck size={40} className="text-blue-600" />
-      </div>
-      <h2 className="text-xl font-black uppercase text-gray-900 tracking-tighter italic">
-        Transport 245
-      </h2>
-      <div className="w-full max-w-[12rem] h-1 bg-gray-100 rounded-full mt-6 overflow-hidden">
-        <div className="h-full bg-blue-600" style={{ width: `${progress}%` }} />
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const [showLoader, setShowLoader] = useState(true);
@@ -68,6 +48,14 @@ export default function Home() {
     renderCount.current++;
     console.log(`[Transport 245] Render: ${renderCount.current}`);
   });
+
+  // 🔥 YENİ LOADER İÇİN ZAMANLAYICI (7.5 Saniye sonra gizler)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowLoader(false);
+    }, 7500); 
+    return () => clearTimeout(timer);
+  }, []);
 
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
     setLoading(true);
@@ -110,7 +98,8 @@ export default function Home() {
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
-      {showLoader && <ScanningLoader onFinish={() => setShowLoader(false)} />}
+      {/* YENİ LOADER ÇAĞRILIYOR */}
+      {showLoader && <ScanningLoader />}
 
       {/* TopBar artık Settings butonu gösteriyor (Sidebar yerine) */}
       <TopBar

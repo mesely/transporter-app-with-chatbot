@@ -247,7 +247,7 @@ export default function ProfilePage() {
         </section>
 
         <div className="flex flex-col items-center gap-6">
-          <label className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border"><input type="checkbox" checked={agreed} onChange={()=>setAgreed(!agreed)}/><span className="text-[10px] font-black uppercase text-gray-600">Sözleşmeyi ve KVKK'yı onaylıyorum.</span></label>
+          <label className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border"><input type="checkbox" checked={agreed} onChange={()=>setAgreed(!agreed)}/><span className="text-[10px] font-black uppercase text-gray-600"><a href="/privacy" onClick={(e)=>{e.preventDefault(); window.open('/privacy','KVKK','width=600,height=800,top=100,left=100,scrollbars=yes,resizable=yes');}} className="underline hover:text-black transition-colors">Sözleşmeyi ve KVKK'yı</a> onaylıyorum.</span></label>
           <button onClick={handleSave} disabled={saving || !agreed} className="w-full max-w-sm py-6 bg-black text-white rounded-[2.5rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 shadow-2xl transition-all">{saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
         </div>
       </div>
