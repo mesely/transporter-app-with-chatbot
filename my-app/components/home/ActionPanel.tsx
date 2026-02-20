@@ -468,6 +468,17 @@ export default function ActionPanel({
                     : (driver.vehicleInfo
                         ? [{ name: driver.vehicleInfo, photoUrls: driver.vehiclePhotos || (driver.photoUrl ? [driver.photoUrl] : []) }]
                         : []);
+                const vehicleCount = vehicleItems.length;
+                const photoCountFromVehicles = vehicleItems.reduce((sum, v) => sum + (Array.isArray(v.photoUrls) ? v.photoUrls.length : 0), 0);
+                const legacyPhotoCount = (driver.vehiclePhotos?.length || 0) + (driver.photoUrl ? 1 : 0);
+                const photoCount = photoCountFromVehicles > 0 ? photoCountFromVehicles : legacyPhotoCount;
+                const hintColorClass = sub.includes('kurtarma') || sub === 'vinc'
+                  ? 'text-red-600'
+                  : isPassenger
+                    ? 'text-emerald-600'
+                    : isStation || isMobileCharge
+                      ? 'text-blue-600'
+                      : 'text-purple-700';
 
                 return (
                 <div
@@ -528,6 +539,12 @@ export default function ActionPanel({
                                     })}
                                   </div>
                                 )}
+
+                                {!isSelected && !isSpecialCategory && (
+                                  <p className={`mt-2 text-[8px] font-black uppercase tracking-wide ${hintColorClass}`}>
+                                    Fiyat Almak İçin Tıkla ve Ara
+                                  </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -547,13 +564,13 @@ export default function ActionPanel({
                           </button>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
+                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2`}><Phone size={14}/> ARA</button>
 
-                          {isSpecialCategory ? (
+                          {!isStation && (isSpecialCategory ? (
                             <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || driver.link || 'https://transport245.com', '_blank'); }} className={`flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 ${iconBg}`}><Globe size={14}/> SİTEYE GİT</button>
                           ) : (
                             <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> MESAJ AT</button>
-                          )}
+                          ))}
                         </div>
 
                         {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
@@ -565,7 +582,7 @@ export default function ActionPanel({
                           </div>
                         )}
 
-                        {vehicleItems.length > 0 && (
+                        {!isStation && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -573,12 +590,13 @@ export default function ActionPanel({
                             }}
                             className="w-full py-3 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase text-gray-700 active:scale-95 transition-all"
                           >
-                            Araçları Görüntüle ({vehicleItems.length})
+                            Araçları Listele ({vehicleCount})
                           </button>
                         )}
 
-                        {activeVehicleCardId === driver._id && vehicleItems.length > 0 && (
+                        {!isStation && activeVehicleCardId === driver._id && (
                           <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 space-y-2">
+                            {vehicleItems.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı araç bilgisi yok.</div>}
                             {vehicleItems.map((vehicle, vIdx) => (
                               <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
                                 <div className="font-black uppercase">{vehicle.name || `Araç ${vIdx + 1}`}</div>
@@ -604,16 +622,25 @@ export default function ActionPanel({
                           </div>
                         )}
 
-                        {(driver.photoUrl || (driver.vehiclePhotos && driver.vehiclePhotos.length > 0)) && activeVehicleCardId !== driver._id && (
+                        {!isStation && activeVehicleCardId !== driver._id && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               const firstPhoto = driver.photoUrl || driver.vehiclePhotos?.[0];
-                              if (firstPhoto) window.open(firstPhoto, '_blank');
+                              if (firstPhoto) {
+                                window.open(firstPhoto, '_blank');
+                                return;
+                              }
+                              const firstVehiclePhoto = vehicleItems.find((v) => Array.isArray(v.photoUrls) && v.photoUrls.length > 0)?.photoUrls?.[0];
+                              if (firstVehiclePhoto) {
+                                window.open(firstVehiclePhoto, '_blank');
+                                return;
+                              }
+                              alert('Kayıtlı fotoğraf bulunmuyor.');
                             }}
                             className="w-full py-3 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-700 active:scale-95 transition-all"
                           >
-                            Fotoğrafları Görüntüle ({(driver.vehiclePhotos?.length || 0) + (driver.photoUrl ? 1 : 0)})
+                            Araç Fotoğraflarını Görüntüle ({photoCount})
                           </button>
                         )}
 

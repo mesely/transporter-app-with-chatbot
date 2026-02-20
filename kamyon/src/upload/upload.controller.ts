@@ -61,20 +61,36 @@ export class UploadController {
     }),
   )
   async uploadVehiclePhoto(@UploadedFile() file: Express.Multer.File) {
-    if (!isCloudinaryConfigured) {
-      throw new BadRequestException(`Cloudinary yapılandırması eksik/hatalı: ${cloudinaryConfigError}`);
-    }
-    if (!file) throw new BadRequestException('Dosya bulunamadı');
+    try {
+      if (!isCloudinaryConfigured) {
+        throw new BadRequestException(`Cloudinary yapılandırması eksik/hatalı: ${cloudinaryConfigError}`);
+      }
+      if (!file) throw new BadRequestException('Dosya bulunamadı');
 
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'transport245/vehicles', resource_type: 'image' },
-        (error, result) => {
-          if (error) return reject(new BadRequestException('Fotoğraf yüklenemedi: ' + error.message));
-          resolve({ url: result.secure_url, publicId: result.public_id });
-        }
-      );
-      uploadStream.end(file.buffer);
-    });
+      return await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'transport245/vehicles',
+            resource_type: 'image',
+            allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+          },
+          (error, result) => {
+            if (error) {
+              reject(new BadRequestException('Fotoğraf yüklenemedi: ' + error.message));
+              return;
+            }
+            if (!result?.secure_url) {
+              reject(new BadRequestException('Fotoğraf URL bilgisi alınamadı.'));
+              return;
+            }
+            resolve({ url: result.secure_url, publicId: result.public_id });
+          }
+        );
+        uploadStream.end(file.buffer);
+      });
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
+    }
   }
 }

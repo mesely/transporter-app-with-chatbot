@@ -56,6 +56,12 @@ export default function ScanningLoader() {
         </div>
       </div>
 
+      <div className="relative z-10 -mt-10 mb-8 px-5 py-3 rounded-2xl bg-white/75 border border-white/80 shadow-lg max-w-[85vw]">
+        <div className="text-[11px] sm:text-xs font-black uppercase tracking-wide text-gray-900 text-center">
+          {messages[messageIndex]}
+        </div>
+      </div>
+
       {/* YÜKLEME BARI */}
       <div className="absolute bottom-24 flex flex-col items-center gap-3 w-72 z-10">
         <div className="w-full h-2 bg-white/40 rounded-full overflow-hidden border border-white/70 shadow-inner">
@@ -63,9 +69,6 @@ export default function ScanningLoader() {
             className="h-full bg-gradient-to-r from-gray-800 via-blue-600 to-gray-900 rounded-full transition-all duration-150 ease-linear"
             style={{ width: `${progress}%` }}
           ></div>
-        </div>
-        <div className="text-[10px] font-black uppercase tracking-wide text-gray-800 text-center bg-white/60 px-3 py-2 rounded-xl border border-white/60 min-h-[38px] flex items-center justify-center">
-          {messages[messageIndex]}
         </div>
       </div>
 
