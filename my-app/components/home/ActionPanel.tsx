@@ -486,6 +486,55 @@ export default function ActionPanel({
                     : isStation || isMobileCharge
                       ? 'text-blue-600'
                       : 'text-purple-700';
+                const theme = sub.includes('kurtarma') || sub === 'vinc'
+                  ? {
+                      grad: 'from-red-500/82 to-rose-700/82',
+                      gradDark: 'from-red-700/86 to-rose-900/86',
+                      soft: 'from-red-400/24 to-rose-500/24',
+                      text: 'text-red-700',
+                      star: 'fill-red-500 text-red-500',
+                      starOff: 'text-red-200',
+                      ring: 'border-rose-400 ring-rose-300/30',
+                    }
+                  : isPassenger
+                    ? {
+                        grad: 'from-emerald-500/82 to-green-700/82',
+                        gradDark: 'from-emerald-700/86 to-green-900/86',
+                        soft: 'from-emerald-400/24 to-green-500/24',
+                        text: 'text-emerald-700',
+                        star: 'fill-emerald-500 text-emerald-500',
+                        starOff: 'text-emerald-200',
+                        ring: 'border-emerald-400 ring-emerald-300/30',
+                      }
+                    : isStation
+                      ? {
+                          grad: 'from-blue-500/82 to-indigo-700/82',
+                          gradDark: 'from-blue-700/86 to-indigo-900/86',
+                          soft: 'from-blue-400/24 to-indigo-500/24',
+                          text: 'text-blue-700',
+                          star: 'fill-blue-500 text-blue-500',
+                          starOff: 'text-blue-200',
+                          ring: 'border-blue-400 ring-blue-300/30',
+                        }
+                      : isMobileCharge
+                        ? {
+                            grad: 'from-cyan-400/82 to-sky-600/82',
+                            gradDark: 'from-cyan-600/86 to-sky-800/86',
+                            soft: 'from-cyan-300/24 to-sky-500/24',
+                            text: 'text-cyan-700',
+                            star: 'fill-cyan-500 text-cyan-500',
+                            starOff: 'text-cyan-200',
+                            ring: 'border-cyan-400 ring-cyan-300/30',
+                          }
+                        : {
+                            grad: 'from-purple-500/82 to-violet-700/82',
+                            gradDark: 'from-purple-700/86 to-violet-900/86',
+                            soft: 'from-purple-400/24 to-violet-500/24',
+                            text: 'text-purple-700',
+                            star: 'fill-purple-500 text-purple-500',
+                            starOff: 'text-purple-200',
+                            ring: 'border-purple-400 ring-purple-300/30',
+                          };
 
                 return (
                 <div
@@ -506,17 +555,17 @@ export default function ActionPanel({
                             }
                         }
                     }}
-                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer active:scale-[0.98] relative ${isSelected ? 'border-rose-400 ring-2 ring-rose-300/30' : 'border-white/40'}`}
+                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer active:scale-[0.98] relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >
                     {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
                       <div className="absolute top-4 right-4 text-right">
-                        <div className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-rose-500/85 to-red-600/85 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm">
+                        <div className={`px-2.5 py-1 rounded-xl bg-gradient-to-r ${theme.grad} backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm`}>
                           Doğrulanmış Fiyat
                         </div>
-                        <div className="mt-1 text-[11px] font-black text-red-700">
+                        <div className={`mt-1 text-[11px] font-black ${theme.text}`}>
                           ₺{Number(driver.pricing.pricePerUnit).toFixed(0)} / {['istasyon', 'seyyar_sarj'].includes(driver.service?.subType) ? 'kW' : 'km'}
                         </div>
-                        <div className="text-[8px] font-bold text-red-500 uppercase">
+                        <div className={`text-[8px] font-bold uppercase ${theme.text}`}>
                           {new Date(driver.updatedAt || Date.now()).toLocaleDateString('tr-TR', { month: '2-digit', year: 'numeric' })}
                         </div>
                       </div>
@@ -531,7 +580,7 @@ export default function ActionPanel({
                                     {formatTitle(driver.businessName)}
                                 </h4>
                                 <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                    {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-red-500 text-red-500' : 'text-red-200'}/>)}
+                                    {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
 
                                     {!isSpecialCategory && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1 shrink-0">{(driver.distance / 1000).toFixed(1)} km</span>}
 
@@ -578,16 +627,16 @@ export default function ActionPanel({
                               const lng = driver.location?.coordinates?.[0];
                               if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
                             }}
-                            className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r from-red-400/70 to-rose-700/70 backdrop-blur-xl transition-transform"
+                            className={`w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r ${theme.grad} backdrop-blur-xl transition-transform`}
                           >
                             <MapIcon size={16} /> GOOGLE MAPS'TE AÇ
                           </button>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r from-rose-500/82 to-red-700/82 backdrop-blur-xl`}><Phone size={14}/> ARA</button>
+                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r ${theme.grad} backdrop-blur-xl`}><Phone size={14}/> ARA</button>
 
                           {!isStation && (
-                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 bg-gradient-to-r from-red-500/82 to-rose-700/82 backdrop-blur-xl"><MessageCircle size={14}/> MESAJ AT</button>
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className={`flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 bg-gradient-to-r ${theme.gradDark} backdrop-blur-xl`}><MessageCircle size={14}/> MESAJ AT</button>
                           )}
                         </div>
 
@@ -598,7 +647,7 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-red-500/84 to-rose-700/84 backdrop-blur-xl"
+                              className={`flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r ${theme.grad} backdrop-blur-xl`}
                             >
                               Araçları Listele ({vehicleCount})
                             </button>
@@ -607,7 +656,7 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-red-500/82 to-rose-700/82 backdrop-blur-xl"
+                              className={`flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r ${theme.gradDark} backdrop-blur-xl`}
                             >
                               Araç Fotoğraflarını Görüntüle ({photoCount})
                             </button>
@@ -615,7 +664,7 @@ export default function ActionPanel({
                         )}
 
                         {!isStation && activeVehicleCardId === driver._id && (
-                          <div className="bg-white/65 border border-white/60 rounded-2xl p-3 space-y-2 backdrop-blur-xl">
+                          <div className={`bg-gradient-to-r ${theme.soft} border border-white/60 rounded-2xl p-3 space-y-2 backdrop-blur-xl`}>
                             {vehicleItems.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı araç bilgisi yok.</div>}
                             {vehicleItems.map((vehicle, vIdx) => (
                               <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
@@ -642,7 +691,7 @@ export default function ActionPanel({
                         )}
 
                         {!isStation && activePhotoCardId === driver._id && (
-                          <div className="bg-white/70 border border-white/60 rounded-2xl p-3 backdrop-blur-xl">
+                          <div className={`bg-gradient-to-r ${theme.soft} border border-white/60 rounded-2xl p-3 backdrop-blur-xl`}>
                             {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
                             {uniquePhotoUrls.length > 0 && (
                               <div className="grid grid-cols-3 gap-2">
@@ -660,7 +709,7 @@ export default function ActionPanel({
                         <div className="pt-4 border-t border-gray-100">
                           <div className="text-[8px] font-black text-gray-400 uppercase mb-3 tracking-widest">Değerlendirmeler &amp; Şikayetler</div>
                           <div className="flex items-center gap-1 mb-3">
-                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= (driver.rating || 0) ? 'fill-red-500 text-red-500' : 'text-red-200'}/>)}
+                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
                             <span className="text-[9px] text-gray-500 font-bold ml-1">
                               {driver.rating ? `${Number(driver.rating).toFixed(1)} Puan` : 'Henüz değerlendirilmedi'}
                             </span>
@@ -673,7 +722,7 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowRatingsModal(true);
                               }}
-                              className="flex-1 py-3 bg-gradient-to-r from-red-500/84 to-rose-700/84 border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
+                              className={`flex-1 py-3 bg-gradient-to-r ${theme.grad} border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
                             >
                               <Star size={12}/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
                             </button>
@@ -684,7 +733,7 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowReportsModal(true);
                               }}
-                              className="flex-1 py-3 bg-gradient-to-r from-red-700/84 to-rose-900/84 border border-white/35 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
+                              className={`flex-1 py-3 bg-gradient-to-r ${theme.gradDark} border border-white/35 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
                             >
                               Şikayetleri Görüntüle ({driver.reportCount || 0})
                             </button>
