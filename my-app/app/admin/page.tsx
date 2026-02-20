@@ -62,7 +62,7 @@ export default function AdminPage() {
 
   // --- ANA PANEL EKRANI ---
   return (
-    <div className="flex h-screen bg-[#f8fafc] overflow-hidden">
+    <div className="flex h-screen bg-[#8ccde6] overflow-hidden">
       <AdminSidebar 
         isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} 
         activeTab={activeTab} onTabChange={setActiveTab} 

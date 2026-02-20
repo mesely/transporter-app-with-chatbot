@@ -7,6 +7,7 @@
  * FIX: Telefon numarası çakışmasında onay verilirse, mevcut kaydı girdiğiniz bilgilerle anında günceller.
  * FIX: 'evden_eve' mainType 'NAKLIYE' yapıldı.
  * FIX: Google Maps Geocoding API ve koordinat kontrolleri korundu.
+ * UPDATE: Arka plan #8ccde6 rengine çevrildi, tasarıma Glassmorphism eklendi. Seçili olmayan ikonlar turkuaz rengine çevrildi.
  */
 
 'use client';
@@ -14,7 +15,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Loader2, ShieldCheck, X, Anchor, CarFront, 
-  Zap, Navigation, Globe, Home, Package, Container,
+  Zap, Globe, Home, Package, Container,
   Snowflake, Box, Layers, Archive, Check, Settings2, Wallet, 
   ArrowRight, Users, Bus, Crown, LocateFixed,
   Truck
@@ -53,22 +54,22 @@ const SERVICE_OPTIONS = [
       { id: 'midibus', label: 'MİDİBÜS', icon: Bus },
       { id: 'vip_tasima', label: 'VIP TRANSFER', icon: Crown }
   ]},
-  { id: 'istasyon', label: 'İSTASYON', icon: Navigation, color: 'blue', subs: [] },
+  { id: 'istasyon', label: 'İSTASYON', icon: Zap, color: 'blue', subs: [] },
   { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'cyan', subs: [] },
 ];
 
 const getColorClasses = (colorName: string, isSelected: boolean) => {
   const base: any = {
-    red:    isSelected ? 'bg-red-700 text-white' : 'bg-white text-red-700 border-red-50',
-    rose:   isSelected ? 'bg-rose-700 text-white' : 'bg-white text-rose-700 border-rose-50',
-    indigo: isSelected ? 'bg-indigo-700 text-white' : 'bg-white text-indigo-700 border-indigo-50',
-    violet: isSelected ? 'bg-violet-700 text-white' : 'bg-white text-violet-700 border-violet-50',
-    purple: isSelected ? 'bg-purple-700 text-white' : 'bg-white text-purple-700 border-purple-50',
-    fuchsia: isSelected ? 'bg-fuchsia-700 text-white' : 'bg-white text-fuchsia-700 border-fuchsia-50',
-    pink:   isSelected ? 'bg-pink-700 text-white' : 'bg-white text-pink-700 border-pink-50',
-    blue:   isSelected ? 'bg-blue-700 text-white' : 'bg-white text-blue-700 border-blue-50',
-    cyan:   isSelected ? 'bg-cyan-600 text-white' : 'bg-white text-cyan-700 border-cyan-50',
-    emerald: isSelected ? 'bg-emerald-700 text-white' : 'bg-white text-emerald-700 border-emerald-50',
+    red:    isSelected ? 'bg-red-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    rose:   isSelected ? 'bg-rose-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    indigo: isSelected ? 'bg-indigo-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    violet: isSelected ? 'bg-violet-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    purple: isSelected ? 'bg-purple-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    fuchsia: isSelected ? 'bg-fuchsia-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    pink:   isSelected ? 'bg-pink-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    blue:   isSelected ? 'bg-blue-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    cyan:   isSelected ? 'bg-cyan-600 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
+    emerald: isSelected ? 'bg-emerald-700 text-white border-transparent' : 'bg-white/60 text-[#00c5c0] border-white/40',
   };
   return base[colorName] || base.blue;
 };
@@ -181,27 +182,27 @@ export default function ProfilePage() {
     } catch { alert("Hata!"); } finally { setSaving(false); }
   };
 
-  if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-white z-[9999] font-black text-xs uppercase text-gray-400"><Loader2 className="animate-spin mr-2"/> Yükleniyor...</div>;
+  if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-[#8ccde6] z-[9999] font-black text-xs uppercase text-gray-800"><Loader2 className="animate-spin mr-2"/> Yükleniyor...</div>;
 
   if (isSaved) return (
-    <div className="fixed inset-0 w-full h-full bg-[#f8fafc] overflow-y-auto p-6 text-center text-gray-900">
+    <div className="fixed inset-0 w-full h-full bg-[#8ccde6] overflow-y-auto p-6 text-center text-gray-900">
       <div className="max-w-2xl mx-auto space-y-8 pt-10">
-        <div className="bg-green-50 p-10 rounded-[3rem] shadow-xl"><ShieldCheck size={60} className="text-green-500 mx-auto mb-4" /><h1 className="text-3xl font-black uppercase text-green-900">Profil Güncellendi</h1></div>
-        <button onClick={() => window.location.href = '/'} className="w-full py-5 bg-black text-white rounded-[2rem] font-black uppercase text-xs">Haritaya Dön</button>
-        <button onClick={() => setIsSaved(false)} className="text-blue-600 font-black text-xs uppercase underline">Bilgileri Tekrar Düzenle</button>
+        <div className="bg-white/60 backdrop-blur-xl border border-white/40 p-10 rounded-[3rem] shadow-xl"><ShieldCheck size={60} className="text-green-600 mx-auto mb-4" /><h1 className="text-3xl font-black uppercase text-green-900">Profil Güncellendi</h1></div>
+        <button onClick={() => window.location.href = '/'} className="w-full py-5 bg-black text-white rounded-[2rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-transform">Haritaya Dön</button>
+        <button onClick={() => setIsSaved(false)} className="text-gray-800 font-black text-xs uppercase underline hover:text-black transition-colors">Bilgileri Tekrar Düzenle</button>
       </div>
     </div>
   );
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#f8fafc] overflow-y-auto p-6 text-gray-900">
+    <div className="fixed inset-0 w-full h-full bg-[#8ccde6] overflow-y-auto p-6 text-gray-900">
       <div className="w-full max-w-5xl mx-auto space-y-10 pb-32">
-        <header><div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase w-fit mb-3">Transport 245</div><h1 className="text-4xl font-black uppercase italic">{existingId ? 'GÜNCELLE' : 'KAYIT PANELİ'}</h1></header>
+        <header><div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase w-fit mb-3 shadow-md">Transport 245</div><h1 className="text-4xl font-black uppercase italic text-gray-900 drop-shadow-sm">{existingId ? 'GÜNCELLE' : 'KAYIT PANELİ'}</h1></header>
         
-        <section className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-           <input value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="bg-gray-50 p-5 rounded-2xl font-black text-sm outline-none" placeholder="İşletme Adı"/>
-           <input value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="bg-gray-50 p-5 rounded-2xl font-black text-sm outline-none" placeholder="Tel (05...)"/>
-           <input value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="bg-gray-50 p-5 rounded-2xl font-black text-sm outline-none md:col-span-2" placeholder="E-Posta"/>
+        <section className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 grid grid-cols-1 md:grid-cols-2 gap-6">
+           <input value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="İşletme Adı"/>
+           <input value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="Tel (05...)"/>
+           <input value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors md:col-span-2" placeholder="E-Posta"/>
         </section>
 
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -220,9 +221,15 @@ export default function ProfilePage() {
                      }
                    }
                  }} 
-                 className={`p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all flex flex-col items-center text-center ${isSelected ? getColorClasses(opt.color, true) : 'bg-white border-gray-50 text-gray-400'}`}
+                 className={`p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all flex flex-col items-center justify-center text-center shadow-md backdrop-blur-md ${isSelected ? getColorClasses(opt.color, true) : 'bg-white/60 border-white/40 text-[#00c5c0] hover:bg-white/80'}`}
                >
-                  <opt.icon size={42} className="mb-4" />
+                  {/* SEyyar Şarj İkon Mantığı Güncellemesi */}
+                  {opt.id === 'seyyar_sarj' ? (
+                     <img src="/icons/GeziciIcon.png" className={`w-10 h-10 mb-4 object-contain ${isSelected ? 'invert brightness-200' : 'opacity-80'}`} style={!isSelected ? { filter: 'sepia(1) hue-rotate(130deg) saturate(3) brightness(0.8)' } : {}} alt="Mobil Şarj" />
+                  ) : (
+                     <opt.icon size={42} strokeWidth={1} className="mb-4" />
+                  )}
+                  
                   <span className="text-[11px] font-black uppercase">{opt.label}</span>
                   {isSelected && opt.subs.length > 0 && (
                     <button 
@@ -230,7 +237,7 @@ export default function ProfilePage() {
                         e.stopPropagation(); 
                         setActiveFolder(opt.id);
                       }} 
-                      className="mt-4 bg-black text-white px-4 py-1 rounded-xl text-[9px] font-black"
+                      className="mt-4 bg-black text-white px-4 py-1.5 rounded-xl text-[9px] font-black shadow-lg"
                     >
                       ÖZELLİKLER
                     </button>
@@ -240,38 +247,36 @@ export default function ProfilePage() {
            })}
         </section>
 
-        <section className="bg-white p-8 rounded-[2.5rem] shadow-xl border grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-50 p-4 rounded-2xl border flex divide-x"><div className="flex-1 px-2"><label className="text-[8px] font-black uppercase text-gray-400">Açılış</label><input type="number" value={formData.openingFee} onChange={e=>setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div><div className="flex-1 px-2"><label className="text-[8px] font-black uppercase text-gray-400">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div></div>
-          <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-gray-50 p-5 rounded-2xl font-black text-xs outline-none">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-gray-50 p-5 rounded-2xl font-black text-xs outline-none">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
-          <textarea placeholder="MAHALLE, SOKAK, CADDE..." value={formData.streetAddress} className="bg-gray-50 p-6 rounded-3xl font-bold text-sm h-24 outline-none md:col-span-2" onChange={e=>setFormData({...formData, streetAddress: e.target.value})}/>
+        <section className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40 flex divide-x divide-white/40 shadow-sm"><div className="flex-1 px-2"><label className="text-[8px] font-black uppercase text-[#00c5c0]">Açılış</label><input type="number" value={formData.openingFee} onChange={e=>setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/></div><div className="flex-1 px-2"><label className="text-[8px] font-black uppercase text-[#00c5c0]">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/></div></div>
+          <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+          <textarea placeholder="MAHALLE, SOKAK, CADDE..." value={formData.streetAddress} className="bg-white/50 backdrop-blur-sm border border-white/40 p-6 rounded-3xl font-bold text-sm h-24 outline-none md:col-span-2 placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" onChange={e=>setFormData({...formData, streetAddress: e.target.value})}/>
         </section>
 
         <div className="flex flex-col items-center gap-6">
-          <label className="flex items-center gap-3 bg-white px-8 py-4 rounded-3xl border"><input type="checkbox" checked={agreed} onChange={()=>setAgreed(!agreed)}/><span className="text-[10px] font-black uppercase text-gray-600"><a href="/privacy" onClick={(e)=>{e.preventDefault(); window.open('/privacy','KVKK','width=600,height=800,top=100,left=100,scrollbars=yes,resizable=yes');}} className="underline hover:text-black transition-colors">Sözleşmeyi ve KVKK'yı</a> onaylıyorum.</span></label>
-          <button onClick={handleSave} disabled={saving || !agreed} className="w-full max-w-sm py-6 bg-black text-white rounded-[2.5rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 shadow-2xl transition-all">{saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
+          <label className="flex items-center gap-3 bg-white/60 backdrop-blur-xl px-8 py-4 rounded-3xl border border-white/50 shadow-md cursor-pointer"><input type="checkbox" checked={agreed} onChange={()=>setAgreed(!agreed)} className="w-4 h-4"/><span className="text-[10px] font-black uppercase text-[#3d686b]"><a href="/privacy" onClick={(e)=>{e.preventDefault(); window.open('/privacy','KVKK','width=600,height=800,top=100,left=100,scrollbars=yes,resizable=yes');}} className="underline hover:text-black transition-colors">Sözleşmeyi ve KVKK'yı</a> onaylıyorum.</span></label>
+          <button onClick={handleSave} disabled={saving || !agreed} className={`w-full max-w-sm py-6 bg-black text-white rounded-[2.5rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 shadow-2xl transition-all ${(!agreed || saving) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-900'}`}>{saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
         </div>
       </div>
 
       {activeFolder && (
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4">
-          {/* 🔥 DIŞARI TIKLAYINCA KAPANMA ALANI */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setActiveFolder(null)}></div>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setActiveFolder(null)}></div>
           
-          <div className="relative w-full sm:max-w-xl bg-gray-100 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl overflow-hidden">
-            {/* 🔥 MODAL HEADER & KAPATMA BUTONU */}
+          <div className="relative w-full sm:max-w-xl bg-white/80 backdrop-blur-2xl border border-white/50 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:fade-in-10">
             <div className="flex justify-between items-center mb-8">
-               <h2 className="text-2xl font-black uppercase italic">Özellik Seçimi</h2>
+               <h2 className="text-2xl font-black uppercase italic text-gray-900">Özellik Seçimi</h2>
                <button 
                  onClick={() => setActiveFolder(null)} 
-                 className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-gray-200 transition-all"
+                 className="w-10 h-10 bg-white/50 border border-white/60 rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-all active:scale-90"
                >
-                 <X size={20} className="text-gray-400" />
+                 <X size={20} className="text-gray-600" />
                </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               {SERVICE_OPTIONS.find(s=>s.id===activeFolder)?.subs.map(sub=>(
-                <button key={sub.id} onClick={()=>setFormData({...formData, filterTags: formData.filterTags.includes(sub.id) ? formData.filterTags.filter(t=>t!==sub.id) : [...formData.filterTags, sub.id]})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 ${formData.filterTags.includes(sub.id) ? 'bg-slate-900 text-white border-transparent' : 'bg-white border-gray-100 text-gray-400'}`}><sub.icon size={28}/><span className="text-[10px] font-black uppercase">{sub.label}</span></button>
+                <button key={sub.id} onClick={()=>setFormData({...formData, filterTags: formData.filterTags.includes(sub.id) ? formData.filterTags.filter(t=>t!==sub.id) : [...formData.filterTags, sub.id]})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 shadow-sm ${formData.filterTags.includes(sub.id) ? 'bg-slate-900 text-white border-transparent shadow-lg scale-[1.02]' : 'bg-white/60 backdrop-blur-md border-white/40 text-[#00c5c0] hover:bg-white/80'}`}><sub.icon size={28}/><span className="text-[10px] font-black uppercase">{sub.label}</span></button>
               ))}
             </div>
             <button onClick={()=>setActiveFolder(null)} className="w-full py-5 bg-black text-white rounded-[1.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">SEÇİMİ TAMAMLA</button>

@@ -3,6 +3,7 @@
  * @description Transport 245 Yönetici Paneli - Tarife Yönetimi.
  * GÜNCELLEME: Yolcu Taşıma (Minibüs, Otobüs, VIP) eklendi.
  * GÜNCELLEME: Mobil Şarj ve İstasyon isimlendirmeleri frontend ile eşitlendi.
+ * UPDATE: Tasarıma Glassmorphism eklendi, ikonlar inceltildi (strokeWidth={1.5}), turkuaz (#49b5c2) tema eklendi ve Mobil Şarj ikonu güncellendi.
  */
 
 'use client';
@@ -68,16 +69,16 @@ export default function TariffModule() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in bg-[8ccde6] duration-700">
       {/* Üst Bilgi Kartı */}
-      <div className="bg-white/20 backdrop-blur-2xl p-10 rounded-[3rem] border border-white/40 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="bg-white/60 backdrop-blur-xl p-10 rounded-[3rem] border border-white/50 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-center md:text-left">
-          <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none">Global Tarifeler</h2>
-          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[0.3em] mt-3">Transport 245 Birim Maliyet Yönetimi</p>
+          <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none drop-shadow-sm">Global Tarifeler</h2>
+          <p className="text-[11px] text-[#49b5c2] font-bold uppercase tracking-[0.3em] mt-3">Transport 245 Birim Maliyet Yönetimi</p>
         </div>
-        <div className="flex items-center gap-3 bg-blue-500/10 px-6 py-3 rounded-2xl border border-blue-500/20">
-          <Info size={18} className="text-blue-600" />
-          <span className="text-[10px] font-black text-blue-700 uppercase">Fiyatlar anlık senkronize edilir</span>
+        <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm px-6 py-3 rounded-2xl border border-white/40 shadow-sm">
+          <Info size={18} strokeWidth={1.5} className="text-[#49b5c2]" />
+          <span className="text-[10px] font-black text-gray-700 uppercase">Fiyatlar anlık senkronize edilir</span>
         </div>
       </div>
 
@@ -85,35 +86,39 @@ export default function TariffModule() {
         {SERVICE_TYPES.map((service) => {
           const dbTariff = tariffs.find(t => t.serviceType === service.id);
           return (
-            <div key={service.id} className="group relative bg-white/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.05)] hover:shadow-2xl hover:bg-white/60 transition-all duration-500 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div key={service.id} className="group relative bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-500 flex flex-col lg:flex-row items-center justify-between gap-8">
               
               <div className="flex items-center gap-6 w-full lg:w-auto">
-                <div className={`w-20 h-20 ${service.color} ${service.shadow} text-white rounded-3xl flex items-center justify-center shadow-2xl group-hover:rotate-6 transition-transform duration-500`}>
-                  <service.icon size={36} strokeWidth={2} />
+                <div className={`w-20 h-20 ${service.color} ${service.shadow} text-white rounded-3xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-500`}>
+                  {service.id === 'seyyar_sarj' ? (
+                     <img src="/icons/GeziciIcon.png" className="w-10 h-10 invert brightness-200" alt="Mobil Şarj" />
+                  ) : (
+                     <service.icon size={36} strokeWidth={1.5} />
+                  )}
                 </div>
                 <div>
                   <h3 className="font-black text-gray-900 uppercase tracking-tighter text-xl sm:text-2xl">{service.label}</h3>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sistem ID: {service.id}</span>
+                  <span className="text-[10px] font-bold text-[#49b5c2] uppercase tracking-widest">Sistem ID: {service.id}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-6 w-full lg:w-auto justify-center md:justify-end">
                 <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Açılış (TL)</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Açılış (TL)</label>
                   <input 
                     id={`open-${service.id}`}
                     type="number" 
                     defaultValue={dbTariff?.openingFee || 250} 
-                    className="w-32 sm:w-36 bg-white/50 border border-white rounded-2xl p-5 text-lg font-black text-gray-900 text-center focus:ring-4 focus:ring-blue-500/20 outline-none transition-all shadow-inner" 
+                    className="w-32 sm:w-36 bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 text-lg font-black text-gray-900 text-center focus:bg-white/80 outline-none transition-colors shadow-sm" 
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Birim (TL)</label>
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Birim (TL)</label>
                   <input 
                     id={`unit-${service.id}`}
                     type="number" 
                     defaultValue={dbTariff?.pricePerUnit || 30} 
-                    className="w-32 sm:w-36 bg-white/50 border border-white rounded-2xl p-5 text-lg font-black text-gray-900 text-center focus:ring-4 focus:ring-blue-500/20 outline-none transition-all shadow-inner" 
+                    className="w-32 sm:w-36 bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 text-lg font-black text-gray-900 text-center focus:bg-white/80 outline-none transition-colors shadow-sm" 
                   />
                 </div>
                 <button 
@@ -123,9 +128,9 @@ export default function TariffModule() {
                     const u = (document.getElementById(`unit-${service.id}`) as HTMLInputElement).value;
                     handleUpdate(service.id, Number(o), Number(u));
                   }}
-                  className="self-end bg-gray-900 text-white p-6 rounded-3xl shadow-2xl hover:bg-black active:scale-90 transition-all disabled:opacity-50"
+                  className="self-end bg-slate-900 text-white p-6 rounded-3xl shadow-lg hover:bg-black active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {savingId === service.id ? <Loader2 className="animate-spin" /> : <Save size={24} />}
+                  {savingId === service.id ? <Loader2 className="animate-spin" /> : <Save size={24} strokeWidth={1.5} />}
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@
  * FIX: 'handleBulkDelete', 'toggleServiceType' ve 'handleDelete' tanımlanmama hataları giderildi.
  * FIX: Telefon numarası çakışmasında formu bozmadan anında güncelleme yapar.
  * FIX: 'evden_eve' kategorisi 'NAKLIYE' mainType'ı ile eşleştirildi.
+ * UPDATE: Arka plan #8ccde6 rengine çevrildi, tasarıma Glassmorphism eklendi ve Mobil Şarj ikonu güncellendi.
  */
 
 'use client';
@@ -108,8 +109,6 @@ export default function ProviderModule() {
   };
 
   useEffect(() => { loadData(); }, [filterCity, filterType]);
-
-  // --- EKSİK FONKSİYONLAR EKLENDİ ---
 
   const toggleProviderSelection = (id: string) => {
     setSelectedProviders(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -234,42 +233,48 @@ export default function ProviderModule() {
   const currentFolderConfig = SERVICE_OPTIONS.find(s => s.id === activeFolder);
 
   return (
-    <div className="w-full min-h-screen p-6 bg-slate-50 selection:bg-blue-100">
+    <div className="w-full min-h-screen p-6 bg-[#8ccde6] selection:bg-white/30 text-gray-900">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
-          <div className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-3 w-fit tracking-widest">Transport 245 Admin</div>
-          <h1 className="text-4xl font-black text-slate-800 uppercase italic">Hizmet Ağı <span className="text-blue-600">Yönetimi</span></h1>
+          <div className="bg-black text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-3 w-fit tracking-widest shadow-md">Transport 245 Admin</div>
+          <h1 className="text-4xl font-black text-gray-900 uppercase italic drop-shadow-sm">Hizmet Ağı <span className="text-blue-800">Yönetimi</span></h1>
         </div>
         <div className="flex gap-3">
-          {selectedProviders.length > 0 && <button onClick={handleBulkDelete} className="bg-red-600 text-white px-6 py-4 rounded-3xl text-xs font-black uppercase shadow-xl flex items-center gap-2"><Trash2 size={18}/> Sil ({selectedProviders.length})</button>}
-          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }} className="bg-slate-900 text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
+          {selectedProviders.length > 0 && <button onClick={handleBulkDelete} className="bg-red-600 text-white px-6 py-4 rounded-3xl text-xs font-black uppercase shadow-xl hover:bg-red-700 transition-colors flex items-center gap-2"><Trash2 size={18}/> Sil ({selectedProviders.length})</button>}
+          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
         </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border p-2 flex items-center shadow-sm"><Search className="ml-4 text-slate-400" size={20}/><input placeholder="İSİM/TEL ARA..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none uppercase"/></div>
-        <div className="bg-white rounded-2xl border p-2 flex items-center shadow-sm"><MapPin className="ml-4 text-slate-400" size={20}/><select value={filterCity} onChange={e=>setFilterCity(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none uppercase appearance-none cursor-pointer"><option value="Tümü">TÜM TÜRKİYE</option>{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-        <div className="bg-white rounded-2xl border p-2 flex items-center shadow-sm"><Filter className="ml-4 text-slate-400" size={20}/><select value={filterType} onChange={e=>setFilterType(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none uppercase appearance-none cursor-pointer"><option value="Tümü">TÜM HİZMETLER</option>{SERVICE_OPTIONS.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}</select></div>
+        <div className="bg-white/60 backdrop-blur-md border border-white/50 p-2 flex items-center shadow-sm rounded-2xl"><Search className="ml-4 text-gray-500" size={20}/><input placeholder="İSİM/TEL ARA..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none uppercase placeholder-gray-500 text-gray-900"/></div>
+        <div className="bg-white/60 backdrop-blur-md border border-white/50 p-2 flex items-center shadow-sm rounded-2xl"><MapPin className="ml-4 text-gray-500" size={20}/><select value={filterCity} onChange={e=>setFilterCity(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none uppercase appearance-none cursor-pointer text-gray-900"><option value="Tümü">TÜM TÜRKİYE</option>{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+        <div className="bg-white/60 backdrop-blur-md border border-white/50 p-2 flex items-center shadow-sm rounded-2xl"><Filter className="ml-4 text-gray-500" size={20}/><select value={filterType} onChange={e=>setFilterType(e.target.value)} className="w-full bg-transparent p-3 font-bold text-xs outline-none uppercase appearance-none cursor-pointer text-gray-900"><option value="Tümü">TÜM HİZMETLER</option>{SERVICE_OPTIONS.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}</select></div>
       </div>
 
       <div ref={listContainerRef} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-        {loading ? <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin text-blue-600 inline" size={48}/></div> : 
+        {loading ? <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin text-white inline drop-shadow-md" size={48}/></div> : 
           providers.filter(p=>(p.businessName||p.firstName||'').toLowerCase().includes(searchTerm.toLowerCase())).map(p=>{
             let ui = SERVICE_OPTIONS.find(o=>o.id === p.service?.subType || o.id === p.serviceType);
             if(!ui) { for(const opt of SERVICE_OPTIONS){ const m = opt.subs.find(s=>s.id===(p.service?.subType || p.serviceType)); if(m){ ui=opt; break; } } }
             if(!ui) ui = SERVICE_OPTIONS[0];
             const isSel = selectedProviders.includes(p._id);
             const addr = typeof p.address === 'string' ? p.address : p.address?.fullText || `${p.address?.city || ''} / ${p.address?.district || ''}`;
+            const isMobileCharge = p.service?.subType === 'seyyar_sarj' || p.serviceType === 'seyyar_sarj';
+
             return(
-              <div key={p._id} onClick={()=>toggleProviderSelection(p._id)} className={`bg-white p-6 rounded-[2.5rem] border-2 transition-all cursor-pointer ${isSel ? 'border-blue-500 bg-blue-50/30' : 'border-white shadow-xl hover:shadow-2xl'}`}>
+              <div key={p._id} onClick={()=>toggleProviderSelection(p._id)} className={`bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/50 transition-all cursor-pointer shadow-xl hover:shadow-2xl ${isSel ? 'ring-4 ring-blue-500/30 bg-white/80' : ''}`}>
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex gap-4 items-center">
-                    <div className={`w-14 h-14 ${ui.color} text-white rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>{p.service?.subType === 'minibus' ? <Users size={28}/> : p.service?.subType === 'otobus' ? <Bus size={28}/> : <ui.icon size={28}/>}</div>
-                    <div className="overflow-hidden"><h3 className="font-black text-slate-800 text-sm uppercase truncate">{p.businessName || p.firstName}</h3><span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType || 'Genel'}</span></div>
+                    <div className={`w-14 h-14 ${ui.color} text-white rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>
+                      {isMobileCharge ? (
+                        <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" />
+                      ) : p.service?.subType === 'minibus' ? <Users size={28} strokeWidth={1}/> : p.service?.subType === 'otobus' ? <Bus size={28} strokeWidth={1.5}/> : <ui.icon size={28} strokeWidth={1.5}/>}
+                    </div>
+                    <div className="overflow-hidden"><h3 className="font-black text-slate-900 text-sm uppercase truncate">{p.businessName || p.firstName}</h3><span className="text-[8px] font-black text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType || 'Genel'}</span></div>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0 ml-2" onClick={e=>e.stopPropagation()}><button onClick={()=>openEdit(p)} className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl transition-colors"><Edit size={16}/></button><button onClick={e=>handleDelete(e,p._id)} className="p-2 bg-slate-50 text-red-300 hover:text-red-600 rounded-xl transition-colors"><Trash2 size={16}/></button></div>
+                  <div className="flex flex-col gap-2 shrink-0 ml-2" onClick={e=>e.stopPropagation()}><button onClick={()=>openEdit(p)} className="p-2 bg-white/50 backdrop-blur-sm text-slate-500 hover:text-blue-600 rounded-xl transition-colors shadow-sm"><Edit size={16}/></button><button onClick={e=>handleDelete(e,p._id)} className="p-2 bg-white/50 backdrop-blur-sm text-red-400 hover:text-red-600 rounded-xl transition-colors shadow-sm"><Trash2 size={16}/></button></div>
                 </div>
-                <div className="space-y-2"><div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl"><Phone size={14} className="text-green-500"/> {p.phoneNumber}</div><div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 bg-slate-50 p-3 rounded-2xl overflow-hidden"><MapPin size={14} className="text-red-500"/><span className="truncate">{addr}</span></div></div>
+                <div className="space-y-2"><div className="flex items-center gap-3 text-[10px] font-bold text-slate-700 bg-white/50 backdrop-blur-sm p-3 rounded-2xl border border-white/40"><Phone size={14} className="text-green-600"/> {p.phoneNumber}</div><div className="flex items-center gap-3 text-[10px] font-bold text-slate-700 bg-white/50 backdrop-blur-sm p-3 rounded-2xl overflow-hidden border border-white/40"><MapPin size={14} className="text-red-500 shrink-0"/><span className="truncate">{addr}</span></div></div>
               </div>
             )
           })
@@ -277,46 +282,53 @@ export default function ProviderModule() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-[3rem] p-10 shadow-2xl relative overflow-y-auto custom-scrollbar text-gray-900">
-            <button onClick={()=>setShowModal(false)} className="absolute top-8 right-8 p-3 bg-slate-100 rounded-full hover:bg-red-500 hover:text-white transition-all"><X size={24}/></button>
-            <h2 className="text-3xl font-black uppercase italic mb-10">{isEditing ? 'Düzenle' : 'Yeni Kayıt'}</h2>
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+          <div className="bg-white/80 backdrop-blur-2xl border border-white/50 w-full max-w-5xl h-[90vh] rounded-[3rem] p-10 shadow-2xl relative overflow-y-auto custom-scrollbar text-gray-900 animate-in fade-in zoom-in-95">
+            <button onClick={()=>setShowModal(false)} className="absolute top-8 right-8 p-3 bg-white/50 border border-white/60 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm"><X size={24}/></button>
+            <h2 className="text-3xl font-black uppercase italic mb-10 text-slate-900"> {isEditing ? 'Düzenle' : 'Yeni Kayıt'}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
-                <input placeholder="İŞLETME ADI" value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-black text-sm outline-none"/>
-                <div className="grid grid-cols-2 gap-4"><input placeholder="E-POSTA" value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-bold text-xs outline-none"/><input placeholder="TEL (05...)" value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-bold text-xs outline-none"/></div>
-                <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-black text-xs outline-none">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-bold text-xs outline-none">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
-                <textarea placeholder="MAHALLE, SOKAK, CADDE, NO..." value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-medium text-xs h-32 outline-none resize-none"/>
-                <input placeholder="WEB SİTESİ" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-slate-50 border rounded-2xl p-5 font-bold text-xs outline-none"/>
+                <input placeholder="İŞLETME ADI" value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-black text-sm outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
+                <div className="grid grid-cols-2 gap-4"><input placeholder="E-POSTA" value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/><input placeholder="TEL (05...)" value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/></div>
+                <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-black text-xs outline-none focus:bg-white/80 transition-colors text-gray-900">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none focus:bg-white/80 transition-colors text-gray-900">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+                <textarea placeholder="MAHALLE, SOKAK, CADDE, NO..." value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-medium text-xs h-32 outline-none resize-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
+                <input placeholder="WEB SİTESİ" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
               </div>
               <div className="space-y-6">
                 <div className="grid grid-cols-3 gap-3">
                   {SERVICE_OPTIONS.map(opt=>(
                     <div key={opt.id} className="relative">
-                      <button onClick={()=>toggleServiceType(opt.id)} className={`w-full flex flex-col items-center justify-center p-4 rounded-3xl border-2 transition-all gap-2 h-24 ${formData.serviceTypes.includes(opt.id) ? `${opt.color} text-white shadow-lg` : 'bg-slate-50 text-slate-400'}`}><opt.icon size={22}/><span className="text-[9px] font-black uppercase text-center">{opt.label}</span></button>
-                      {formData.serviceTypes.includes(opt.id) && opt.subs.length > 0 && <button onClick={e=>{e.stopPropagation(); setActiveFolder(opt.id)}} className="absolute -top-2 -right-2 bg-slate-900 text-white p-1.5 rounded-full z-10 shadow-lg"><Settings2 size={12}/></button>}
+                      <button onClick={()=>toggleServiceType(opt.id)} className={`w-full flex flex-col items-center justify-center p-4 rounded-3xl border border-white/40 transition-all gap-2 h-24 shadow-sm ${formData.serviceTypes.includes(opt.id) ? `${opt.color} text-white shadow-lg border-transparent` : 'bg-white/60 text-[#49b5c2] hover:bg-white/80'}`}>
+                        {opt.id === 'seyyar_sarj' ? (
+                          <img src="/icons/GeziciIcon.png" className={`w-6 h-6 object-contain ${formData.serviceTypes.includes(opt.id) ? 'invert brightness-200' : 'opacity-80'}`} style={!formData.serviceTypes.includes(opt.id) ? { filter: 'sepia(1) hue-rotate(140deg) saturate(2.5) brightness(0.9)' } : {}} alt="Mobil Şarj" />
+                        ) : (
+                          <opt.icon size={22} strokeWidth={1.5}/>
+                        )}
+                        <span className="text-[9px] font-black uppercase text-center">{opt.label}</span>
+                      </button>
+                      {formData.serviceTypes.includes(opt.id) && opt.subs.length > 0 && <button onClick={e=>{e.stopPropagation(); setActiveFolder(opt.id)}} className="absolute -top-2 -right-2 bg-slate-900 text-white p-1.5 rounded-full z-10 shadow-lg hover:bg-black transition-colors"><Settings2 size={12}/></button>}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-4"><div className="bg-slate-50 p-4 border rounded-2xl"><label className="text-[8px] font-black uppercase text-slate-400 block mb-1">Açılış</label><input type="number" value={formData.openingFee} onChange={e=>setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div><div className="bg-slate-50 p-4 border rounded-2xl"><label className="text-[8px] font-black uppercase text-slate-400 block mb-1">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none"/></div></div>
-                <div className="flex flex-wrap gap-2 min-h-[60px] p-4 bg-slate-50 border border-dashed rounded-2xl">{formData.filterTags.map((t:any)=>(<span key={t} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-1">{t.replace('_',' ')} <X size={12} className="cursor-pointer" onClick={()=>setFormData({...formData, filterTags: formData.filterTags.filter((tag:any)=>tag!==t)})}/></span>))}</div>
+                <div className="grid grid-cols-2 gap-4"><div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl"><label className="text-[8px] font-black uppercase text-gray-500 block mb-1">Açılış</label><input type="number" value={formData.openingFee} onChange={e=>setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-gray-900"/></div><div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl"><label className="text-[8px] font-black uppercase text-gray-500 block mb-1">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-gray-900"/></div></div>
+                <div className="flex flex-wrap gap-2 min-h-[60px] p-4 bg-white/50 backdrop-blur-sm border border-white/50 border-dashed rounded-2xl shadow-inner">{formData.filterTags.map((t:any)=>(<span key={t} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-1 shadow-sm">{t.replace('_',' ')} <X size={12} className="cursor-pointer hover:text-red-400 transition-colors" onClick={()=>setFormData({...formData, filterTags: formData.filterTags.filter((tag:any)=>tag!==t)})}/></span>))}</div>
               </div>
             </div>
-            <button onClick={handleSave} disabled={loading} className="w-full mt-10 bg-slate-900 text-white py-6 rounded-[2rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 transition-all shadow-2xl disabled:bg-slate-300">{loading ? <Loader2 className="animate-spin" size={24}/> : <>{isEditing ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
+            <button onClick={handleSave} disabled={loading} className="w-full mt-10 bg-slate-900 hover:bg-black text-white py-6 rounded-[2rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 transition-all shadow-2xl disabled:bg-slate-400 disabled:cursor-not-allowed">{loading ? <Loader2 className="animate-spin" size={24}/> : <>{isEditing ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
           </div>
         </div>
       )}
 
       {activeFolder && currentFolderConfig && (
-        <div className="fixed inset-0 z-[10001] bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl relative flex flex-col max-h-[80vh] text-gray-900">
-            <h2 className="text-2xl font-black uppercase italic mb-6">{currentFolderConfig.label} Seçimi</h2>
-            <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6">
+        <div className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 transition-opacity">
+          <div className="bg-white/80 backdrop-blur-2xl border border-white/50 w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl relative flex flex-col max-h-[80vh] text-gray-900 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:fade-in-10">
+            <h2 className="text-2xl font-black uppercase italic mb-6 text-slate-900">{currentFolderConfig.label} Seçimi</h2>
+            <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6 pr-2 custom-scrollbar">
               {currentFolderConfig.subs.map(sub => (
-                <button key={sub.id} onClick={() => toggleSubOption(sub.id)} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 ${formData.filterTags.includes(sub.id) ? `${currentFolderConfig.color} text-white shadow-lg` : 'bg-slate-50 text-slate-400'}`}><sub.icon size={28}/><span className="text-[10px] font-black uppercase">{sub.label}</span></button>
+                <button key={sub.id} onClick={() => toggleSubOption(sub.id)} className={`p-6 rounded-3xl border border-white/40 transition-all flex flex-col items-center gap-2 shadow-sm ${formData.filterTags.includes(sub.id) ? `${currentFolderConfig.color} text-white shadow-lg border-transparent scale-[1.02]` : 'bg-white/60 backdrop-blur-sm text-[#49b5c2] hover:bg-white/80'}`}><sub.icon size={28} strokeWidth={1.5}/><span className="text-[10px] font-black uppercase">{sub.label}</span></button>
               ))}
             </div>
-            <button onClick={()=>setActiveFolder(null)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase text-xs">TAMAMLANDI</button>
+            <button onClick={()=>setActiveFolder(null)} className="w-full py-5 bg-slate-900 hover:bg-black text-white rounded-[1.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">TAMAMLANDI</button>
           </div>
         </div>
       )}
