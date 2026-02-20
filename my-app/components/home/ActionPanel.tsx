@@ -459,9 +459,11 @@ export default function ActionPanel({
                 let iconBg = 'bg-gray-600';
                 if (isStation) iconBg = 'bg-blue-800';
                 else if (isMobileCharge) iconBg = 'bg-cyan-600';
-                else if (sub.includes('kurtarma') || sub === 'vinc') iconBg = 'bg-red-600';
+                else if (sub === 'vinc') iconBg = 'bg-rose-900';
+                else if (sub.includes('kurtarma')) iconBg = 'bg-red-600';
                 else if (isPassenger) iconBg = 'bg-emerald-600';
-                else if (['nakliye', 'kamyon', 'tir', 'evden_eve', 'yurt_disi_nakliye'].some(t => sub.includes(t))) iconBg = 'bg-purple-600';
+                else if (sub === 'yurt_disi_nakliye') iconBg = 'bg-indigo-900';
+                else if (['nakliye', 'kamyon', 'tir', 'evden_eve'].some(t => sub.includes(t))) iconBg = 'bg-purple-600';
 
                 const vehicleItems: Array<{ name: string; photoUrls: string[] }> =
                   Array.isArray(driver.vehicleItems) && driver.vehicleItems.length > 0
@@ -479,14 +481,31 @@ export default function ActionPanel({
                   ...vehicleItems.flatMap((v) => (Array.isArray(v.photoUrls) ? v.photoUrls : [])),
                 ].filter(Boolean) as string[];
                 const uniquePhotoUrls = Array.from(new Set(allPhotoUrls));
-                const hintColorClass = sub.includes('kurtarma') || sub === 'vinc'
+                const hintColorClass = sub === 'vinc'
+                  ? 'text-rose-800'
+                  : sub.includes('kurtarma')
                   ? 'text-red-600'
                   : isPassenger
                     ? 'text-emerald-600'
+                    : sub === 'yurt_disi_nakliye'
+                      ? 'text-indigo-800'
                     : isStation || isMobileCharge
                       ? 'text-blue-600'
                       : 'text-purple-700';
-                const theme = sub.includes('kurtarma') || sub === 'vinc'
+                const theme = sub === 'vinc'
+                  ? {
+                      start: '#881337',
+                      end: '#4c0519',
+                      darkStart: '#6b0f24',
+                      darkEnd: '#3b0414',
+                      softStart: 'rgba(136,19,55,0.30)',
+                      softEnd: 'rgba(76,5,25,0.30)',
+                      text: 'text-rose-900',
+                      star: 'fill-rose-600 text-rose-600',
+                      starOff: 'text-rose-200',
+                      ring: 'border-rose-500 ring-rose-300/30',
+                    }
+                  : sub.includes('kurtarma')
                   ? {
                       start: '#ef4444',
                       end: '#be123c',
@@ -499,6 +518,19 @@ export default function ActionPanel({
                       starOff: 'text-red-200',
                       ring: 'border-rose-400 ring-rose-300/30',
                     }
+                  : sub === 'yurt_disi_nakliye'
+                    ? {
+                        start: '#1e3a8a',
+                        end: '#172554',
+                        darkStart: '#1e40af',
+                        darkEnd: '#0f172a',
+                        softStart: 'rgba(59,130,246,0.22)',
+                        softEnd: 'rgba(30,58,138,0.22)',
+                        text: 'text-indigo-800',
+                        star: 'fill-indigo-500 text-indigo-500',
+                        starOff: 'text-indigo-200',
+                        ring: 'border-indigo-500 ring-indigo-300/30',
+                      }
                   : isPassenger
                     ? {
                         start: '#10b981',
@@ -674,8 +706,8 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all backdrop-blur-xl`}
+                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               Araçları Listele ({vehicleCount})
                             </button>
@@ -684,8 +716,8 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
+                              className="flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
+                              style={{ background: `linear-gradient(135deg, ${theme.start}CC, ${theme.end}CC)` }}
                             >
                               Araç Fotoğraflarını Görüntüle ({photoCount})
                             </button>
@@ -751,8 +783,8 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowRatingsModal(true);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
+                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               <Star size={12}/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
                             </button>

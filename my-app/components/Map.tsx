@@ -65,14 +65,14 @@ interface MapProps {
 // --- SERVİS YAPILANDIRMASI ---
 const SERVICE_CONFIG: any = {
   oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
-  vinc:         { color: '#b91c1c', Icon: Anchor, label: 'Vinç' },
+  vinc:         { color: '#881337', Icon: Anchor, label: 'Vinç' },
   kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },
   nakliye:      { color: '#9333ea', Icon: Truck, label: 'Nakliye' },
   evden_eve:    { color: '#a855f7', Icon: Home, label: 'Evden Eve' },
   tir:          { color: '#7e22ce', Icon: Truck, label: 'TIR' },
   kamyon:       { color: '#6b21a8', Icon: Truck, label: 'Kamyon' },
   kamyonet:     { color: '#581c87', Icon: Package, label: 'Kamyonet' },
-  yurt_disi_nakliye: { color: '#4338ca', Icon: Globe, label: 'Uluslararası' },
+  yurt_disi_nakliye: { color: '#1e3a8a', Icon: Globe, label: 'Uluslararası' },
   istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
   seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Mobil Şarj' },
   minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
@@ -81,6 +81,15 @@ const SERVICE_CONFIG: any = {
   vip_tasima:   { color: '#064e3b', Icon: Crown, label: 'VIP Transfer' },
   yolcu:        { color: '#10b981', Icon: Users, label: 'Yolcu Taşıma' },
   other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
+};
+
+const darkenHex = (hex: string, amount: number) => {
+  const raw = hex.replace('#', '');
+  if (raw.length !== 6) return hex;
+  const r = Math.max(0, Math.min(255, parseInt(raw.slice(0, 2), 16) - amount));
+  const g = Math.max(0, Math.min(255, parseInt(raw.slice(2, 4), 16) - amount));
+  const b = Math.max(0, Math.min(255, parseInt(raw.slice(4, 6), 16) - amount));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
 // --- İKON GENERATORLARI ---
@@ -282,33 +291,40 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   
                   <div className="flex items-center gap-0.5 mb-4">
                     {[1,2,3,4,5].map(s => (
-                      <Star key={s} size={11} className={s <= (item.rating || 5) ? 'fill-red-500 text-red-500' : 'text-red-200'} />
+                      <Star
+                        key={s}
+                        size={11}
+                        style={s <= (item.rating || 5) ? { color: config.color, fill: config.color } : { color: '#e5e7eb' }}
+                      />
                     ))}
                     <span className="text-[10px] font-bold text-gray-400 ml-1">({item.rating || 5}.0)</span>
                   </div>
                   
                   <div className="flex gap-2 border-t border-gray-100 pt-3.5">
-                    <button 
+                    <button
                       onClick={() => { onStartOrder(item, 'call'); window.location.href=`tel:${item.phoneNumber}`; }}
-                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 bg-gradient-to-r from-rose-400/90 to-red-600/90 backdrop-blur-md"
+                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
+                      style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 45)})` }}
                     >
                       <Phone size={13} /> ARA
                     </button>
                     
-                    <button 
+                    <button
                       onClick={() => { onStartOrder(item, 'message'); window.location.href=`sms:${item.phoneNumber}`; }}
-                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 bg-gradient-to-r from-rose-500/90 to-red-700/90 backdrop-blur-md"
+                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
+                      style={{ background: `linear-gradient(135deg, ${darkenHex(config.color, 18)}, ${darkenHex(config.color, 65)})` }}
                     >
                       <MessageCircle size={13} /> MESAJ AT
                     </button>
                   </div>
                   
                   <button 
-  onClick={() => window.open(`https://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
-  className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 bg-gradient-to-r from-red-500/85 to-rose-700/85 backdrop-blur-md transition-all"
->
-  <MapPin size={12} /> HARİTADA GÖSTER
-</button>
+                    onClick={() => window.open(`https://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
+                    className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 backdrop-blur-md transition-all"
+                    style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 55)})` }}
+                  >
+                    <MapPin size={12} /> HARİTADA GÖSTER
+                  </button>
                 </div>
               </Popup>
             </Marker>
