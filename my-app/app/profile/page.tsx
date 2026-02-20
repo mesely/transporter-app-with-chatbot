@@ -110,6 +110,8 @@ export default function ProfilePage() {
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activeVehicleIndex, setActiveVehicleIndex] = useState<number>(0);
+  const [lastAddressKey, setLastAddressKey] = useState('');
+  const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
@@ -152,6 +154,8 @@ export default function ProfilePage() {
   };
 
   const normalizePhone = (value: string) => value.replace(/\D/g, '');
+  const normalizeAddressKey = (street: string, district: string, city: string) =>
+    `${String(street || '').trim().toLocaleLowerCase('tr')}|${String(district || '').trim().toLocaleLowerCase('tr')}|${String(city || '').trim().toLocaleLowerCase('tr')}`;
 
   const handlePhoneLookup = async () => {
     const phone = normalizePhone(formData.phoneNumber);
@@ -167,6 +171,9 @@ export default function ProfilePage() {
         ? found.address
         : (found.address?.fullText || '');
       const mainAddress = addrText.split(',')[0]?.trim() || '';
+      const foundCoords = Array.isArray(found?.location?.coordinates) && found.location.coordinates.length === 2
+        ? { lng: Number(found.location.coordinates[0]), lat: Number(found.location.coordinates[1]) }
+        : null;
 
       setExistingId(found._id);
       setFormData(prev => ({
@@ -189,6 +196,8 @@ export default function ProfilePage() {
               photoUrls: found.vehiclePhotos || (found.photoUrl ? [found.photoUrl] : [])
             }],
       }));
+      setLastAddressKey(normalizeAddressKey(mainAddress, found.address?.district || found.district || '', found.address?.city || found.city || ''));
+      setLastCoords(foundCoords);
     } catch {
       // sessiz fail
     } finally {
@@ -293,14 +302,19 @@ export default function ProfilePage() {
     try {
       const selected = formData.serviceTypes[0];
       let mappedMain = 'NAKLIYE';
-      if (['oto_kurtarma', 'vinc'].includes(selected)) mappedMain = 'OTO KURTARMA';
+      if (['oto_kurtarma', 'vinc'].includes(selected)) mappedMain = 'KURTARICI';
       else if (['istasyon', 'seyyar_sarj'].includes(selected)) mappedMain = 'SARJ';
-      else if (['yolcu_tasima'].includes(selected)) mappedMain = 'YOLCU_TASIMA';
+      else if (['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima'].includes(selected)) mappedMain = 'YOLCU';
       else if (['yurt_disi_nakliye'].includes(selected)) mappedMain = 'YURT_DISI';
       else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selected)) mappedMain = 'NAKLIYE';
 
-      const combined = `${formData.streetAddress}, ${formData.district}, ${formData.city}, Türkiye`;
-      let coords = await getCoordinatesFromAddress(combined) || await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
+      const currentAddressKey = normalizeAddressKey(formData.streetAddress, formData.district, formData.city);
+      const shouldReuseCoords = Boolean(existingId) && currentAddressKey === lastAddressKey && lastCoords;
+      let coords = shouldReuseCoords ? lastCoords : null;
+      if (!coords) {
+        const combined = `${formData.streetAddress}, ${formData.district}, ${formData.city}, Türkiye`;
+        coords = await getCoordinatesFromAddress(combined) || await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
+      }
 
       if (!coords) { setSaving(false); return alert("Adres bulunamadı."); }
 
@@ -333,6 +347,8 @@ export default function ProfilePage() {
       if (res.ok) {
         const data = await res.json();
         setExistingId(data._id || (data.provider && data.provider._id) || targetId);
+        setLastAddressKey(currentAddressKey);
+        setLastCoords({ lat: coords.lat, lng: coords.lng });
         setIsSaved(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else { alert("Kaydedilemedi."); }

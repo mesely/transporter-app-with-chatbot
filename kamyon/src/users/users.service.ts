@@ -253,7 +253,77 @@ export class UsersService implements OnModuleInit {
   }
 
   async updateOne(id: string, data: any) {
-    return this.providerModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    const existing = await this.providerModel.findById(id).exec();
+    if (!existing) return null;
+
+    const rawSubType = (data.serviceType || data.service?.subType || existing.service?.subType || '').toLowerCase().trim();
+    let mainType = (data.service?.mainType || data.mainType || existing.service?.mainType || 'KURTARICI').toUpperCase();
+
+    if (['oto_kurtarma', 'vinc'].includes(rawSubType)) mainType = 'KURTARICI';
+    else if (['istasyon', 'seyyar_sarj', 'mobil_unit'].includes(rawSubType)) mainType = 'SARJ';
+    else if (['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu'].includes(rawSubType)) mainType = 'YOLCU';
+    else if (['yurt_disi_nakliye'].includes(rawSubType)) mainType = 'YURT_DISI';
+    else if (['kamyon', 'tir', 'kamyonet', 'evden_eve', 'nakliye'].includes(rawSubType)) mainType = 'NAKLIYE';
+
+    let coordinates = existing.location?.coordinates || [35.6667, 39.1667];
+    if (Array.isArray(data.location?.coordinates) && data.location.coordinates.length === 2) {
+      coordinates = [Number(data.location.coordinates[0]), Number(data.location.coordinates[1])];
+    } else if (data.lng !== undefined && data.lat !== undefined) {
+      coordinates = [Number(data.lng), Number(data.lat)];
+    }
+
+    const existingAddress = existing.address || ({} as any);
+    const fullTextAddress = typeof data.address === 'string'
+      ? data.address
+      : (data.address?.fullText || existingAddress.fullText || '');
+    const address = {
+      fullText: fullTextAddress,
+      city: data.city || data.address?.city || existingAddress.city || 'Bilinmiyor',
+      district: data.district || data.address?.district || existingAddress.district || 'Merkez',
+    };
+
+    const cleanVehicleItems = Array.isArray(data.vehicleItems)
+      ? data.vehicleItems
+          .map((v: any) => ({
+            name: String(v?.name || '').trim(),
+            photoUrls: Array.isArray(v?.photoUrls) ? v.photoUrls.filter(Boolean) : [],
+          }))
+          .filter((v: any) => v.name || v.photoUrls.length > 0)
+      : (existing.vehicleItems || []);
+
+    const cleanVehiclePhotos = Array.isArray(data.vehiclePhotos)
+      ? data.vehiclePhotos.filter(Boolean)
+      : (existing.vehiclePhotos || []);
+
+    const updatePayload: any = {
+      businessName: (data.firstName || data.businessName || existing.businessName || '').trim(),
+      phoneNumber: data.phoneNumber ? String(data.phoneNumber).replace(/\D/g, '') : existing.phoneNumber,
+      address,
+      service: {
+        mainType,
+        subType: rawSubType || existing.service?.subType || 'genel',
+        tags: data.filterTags || data.service?.tags || existing.service?.tags || [],
+      },
+      pricing: {
+        openingFee: 0,
+        pricePerUnit: Number(data.pricePerUnit ?? data.pricing?.pricePerUnit ?? existing.pricing?.pricePerUnit ?? 40),
+      },
+      location: { type: 'Point', coordinates },
+      website: data.website || data.link || existing.website || existing.link || '',
+      link: data.website || data.link || existing.link || existing.website || '',
+      isVerified: typeof data.isVerified === 'boolean' ? data.isVerified : existing.isVerified,
+      taxNumber: typeof data.taxNumber === 'string' ? data.taxNumber.trim() : (existing.taxNumber || ''),
+      vehicleItems: cleanVehicleItems,
+      vehiclePhotos: cleanVehiclePhotos,
+      vehicleInfo: typeof data.vehicleInfo === 'string'
+        ? data.vehicleInfo.trim()
+        : (cleanVehicleItems.map((v: any) => v.name).filter(Boolean).join(', ') || existing.vehicleInfo || ''),
+    };
+
+    const fallbackPhoto = cleanVehiclePhotos[0] || cleanVehicleItems.find((v: any) => v.photoUrls?.length > 0)?.photoUrls?.[0] || '';
+    updatePayload.photoUrl = data.photoUrl || existing.photoUrl || fallbackPhoto;
+
+    return this.providerModel.findByIdAndUpdate(id, updatePayload, { new: true }).exec();
   }
 
   async deleteOne(id: string) {
