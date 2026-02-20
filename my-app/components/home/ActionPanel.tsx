@@ -584,13 +584,11 @@ export default function ActionPanel({
                           </button>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r from-rose-400/70 to-red-600/70 backdrop-blur-xl`}><Phone size={14}/> ARA</button>
+                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r from-rose-500/82 to-red-700/82 backdrop-blur-xl`}><Phone size={14}/> ARA</button>
 
-                          {!isStation && (isSpecialCategory ? (
-                            <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || driver.link || 'https://transport245.com', '_blank'); }} className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 bg-gradient-to-r from-red-500/72 to-rose-700/72 backdrop-blur-xl"><Globe size={14}/> SİTEYE GİT</button>
-                          ) : (
-                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 bg-gradient-to-r from-rose-500/72 to-red-700/72 backdrop-blur-xl"><MessageCircle size={14}/> MESAJ AT</button>
-                          ))}
+                          {!isStation && (
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 bg-gradient-to-r from-red-500/82 to-rose-700/82 backdrop-blur-xl"><MessageCircle size={14}/> MESAJ AT</button>
+                          )}
                         </div>
 
                         {!isStation && (
@@ -600,7 +598,7 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase text-red-700 active:scale-95 transition-all bg-white/55 backdrop-blur-xl"
+                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-red-700 active:scale-95 transition-all bg-gradient-to-r from-white/62 to-rose-100/62 backdrop-blur-xl"
                             >
                               Araçları Listele ({vehicleCount})
                             </button>
@@ -609,7 +607,7 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-red-500/72 to-rose-700/72 backdrop-blur-xl"
+                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-red-500/82 to-rose-700/82 backdrop-blur-xl"
                             >
                               Araç Fotoğraflarını Görüntüle ({photoCount})
                             </button>
