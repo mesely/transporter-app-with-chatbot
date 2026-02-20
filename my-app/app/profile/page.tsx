@@ -8,17 +8,18 @@
  * FIX: 'evden_eve' mainType 'NAKLIYE' yapıldı.
  * FIX: Google Maps Geocoding API ve koordinat kontrolleri korundu.
  * UPDATE: Arka plan #8ccde6 rengine çevrildi, tasarıma Glassmorphism eklendi. Seçili olmayan ikonlar turkuaz rengine çevrildi.
+ * UPDATE: Sözleşme ve KVKK aynı sayfada klasör yapısı gibi açılır. İşletme Adı → İşletme veya Şahıs Adı.
  */
 
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  Loader2, ShieldCheck, X, Anchor, CarFront, 
+import {
+  Loader2, ShieldCheck, X, Anchor, CarFront,
   Zap, Globe, Home, Package, Container,
-  Snowflake, Box, Layers, Archive, Check, Settings2, Wallet, 
+  Snowflake, Box, Layers, Archive, Check, Settings2, Wallet,
   ArrowRight, Users, Bus, Crown, LocateFixed,
-  Truck
+  Truck, ChevronDown, ChevronUp, FileText, Shield
 } from 'lucide-react';
 
 const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
@@ -74,22 +75,42 @@ const getColorClasses = (colorName: string, isSelected: boolean) => {
   return base[colorName] || base.blue;
 };
 
+// --- KVKK ve Sözleşme içerikleri ---
+const KVKK_SECTIONS = [
+  { h: "1. Veri Sorumlusu", p: "Kişisel verileriniz, mobil uygulamanın işletmecisi olan Platform (Transport 245) tarafından, 6698 sayılı KVKK'ya uygun olarak işlenmektedir." },
+  { h: "2. İşlenen Kişisel Veriler", p: "Uygulama kapsamında şu veriler işlenir: Kimlik, İletişim, Profil, Kullanım kayıtları ve Konum bilgisi. Ödeme bilgileri Apple/Google üzerinden işlenir, Platform tarafından saklanmaz." },
+  { h: "3. İşlenme Amaçları", p: "Verileriniz; hizmetlerin sunulması, hesap güvenliği, eşleştirme, talep yönetimi ve hukuki yükümlülükler amacıyla işlenir." },
+  { h: "4. Verilerin Aktarılması", p: "Kişisel veriler; yasal yükümlülükler kapsamında kamu kurumlarına aktarılabilir. Üçüncü kişilere satılmaz veya ticari amaçla paylaşılmaz." },
+  { h: "5. Saklama Süresi", p: "Veriler, işlenme amacının gerektirdiği süre ve yasal saklama süreleri boyunca muhafaza edilir. Hesap silindiğinde, yasal zorunluluk dışındaki veriler silinir." },
+  { h: "6. Haklarınız (Madde 11)", p: "Verilerinizin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltme ve silinmesini isteme haklarına sahipsiniz." },
+];
+
+const AGREEMENT_SECTIONS = [
+  { h: "1. Platformun Niteliği", p: "Transport 245, kullanıcılar ile hizmet sağlayıcıları bir araya getiren aracı bir teknoloji platformudur. Hizmetlerin doğrudan sağlayıcısı değildir." },
+  { h: "2. Kullanım Koşulları", p: "Kullanıcı, uygulamayı hukuka ve genel ahlaka uygun kullanacağını kabul eder." },
+  { h: "3. Ücretlendirme (ÖNEMLİ)", p: "İlk kayıt tarihinden itibaren 12 ay ÜCRETSİZDİR. Ücretsiz sürenin sonunda yıllık abonelik (1 USD) gereklidir. Ödemeler App Store / Google Play üzerinden yapılır." },
+  { h: "4. Gizlilik ve Hesap Silme", p: "Kullanıcı verileri KVKK metnine uygun korunur. Dilediğiniz zaman hesabınızı silebilirsiniz." },
+  { h: "5. Yürürlük", p: "Uygulamayı kullanmaya başlamanız, bu sözleşme hükümlerini okuduğunuz ve kabul ettiğiniz anlamına gelir." },
+];
+
 const normalizeString = (str: string) => str ? str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase().trim() : '';
 
 export default function ProfilePage() {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isLocating, setIsLocating] = useState(false); 
+  const [isLocating, setIsLocating] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [cityData, setCityData] = useState<Record<string, string[]>>({});
+  const [showLegalContent, setShowLegalContent] = useState(false);
+  const [legalTab, setLegalTab] = useState<'kvkk' | 'sozlesme'>('kvkk');
 
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
-    city: 'İstanbul', district: 'Tuzla', streetAddress: '', 
-    filterTags: [] as string[], openingFee: '350', pricePerUnit: '40', website: '' 
+    city: 'İstanbul', district: 'Tuzla', streetAddress: '',
+    filterTags: [] as string[], openingFee: '350', pricePerUnit: '40', website: ''
   });
 
   useEffect(() => {
@@ -126,7 +147,7 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (!agreed) return alert("Hizmet şartlarını onaylayın.");
-    if (formData.businessName.length < 2) return alert("İşletme adı girin.");
+    if (formData.businessName.length < 2) return alert("İşletme veya şahıs adı girin.");
     if (formData.serviceTypes.length === 0) return alert("Branş seçin.");
 
     let targetId = existingId;
@@ -198,9 +219,9 @@ export default function ProfilePage() {
     <div className="fixed inset-0 w-full h-full bg-[#8ccde6] overflow-y-auto p-6 text-gray-900">
       <div className="w-full max-w-5xl mx-auto space-y-10 pb-32">
         <header><div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase w-fit mb-3 shadow-md">Transport 245</div><h1 className="text-4xl font-black uppercase italic text-gray-900 drop-shadow-sm">{existingId ? 'GÜNCELLE' : 'KAYIT PANELİ'}</h1></header>
-        
+
         <section className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 grid grid-cols-1 md:grid-cols-2 gap-6">
-           <input value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="İşletme Adı"/>
+           <input value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="İşletme veya Şahıs Adı"/>
            <input value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="Tel (05...)"/>
            <input value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors md:col-span-2" placeholder="E-Posta"/>
         </section>
@@ -209,8 +230,8 @@ export default function ProfilePage() {
            {SERVICE_OPTIONS.map(opt=>{
              const isSelected = formData.serviceTypes.includes(opt.id);
              return (
-               <div 
-                 key={opt.id} 
+               <div
+                 key={opt.id}
                  onClick={() => {
                    if (isSelected) {
                      setFormData({ ...formData, serviceTypes: [], filterTags: [] });
@@ -220,23 +241,22 @@ export default function ProfilePage() {
                        setActiveFolder(opt.id);
                      }
                    }
-                 }} 
+                 }}
                  className={`p-8 rounded-[2.5rem] border-2 cursor-pointer transition-all flex flex-col items-center justify-center text-center shadow-md backdrop-blur-md ${isSelected ? getColorClasses(opt.color, true) : 'bg-white/60 border-white/40 text-[#00c5c0] hover:bg-white/80'}`}
                >
-                  {/* SEyyar Şarj İkon Mantığı Güncellemesi */}
                   {opt.id === 'seyyar_sarj' ? (
                      <img src="/icons/GeziciIcon.png" className={`w-10 h-10 mb-4 object-contain ${isSelected ? 'invert brightness-200' : 'opacity-80'}`} style={!isSelected ? { filter: 'sepia(1) hue-rotate(130deg) saturate(3) brightness(0.8)' } : {}} alt="Mobil Şarj" />
                   ) : (
                      <opt.icon size={42} strokeWidth={1} className="mb-4" />
                   )}
-                  
+
                   <span className="text-[11px] font-black uppercase">{opt.label}</span>
                   {isSelected && opt.subs.length > 0 && (
-                    <button 
+                    <button
                       onClick={e => {
-                        e.stopPropagation(); 
+                        e.stopPropagation();
                         setActiveFolder(opt.id);
-                      }} 
+                      }}
                       className="mt-4 bg-black text-white px-4 py-1.5 rounded-xl text-[9px] font-black shadow-lg"
                     >
                       ÖZELLİKLER
@@ -253,21 +273,85 @@ export default function ProfilePage() {
           <textarea placeholder="MAHALLE, SOKAK, CADDE..." value={formData.streetAddress} className="bg-white/50 backdrop-blur-sm border border-white/40 p-6 rounded-3xl font-bold text-sm h-24 outline-none md:col-span-2 placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" onChange={e=>setFormData({...formData, streetAddress: e.target.value})}/>
         </section>
 
-        <div className="flex flex-col items-center gap-6">
-          <label className="flex items-center gap-3 bg-white/60 backdrop-blur-xl px-8 py-4 rounded-3xl border border-white/50 shadow-md cursor-pointer"><input type="checkbox" checked={agreed} onChange={()=>setAgreed(!agreed)} className="w-4 h-4"/><span className="text-[10px] font-black uppercase text-[#3d686b]"><a href="/privacy" onClick={(e)=>{e.preventDefault(); window.open('/privacy','KVKK','width=600,height=800,top=100,left=100,scrollbars=yes,resizable=yes');}} className="underline hover:text-black transition-colors">Sözleşmeyi ve KVKK'yı</a> onaylıyorum.</span></label>
-          <button onClick={handleSave} disabled={saving || !agreed} className={`w-full max-w-sm py-6 bg-black text-white rounded-[2.5rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 shadow-2xl transition-all ${(!agreed || saving) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-900'}`}>{saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
+        {/* KVKK ve Sözleşme - Inline Klasör Yapısı */}
+        <div className="flex flex-col gap-4">
+
+          {/* Toggle Butonu */}
+          <button
+            type="button"
+            onClick={() => setShowLegalContent(!showLegalContent)}
+            className="flex items-center justify-between bg-white/60 backdrop-blur-xl px-6 py-4 rounded-2xl border border-white/50 shadow-md cursor-pointer hover:bg-white/80 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <FileText size={18} className="text-[#00c5c0]" />
+              <span className="text-[10px] font-black uppercase text-[#3d686b]">Sözleşme ve KVKK Metni</span>
+            </div>
+            {showLegalContent ? <ChevronUp size={18} className="text-[#00c5c0]" /> : <ChevronDown size={18} className="text-[#00c5c0]" />}
+          </button>
+
+          {/* Inline İçerik */}
+          {showLegalContent && (
+            <div className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-[2rem] overflow-hidden shadow-xl">
+
+              {/* Tab Başlıkları */}
+              <div className="flex border-b border-white/40">
+                <button
+                  onClick={() => setLegalTab('kvkk')}
+                  className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${legalTab === 'kvkk' ? 'bg-white text-green-700 border-b-2 border-green-500' : 'text-[#3d686b] hover:bg-white/40'}`}
+                >
+                  <Shield size={14} /> KVKK
+                </button>
+                <button
+                  onClick={() => setLegalTab('sozlesme')}
+                  className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${legalTab === 'sozlesme' ? 'bg-white text-blue-700 border-b-2 border-blue-500' : 'text-[#3d686b] hover:bg-white/40'}`}
+                >
+                  <FileText size={14} /> Sözleşme
+                </button>
+              </div>
+
+              {/* İçerik Alanı */}
+              <div className="p-6 max-h-72 overflow-y-auto space-y-4 custom-scrollbar">
+                {legalTab === 'kvkk' && KVKK_SECTIONS.map((s, i) => (
+                  <div key={i}>
+                    <h5 className="text-[9px] font-black uppercase text-green-700 mb-1 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-green-500 inline-block"></span> {s.h}
+                    </h5>
+                    <p className="text-[9px] text-gray-600 leading-relaxed pl-3 border-l border-green-200">{s.p}</p>
+                  </div>
+                ))}
+                {legalTab === 'sozlesme' && AGREEMENT_SECTIONS.map((s, i) => (
+                  <div key={i}>
+                    <h5 className="text-[9px] font-black uppercase text-blue-700 mb-1 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-blue-500 inline-block"></span> {s.h}
+                    </h5>
+                    <p className="text-[9px] text-gray-600 leading-relaxed pl-3 border-l border-blue-200">{s.p}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Onay Checkbox */}
+          <label className="flex items-center gap-3 bg-white/60 backdrop-blur-xl px-8 py-4 rounded-3xl border border-white/50 shadow-md cursor-pointer">
+            <input type="checkbox" checked={agreed} onChange={()=>setAgreed(!agreed)} className="w-4 h-4"/>
+            <span className="text-[10px] font-black uppercase text-[#3d686b]">
+              Sözleşmeyi ve KVKK&apos;yı okudum, onaylıyorum.
+            </span>
+          </label>
+
+          <button onClick={handleSave} disabled={saving || !agreed} className={`w-full max-w-sm mx-auto py-6 bg-black text-white rounded-[2.5rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 shadow-2xl transition-all ${(!agreed || saving) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-900'}`}>{saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
         </div>
       </div>
 
       {activeFolder && (
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setActiveFolder(null)}></div>
-          
+
           <div className="relative w-full sm:max-w-xl bg-white/80 backdrop-blur-2xl border border-white/50 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:fade-in-10">
             <div className="flex justify-between items-center mb-8">
                <h2 className="text-2xl font-black uppercase italic text-gray-900">Özellik Seçimi</h2>
-               <button 
-                 onClick={() => setActiveFolder(null)} 
+               <button
+                 onClick={() => setActiveFolder(null)}
                  className="w-10 h-10 bg-white/50 border border-white/60 rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-all active:scale-90"
                >
                  <X size={20} className="text-gray-600" />

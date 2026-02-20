@@ -8,12 +8,12 @@
 
 'use client';
 
-import { 
+import {
   Zap, X, Truck, History, ArrowLeft,
-  Wrench, Construction, Settings, Globe, UserCircle2, 
+  Wrench, Construction, Settings, Globe, UserCircle2,
   MapPin, Shield, ToggleLeft, ToggleRight,
-  ShieldCheck, Heart, FileText, Locate, 
-  Loader2, Trash2, Navigation, MessageSquare,
+  ShieldCheck, Heart, FileText, Locate,
+  Loader2, Trash2, Navigation, Mail,
   Bell, Users, Bus, Crown, Star, AlertTriangle, ChevronDown, ChevronUp, Package, CarFront
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -230,21 +230,20 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              {/* 🔥 YENİ: Şikayet/Talep ve Hesap Silme Butonları */}
               <div className="pt-8 pb-10 space-y-4">
-                <button 
-                  onClick={() => { 
-                    setReportTargetId(null); 
-                    setReportDriverId(null); 
-                    setShowReportModal(true); 
-                  }} 
-                  className="w-full py-6 bg-slate-800 backdrop-blur-sm border-2 border-slate-700 rounded-[2rem] text-xs font-black text-white uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-900 transition-all active:scale-95 shadow-xl"
-                >
-                  <MessageSquare size={18} /> Şikayet / Talep Oluştur
-                </button>
-                
-                <button 
-                  onClick={() => setShowDeleteModal(true)} 
+                <div className="w-full p-6 bg-slate-50/80 backdrop-blur-sm border-2 border-slate-200 rounded-[2rem] flex items-start gap-4">
+                  <div className="p-2 bg-blue-100 rounded-xl shrink-0 mt-0.5"><Mail size={16} className="text-blue-600" /></div>
+                  <p className="text-xs font-black text-slate-700 leading-relaxed">
+                    Görüş ve şikayetleriniz için{' '}
+                    <a href="mailto:iletisimtransporter@gmail.com" className="text-blue-600 underline break-all">
+                      iletisimtransporter@gmail.com
+                    </a>{' '}
+                    adresinden iletişim kurabilirsiniz.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowDeleteModal(true)}
                   className="w-full py-6 bg-red-50/80 backdrop-blur-sm border-2 border-red-200 rounded-[2rem] text-xs font-black text-red-600 uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-red-100 transition-all active:scale-95 shadow-md"
                 >
                   <Trash2 size={18} /> Hesabımı Sil

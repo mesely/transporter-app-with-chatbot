@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Transporter</string>
-    <string name="title_activity_main">Transporter</string>
+    <string name="app_name">Transport 245</string>
+    <string name="title_activity_main">Transport 245</string>
     <string name="package_name">com.transporter.app</string>
     <string name="custom_url_scheme">com.transporter.app</string>
 </resources>
