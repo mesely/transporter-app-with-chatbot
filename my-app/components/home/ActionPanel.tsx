@@ -22,14 +22,11 @@ import {
   Layers,
   Box,
   Archive,
-  Snowflake,
-  AlertTriangle
+  Snowflake
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import RatingModal from '../RatingModal';
-import ReportModal from '../ReportModal';
-
-const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+import ViewRatingsModal from '../ViewRatingsModal';
+import ViewReportsModal from '../ViewReportsModal';
 
 // --- KOORDİNAT VERİTABANI ---
 const CITY_COORDINATES: Record<string, [number, number]> = {
@@ -173,11 +170,11 @@ export default function ActionPanel({
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Değerlendirme & Şikayet modalları
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [ratingDriverId, setRatingDriverId] = useState<string | null>(null);
-  const [reportDriverIdState, setReportDriverIdState] = useState<string | null>(null);
+  // Görüntüleme modalları
+  const [showRatingsModal, setShowRatingsModal] = useState(false);
+  const [showReportsModal, setShowReportsModal] = useState(false);
+  const [modalDriverId, setModalDriverId] = useState<string | null>(null);
+  const [modalDriverName, setModalDriverName] = useState<string>('');
 
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
@@ -273,7 +270,21 @@ export default function ActionPanel({
           onSearchLocation(lat, lng);
           setIsLocating(false);
         },
-        () => { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
+        (err) => {
+          // Kullanıcı izin vermediyse bir kez daha istemeyi deneriz.
+          if (err?.code === 1) {
+            navigator.geolocation.getCurrentPosition(
+              (pos2) => {
+                onSearchLocation(pos2.coords.latitude, pos2.coords.longitude);
+                setIsLocating(false);
+              },
+              () => { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
+            );
+            return;
+          }
+          onSearchLocation(39.9334, 32.8597);
+          setIsLocating(false);
+        }
       );
     } else { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
   };
@@ -533,6 +544,37 @@ export default function ActionPanel({
                           )}
                         </div>
 
+                        {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
+                          <div className="pt-3 border-t border-gray-100">
+                            <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Doğrulanmış Fiyat</div>
+                            <div className="text-xs font-black text-gray-700 mt-1">
+                              ₺{Number(driver.pricing.pricePerUnit).toFixed(0)} / {['istasyon', 'seyyar_sarj'].includes(driver.service?.subType) ? 'kW' : 'km'}
+                            </div>
+                          </div>
+                        )}
+
+                        {!!driver.vehicleInfo && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); alert(`Araçlar: ${driver.vehicleInfo}`); }}
+                            className="w-full py-3 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase text-gray-700 active:scale-95 transition-all"
+                          >
+                            Araçları Listele
+                          </button>
+                        )}
+
+                        {(driver.photoUrl || (driver.vehiclePhotos && driver.vehiclePhotos.length > 0)) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const firstPhoto = driver.photoUrl || driver.vehiclePhotos?.[0];
+                              if (firstPhoto) window.open(firstPhoto, '_blank');
+                            }}
+                            className="w-full py-3 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-700 active:scale-95 transition-all"
+                          >
+                            Fotoğrafları Listele
+                          </button>
+                        )}
+
                         {/* Değerlendirmeler & Şikayetler */}
                         <div className="pt-4 border-t border-gray-100">
                           <div className="text-[8px] font-black text-gray-400 uppercase mb-3 tracking-widest">Değerlendirmeler &amp; Şikayetler</div>
@@ -544,16 +586,26 @@ export default function ActionPanel({
                           </div>
                           <div className="flex gap-2">
                             <button
-                              onClick={(e) => { e.stopPropagation(); setRatingDriverId(driver._id); setShowRatingModal(true); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalDriverId(driver._id);
+                                setModalDriverName(driver.businessName || '');
+                                setShowRatingsModal(true);
+                              }}
                               className="flex-1 py-3 bg-yellow-50 border border-yellow-200 rounded-2xl text-[9px] font-black uppercase text-yellow-700 flex items-center justify-center gap-1 active:scale-95 transition-all"
                             >
-                              <Star size={12}/> Değerlendir
+                              <Star size={12}/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); setReportDriverIdState(driver._id); setShowReportModal(true); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalDriverId(driver._id);
+                                setModalDriverName(driver.businessName || '');
+                                setShowReportsModal(true);
+                              }}
                               className="flex-1 py-3 bg-red-50 border border-red-200 rounded-2xl text-[9px] font-black uppercase text-red-600 flex items-center justify-center gap-1 active:scale-95 transition-all"
                             >
-                              <AlertTriangle size={12}/> Şikayet Et
+                              Şikayetleri Görüntüle ({driver.reportCount || 0})
                             </button>
                           </div>
                         </div>
@@ -566,16 +618,17 @@ export default function ActionPanel({
       </div>
     </div>
 
-    <RatingModal
-      isOpen={showRatingModal}
-      onClose={() => setShowRatingModal(false)}
-      onRate={() => {}}
+    <ViewRatingsModal
+      isOpen={showRatingsModal}
+      onClose={() => setShowRatingsModal(false)}
+      driverId={modalDriverId}
+      driverName={modalDriverName}
     />
-    <ReportModal
-      isOpen={showReportModal}
-      onClose={() => setShowReportModal(false)}
-      orderId={null}
-      driverId={reportDriverIdState}
+    <ViewReportsModal
+      isOpen={showReportsModal}
+      onClose={() => setShowReportsModal(false)}
+      driverId={modalDriverId}
+      driverName={modalDriverName}
     />
     </>
   );

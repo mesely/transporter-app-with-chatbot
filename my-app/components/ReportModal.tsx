@@ -51,7 +51,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
     }
 
     setLoading(true);
-    const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+    const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
     
     const payload = {
       orderId: orderId,

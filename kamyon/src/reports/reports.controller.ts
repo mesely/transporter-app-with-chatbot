@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, Delete, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { CreateReportDto, UpdateReportDto } from './dto/create-report.dto';
 
@@ -12,8 +12,22 @@ export class ReportsController {
     return { message: 'Şikayet başarıyla alındı', reportId: savedReport._id };
   }
 
+  // GET /reports/count?providerId=X (must be before :id route)
+  @Get('count')
+  async getCount(@Query('providerId') providerId?: string) {
+    if (providerId) {
+      const count = await this.reportsService.countByProvider(providerId);
+      return { count };
+    }
+    return { count: 0 };
+  }
+
+  // GET /reports?providerId=X for provider complaints, or all reports
   @Get()
-  async getAllReports() {
+  async getAllReports(@Query('providerId') providerId?: string) {
+    if (providerId) {
+      return this.reportsService.findByProvider(providerId);
+    }
     return this.reportsService.findAll();
   }
 
@@ -22,7 +36,6 @@ export class ReportsController {
     return this.reportsService.findOne(id);
   }
 
-  // Admin şikayeti güncellerken (Örn: Status -> RESOLVED)
   @Patch(':id')
   async updateReport(@Param('id') id: string, @Body() updateReportDto: UpdateReportDto) {
     return this.reportsService.update(id, updateReportDto);

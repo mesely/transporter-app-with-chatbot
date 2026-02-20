@@ -18,7 +18,7 @@ import {
   ArrowRight, Settings2
 } from 'lucide-react';
 
-const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
 
 const TURKEY_CITIES = [
@@ -73,7 +73,7 @@ export default function ProviderModule() {
 
   const [formData, setFormData] = useState<any>({
     _id: '', businessName: '', email: '', phoneNumber: '', city: 'İstanbul', district: 'Tuzla', address: '',
-    serviceTypes: [] as string[], openingFee: 350, pricePerUnit: 40, filterTags: [] as string[], website: '' 
+    serviceTypes: [] as string[], pricePerUnit: 40, filterTags: [] as string[], website: '' 
   });
 
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -167,7 +167,7 @@ export default function ProviderModule() {
       _id: p._id, businessName: p.businessName || p.firstName || '', email: p.email || '', phoneNumber: p.phoneNumber || '',
       city: addr.city || 'İstanbul', district: addr.district || 'Tuzla', address: streetPart,
       serviceTypes: (p.service?.mainType === 'YOLCU' ? ['yolcu'] : [p.service?.subType || p.serviceType || '']),
-      openingFee: p.pricing?.openingFee || 350, pricePerUnit: p.pricing?.pricePerUnit || 40,
+      pricePerUnit: p.pricing?.pricePerUnit || 40,
       filterTags: p.service?.tags || [], website: p.website || p.link || ''
     });
     setIsEditing(true);
@@ -212,7 +212,8 @@ export default function ProviderModule() {
         service: { mainType: mappedMain, subType: selected, tags: formData.filterTags },
         address: `${formData.address}, ${formData.district}, ${formData.city}`,
         city: formData.city, district: formData.district, role: 'provider', website: formData.website,
-        pricing: { openingFee: Number(formData.openingFee), pricePerUnit: Number(formData.pricePerUnit) },
+        pricing: { openingFee: 0, pricePerUnit: Number(formData.pricePerUnit) },
+        isVerified: false,
         location: { type: "Point", coordinates: [coords.lng, coords.lat] },
         lat: coords.lat, lng: coords.lng
       };
@@ -241,7 +242,7 @@ export default function ProviderModule() {
         </div>
         <div className="flex gap-3">
           {selectedProviders.length > 0 && <button onClick={handleBulkDelete} className="bg-red-600 text-white px-6 py-4 rounded-3xl text-xs font-black uppercase shadow-xl hover:bg-red-700 transition-colors flex items-center gap-2"><Trash2 size={18}/> Sil ({selectedProviders.length})</button>}
-          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], openingFee:350, pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
+          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
         </div>
       </header>
 
@@ -295,22 +296,22 @@ export default function ProviderModule() {
                 <input placeholder="WEB SİTESİ" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
               </div>
               <div className="space-y-6">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                   {SERVICE_OPTIONS.map(opt=>(
                     <div key={opt.id} className="relative">
-                      <button onClick={()=>toggleServiceType(opt.id)} className={`w-full flex flex-col items-center justify-center p-4 rounded-3xl border border-white/40 transition-all gap-2 h-24 shadow-sm ${formData.serviceTypes.includes(opt.id) ? `${opt.color} text-white shadow-lg border-transparent` : 'bg-white/60 text-[#49b5c2] hover:bg-white/80'}`}>
+                      <button onClick={()=>toggleServiceType(opt.id)} className={`w-full flex flex-col items-center justify-center p-3 rounded-3xl border border-white/40 transition-all gap-2 min-h-[106px] shadow-sm ${formData.serviceTypes.includes(opt.id) ? `${opt.color} text-white shadow-lg border-transparent` : 'bg-white/60 text-[#49b5c2] hover:bg-white/80'}`}>
                         {opt.id === 'seyyar_sarj' ? (
                           <img src="/icons/GeziciIcon.png" className={`w-6 h-6 object-contain ${formData.serviceTypes.includes(opt.id) ? 'invert brightness-200' : 'opacity-80'}`} style={!formData.serviceTypes.includes(opt.id) ? { filter: 'sepia(1) hue-rotate(140deg) saturate(2.5) brightness(0.9)' } : {}} alt="Mobil Şarj" />
                         ) : (
                           <opt.icon size={22} strokeWidth={1.5}/>
                         )}
-                        <span className="text-[9px] font-black uppercase text-center">{opt.label}</span>
+                        <span className="text-[9px] font-black uppercase text-center leading-tight break-words">{opt.label}</span>
                       </button>
                       {formData.serviceTypes.includes(opt.id) && opt.subs.length > 0 && <button onClick={e=>{e.stopPropagation(); setActiveFolder(opt.id)}} className="absolute -top-2 -right-2 bg-slate-900 text-white p-1.5 rounded-full z-10 shadow-lg hover:bg-black transition-colors"><Settings2 size={12}/></button>}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-4"><div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl"><label className="text-[8px] font-black uppercase text-gray-500 block mb-1">Açılış</label><input type="number" value={formData.openingFee} onChange={e=>setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-gray-900"/></div><div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl"><label className="text-[8px] font-black uppercase text-gray-500 block mb-1">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-gray-900"/></div></div>
+                <div className="grid grid-cols-1 gap-4"><div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl"><label className="text-[8px] font-black uppercase text-gray-500 block mb-1">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-gray-900"/></div></div>
                 <div className="flex flex-wrap gap-2 min-h-[60px] p-4 bg-white/50 backdrop-blur-sm border border-white/50 border-dashed rounded-2xl shadow-inner">{formData.filterTags.map((t:any)=>(<span key={t} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-1 shadow-sm">{t.replace('_',' ')} <X size={12} className="cursor-pointer hover:text-red-400 transition-colors" onClick={()=>setFormData({...formData, filterTags: formData.filterTags.filter((tag:any)=>tag!==t)})}/></span>))}</div>
               </div>
             </div>

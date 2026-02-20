@@ -118,10 +118,10 @@ export class ChatService {
         }
       }
 
-      // SENARYO: FİYAT HESAPLAMA (Açılış + Birim Fiyat)
+      // SENARYO: FİYAT HESAPLAMA (Sadece Birim Fiyat)
       if (analysis.intent === 'calculate_price') {
         const subType = analysis.entities.subType || 'tir';
-        const tariff = await this.tariffsService.findByType(subType) || { openingFee: 350, pricePerUnit: 40, unit: 'km' };
+        const tariff = await this.tariffsService.findByType(subType) || { openingFee: 0, pricePerUnit: 40, unit: 'km' };
         
         if (!analysis.entities.amount) {
            return { 
@@ -130,14 +130,14 @@ export class ChatService {
            };
         }
 
-        const total = tariff.openingFee + (analysis.entities.amount * tariff.pricePerUnit);
+        const total = analysis.entities.amount * tariff.pricePerUnit;
         
         foundData = {
           service: subType.toUpperCase(),
           amount: analysis.entities.amount,
           unit: tariff.unit,
           total,
-          details: `${tariff.openingFee} TL Başlangıç + (${analysis.entities.amount} ${tariff.unit} x ${tariff.pricePerUnit} TL)`
+          details: `${analysis.entities.amount} ${tariff.unit} x ${tariff.pricePerUnit} TL`
         };
         dataType = 'calculation_result';
         systemResponse = `Tahmini hesaplama sonucuna göre maliyetiniz **${total} TL** olacaktır. (Not: Bu fiyat trafiğe ve net konuma göre değişebilir.)`;

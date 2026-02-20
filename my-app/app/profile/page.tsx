@@ -22,7 +22,7 @@ import {
   Truck, ChevronDown, ChevronUp, FileText, Shield
 } from 'lucide-react';
 
-const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
 
 const SERVICE_OPTIONS = [
@@ -106,11 +106,13 @@ export default function ProfilePage() {
   const [cityData, setCityData] = useState<Record<string, string[]>>({});
   const [showLegalContent, setShowLegalContent] = useState(false);
   const [legalTab, setLegalTab] = useState<'kvkk' | 'sozlesme'>('kvkk');
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
     city: 'İstanbul', district: 'Tuzla', streetAddress: '',
-    filterTags: [] as string[], openingFee: '350', pricePerUnit: '40', website: ''
+    filterTags: [] as string[], pricePerUnit: '40', website: '', vehicleInfo: '', photoUrl: ''
   });
 
   useEffect(() => {
@@ -145,6 +147,86 @@ export default function ProfilePage() {
     } catch { return null; }
   };
 
+  const normalizePhone = (value: string) => value.replace(/\D/g, '');
+
+  const handlePhoneLookup = async () => {
+    const phone = normalizePhone(formData.phoneNumber);
+    if (phone.length < 10) return;
+    setCheckingPhone(true);
+    try {
+      const res = await fetch(`${API_URL}/users/by-phone?phone=${phone}`);
+      if (!res.ok) return;
+      const found = await res.json();
+      if (!found?._id) return;
+
+      const addrText = typeof found.address === 'string'
+        ? found.address
+        : (found.address?.fullText || '');
+      const mainAddress = addrText.split(',')[0]?.trim() || '';
+
+      setExistingId(found._id);
+      setFormData(prev => ({
+        ...prev,
+        businessName: found.businessName || prev.businessName,
+        email: found.email || prev.email,
+        phoneNumber: found.phoneNumber || prev.phoneNumber,
+        serviceTypes: [found.service?.subType || found.serviceType || prev.serviceTypes[0]].filter(Boolean) as string[],
+        city: found.address?.city || found.city || prev.city,
+        district: found.address?.district || found.district || prev.district,
+        streetAddress: mainAddress || prev.streetAddress,
+        filterTags: found.service?.tags || [],
+        website: found.website || found.link || prev.website,
+        pricePerUnit: String(found.pricing?.pricePerUnit || prev.pricePerUnit),
+        vehicleInfo: found.vehicleInfo || prev.vehicleInfo,
+        photoUrl: found.photoUrl || found.vehiclePhotos?.[0] || prev.photoUrl,
+      }));
+    } catch {
+      // sessiz fail
+    } finally {
+      setCheckingPhone(false);
+    }
+  };
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch(`${API_URL}/upload/vehicle-photo`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!res.ok) throw new Error('upload_failed');
+      const data = await res.json();
+      setFormData(prev => ({ ...prev, photoUrl: data.url || '' }));
+    } catch {
+      alert('Fotoğraf yüklenemedi.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemoveFromList = async () => {
+    if (!existingId) return;
+    if (!confirm('Aracınızı listeden kaldırmak istediğinize emin misiniz?')) return;
+    try {
+      const res = await fetch(`${API_URL}/users/self/${existingId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setExistingId(null);
+        setIsSaved(false);
+        setFormData({
+          businessName: '', email: '', phoneNumber: '', serviceTypes: [],
+          city: 'İstanbul', district: 'Tuzla', streetAddress: '',
+          filterTags: [], pricePerUnit: '40', website: '', vehicleInfo: '', photoUrl: ''
+        });
+        alert('Kayıt kaldırıldı.');
+      }
+    } catch {
+      alert('Kaldırma işlemi başarısız.');
+    }
+  };
+
   const handleSave = async () => {
     if (!agreed) return alert("Hizmet şartlarını onaylayın.");
     if (formData.businessName.length < 2) return alert("İşletme veya şahıs adı girin.");
@@ -155,10 +237,9 @@ export default function ProfilePage() {
 
     if (!existingId) {
       try {
-        const resCheck = await fetch(`${API_URL}/users/all?phoneNumber=${formData.phoneNumber}`);
-        const all = await resCheck.json();
-        const found = all.find((u: any) => u.phoneNumber === formData.phoneNumber);
-        if (found) {
+        const resCheck = await fetch(`${API_URL}/users/by-phone?phone=${normalizePhone(formData.phoneNumber)}`);
+        const found = await resCheck.json();
+        if (found?._id) {
           if (confirm(`Bu numara zaten kayıtlı. Mevcut kaydı girdiğiniz yeni bilgilerle güncellemek istiyor musunuz?`)) {
             targetId = found._id;
             finalMethod = 'PUT';
@@ -187,7 +268,11 @@ export default function ProfilePage() {
         service: { mainType: mappedMain, subType: selected, tags: formData.filterTags },
         address: `${formData.streetAddress}, ${formData.district}, ${formData.city}`,
         city: formData.city, district: formData.district, role: 'provider',
-        pricing: { openingFee: Number(formData.openingFee), pricePerUnit: Number(formData.pricePerUnit) },
+        isVerified: true,
+        pricing: { openingFee: 0, pricePerUnit: Number(formData.pricePerUnit) },
+        vehicleInfo: formData.vehicleInfo,
+        photoUrl: formData.photoUrl,
+        vehiclePhotos: formData.photoUrl ? [formData.photoUrl] : [],
         location: { type: "Point", coordinates: [coords.lng, coords.lat] }, lat: coords.lat, lng: coords.lng
       };
 
@@ -222,7 +307,22 @@ export default function ProfilePage() {
 
         <section className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 grid grid-cols-1 md:grid-cols-2 gap-6">
            <input value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="İşletme veya Şahıs Adı"/>
-           <input value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="Tel (05...)"/>
+           <div className="flex gap-2">
+             <input
+               value={formData.phoneNumber}
+               onChange={e=>setFormData({...formData, phoneNumber: e.target.value})}
+               onBlur={handlePhoneLookup}
+               className="flex-1 bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors"
+               placeholder="Tel (05...)"
+             />
+             <button
+               type="button"
+               onClick={handlePhoneLookup}
+               className="px-4 rounded-2xl bg-black text-white text-[10px] font-black uppercase"
+             >
+               {checkingPhone ? '...' : 'Sorgula'}
+             </button>
+           </div>
            <input value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors md:col-span-2" placeholder="E-Posta"/>
         </section>
 
@@ -268,8 +368,23 @@ export default function ProfilePage() {
         </section>
 
         <section className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40 flex divide-x divide-white/40 shadow-sm"><div className="flex-1 px-2"><label className="text-[8px] font-black uppercase text-[#00c5c0]">Açılış</label><input type="number" value={formData.openingFee} onChange={e=>setFormData({...formData, openingFee: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/></div><div className="flex-1 px-2"><label className="text-[8px] font-black uppercase text-[#00c5c0]">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/></div></div>
+          <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40 shadow-sm">
+            <label className="text-[8px] font-black uppercase text-[#00c5c0]">Birim Fiyat (km / kW)</label>
+            <input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/>
+          </div>
+          <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40 shadow-sm">
+            <label className="text-[8px] font-black uppercase text-[#00c5c0]">Araç Bilgisi (Opsiyonel)</label>
+            <input type="text" value={formData.vehicleInfo} onChange={e=>setFormData({...formData, vehicleInfo: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Örn: 2022 Ford Transit"/>
+          </div>
           <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+          <div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl md:col-span-2">
+            <label className="text-[8px] font-black uppercase text-[#00c5c0] block mb-2">Araç Fotoğrafı (Opsiyonel)</label>
+            <div className="flex items-center gap-3">
+              <input type="file" accept="image/*" onChange={(e)=>{ const file = e.target.files?.[0]; if (file) handlePhotoUpload(file); }} className="text-xs font-bold"/>
+              {uploadingPhoto && <span className="text-[10px] font-black text-[#3d686b]">Yükleniyor...</span>}
+            </div>
+            {formData.photoUrl && <a className="text-[10px] font-black text-blue-600 underline mt-2 inline-block" href={formData.photoUrl} target="_blank">Yüklenen fotoğrafı aç</a>}
+          </div>
           <textarea placeholder="MAHALLE, SOKAK, CADDE..." value={formData.streetAddress} className="bg-white/50 backdrop-blur-sm border border-white/40 p-6 rounded-3xl font-bold text-sm h-24 outline-none md:col-span-2 placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" onChange={e=>setFormData({...formData, streetAddress: e.target.value})}/>
         </section>
 
@@ -340,6 +455,15 @@ export default function ProfilePage() {
           </label>
 
           <button onClick={handleSave} disabled={saving || !agreed} className={`w-full max-w-sm mx-auto py-6 bg-black text-white rounded-[2.5rem] font-black uppercase text-sm flex items-center justify-center gap-3 active:scale-95 shadow-2xl transition-all ${(!agreed || saving) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-900'}`}>{saving ? <Loader2 className="animate-spin" size={24}/> : <>{existingId ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
+          {existingId && (
+            <button
+              type="button"
+              onClick={handleRemoveFromList}
+              className="w-full max-w-sm mx-auto py-4 bg-red-50 border border-red-200 text-red-600 rounded-[2rem] font-black uppercase text-xs"
+            >
+              Aracımı Listeden Kaldır
+            </button>
+          )}
         </div>
       </div>
 

@@ -23,7 +23,7 @@ const Map = dynamic(() => import('../components/Map'), {
   loading: () => <div className="w-full h-full bg-gray-50" />,
 });
 
-const API_URL = 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
 const CATEGORY_MAP: Record<string, string[]> = {
   tir: ['tenteli', 'frigorifik', 'lowbed', 'konteyner', 'acik_kasa'],
@@ -31,6 +31,18 @@ const CATEGORY_MAP: Record<string, string[]> = {
   kamyonet: ['panelvan', 'acik_kasa', 'kapali_kasa'],
   yolcu: ['minibus', 'otobus', 'midibus', 'vip_tasima'],
 };
+
+function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  let id = localStorage.getItem('Transport_device_id');
+  if (!id) {
+    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('Transport_device_id', id);
+  }
+  return id;
+}
 
 export default function Home() {
   const [showLoader, setShowLoader] = useState(true);
@@ -113,7 +125,24 @@ export default function Home() {
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId}
           onMapClick={() => setActiveDriverId(null)}
-          onStartOrder={() => {}}
+          onStartOrder={async (driver: any, method: 'call' | 'message') => {
+            try {
+              const deviceId = getOrCreateDeviceId();
+              const coords = searchCoords;
+              await fetch(`${API_URL}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  customerId: deviceId,
+                  driverId: driver?._id,
+                  serviceType: driver?.service?.subType || driver?.serviceType || 'genel',
+                  pickupLocation: { lat: coords?.[0] ?? 0, lng: coords?.[1] ?? 0 },
+                  contactMethod: method,
+                  customerOutcome: 'PENDING',
+                })
+              });
+            } catch (_) {}
+          }}
         />
       </div>
 
@@ -135,7 +164,24 @@ export default function Home() {
         loading={loading}
         activeDriverId={activeDriverId}
         onSelectDriver={setActiveDriverId}
-        onStartOrder={() => {}}
+        onStartOrder={async (driver: any, method: 'call' | 'message') => {
+          try {
+            const deviceId = getOrCreateDeviceId();
+            const coords = searchCoords;
+            await fetch(`${API_URL}/orders`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                customerId: deviceId,
+                driverId: driver?._id,
+                serviceType: driver?.service?.subType || driver?.serviceType || 'genel',
+                pickupLocation: { lat: coords?.[0] ?? 0, lng: coords?.[1] ?? 0 },
+                contactMethod: method,
+                customerOutcome: 'PENDING',
+              })
+            });
+          } catch (_) {}
+        }}
         isSidebarOpen={false}
       />
 

@@ -1,19 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
-import { OrderStatus } from './dto/create-order.dto';
+import { ContactMethod, CustomerOutcome, OrderStatus } from './dto/create-order.dto';
 
-// 🔥 Eski User (Müşteri için) ve Yeni Provider (Şoför için) Importları
-import { User } from '../users/user.schema'; 
-import { NewProvider } from '../data/schemas/new-provider.schema'; // Dosya yolu sende farklıysa düzelt
+import { NewProvider } from '../data/schemas/new-provider.schema';
 
 export type OrderDocument = Order & Document;
 
 @Schema({ timestamps: true })
 export class Order {
-  
-  // 1. MÜŞTERİ (Hala standart User tablosunda olabilir)
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  customer: User;
+
+  // MÜŞTERİ — localStorage deviceId (UUID string)
+  @Prop({ required: true })
+  customer: string;
 
   // 2. ŞOFÖR / HİZMET SAĞLAYICI (🔥 ARTIK 'NewProvider' TABLOSUNDA)
   // Bu sayede .populate('driver') dediğinde businessName, serviceType vb. gelir.
@@ -22,6 +20,9 @@ export class Order {
 
   @Prop({ required: true })
   serviceType: string; // 'kurtarici', 'nakliye' vb.
+
+  @Prop({ enum: ContactMethod, default: ContactMethod.CALL })
+  contactMethod: string;
 
   // Konumlar
   @Prop({ type: Object, required: true })
@@ -49,6 +50,9 @@ export class Order {
 
   @Prop()
   note?: string;
+
+  @Prop({ enum: CustomerOutcome, default: CustomerOutcome.PENDING })
+  customerOutcome: string;
   
   @Prop({ type: MongooseSchema.Types.Mixed })
   metaData?: any;

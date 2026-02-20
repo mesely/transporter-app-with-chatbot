@@ -28,18 +28,18 @@ import KVKKModal from '../../components/KVKKModal';
 import ReportModal from '../../components/ReportModal';
 import RatingModal from '../../components/RatingModal';
 
-const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
 const BASE_DATA: any = {
-  kurtarici: { open: 2000, unit: 45, unitLabel: 'km', label: 'Oto Kurtarma', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },
-  vinc: { open: 5500, unit: 250, unitLabel: 'km', label: 'Ağır Vinç', icon: <Construction size={24}/>, color: 'text-red-800 bg-red-200', group: 'KURTARMA' },
-  nakliye: { open: 2500, unit: 50, unitLabel: 'km', label: 'Nakliye (Yurt İçi)', icon: <Truck size={24}/>, color: 'text-purple-600 bg-purple-100', group: 'NAKLİYE' },
-  yurt_disi_nakliye: { open: 15000, unit: 150, unitLabel: 'km', label: 'Yurt Dışı Lojistik', icon: <Globe size={24}/>, color: 'text-indigo-600 bg-indigo-100', group: 'NAKLİYE' },
-  seyyar_sarj: { open: 800, unit: 30, unitLabel: 'kw', label: 'Gezici Şarj', icon: <Zap size={24}/>, color: 'text-blue-600 bg-blue-100', group: 'ENERJİ' },
-  istasyon: { open: 0, unit: 15, unitLabel: 'kw', label: 'Şarj İstasyonu', icon: <Navigation size={24}/>, color: 'text-blue-800 bg-blue-200', group: 'ENERJİ' },
-  minibus: { open: 1500, unit: 35, unitLabel: 'km', label: 'Minibüs', icon: <Users size={24}/>, color: 'text-teal-600 bg-teal-100', group: 'YOLCU' },
-  otobus: { open: 4000, unit: 80, unitLabel: 'km', label: 'Otobüs', icon: <Bus size={24}/>, color: 'text-teal-800 bg-teal-200', group: 'YOLCU' },
-  vip_tasima: { open: 2500, unit: 60, unitLabel: 'km', label: 'VIP Transfer', icon: <Crown size={24}/>, color: 'text-emerald-700 bg-emerald-100', group: 'YOLCU' }
+  kurtarici: { unit: 45, unitLabel: 'km', label: 'Oto Kurtarma', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },
+  vinc: { unit: 250, unitLabel: 'km', label: 'Ağır Vinç', icon: <Construction size={24}/>, color: 'text-red-800 bg-red-200', group: 'KURTARMA' },
+  nakliye: { unit: 50, unitLabel: 'km', label: 'Nakliye (Yurt İçi)', icon: <Truck size={24}/>, color: 'text-purple-600 bg-purple-100', group: 'NAKLİYE' },
+  yurt_disi_nakliye: { unit: 150, unitLabel: 'km', label: 'Yurt Dışı Lojistik', icon: <Globe size={24}/>, color: 'text-indigo-600 bg-indigo-100', group: 'NAKLİYE' },
+  seyyar_sarj: { unit: 30, unitLabel: 'kw', label: 'Gezici Şarj', icon: <Zap size={24}/>, color: 'text-blue-600 bg-blue-100', group: 'ENERJİ' },
+  istasyon: { unit: 15, unitLabel: 'kw', label: 'Şarj İstasyonu', icon: <Navigation size={24}/>, color: 'text-blue-800 bg-blue-200', group: 'ENERJİ' },
+  minibus: { unit: 35, unitLabel: 'km', label: 'Minibüs', icon: <Users size={24}/>, color: 'text-teal-600 bg-teal-100', group: 'YOLCU' },
+  otobus: { unit: 80, unitLabel: 'km', label: 'Otobüs', icon: <Bus size={24}/>, color: 'text-teal-800 bg-teal-200', group: 'YOLCU' },
+  vip_tasima: { unit: 60, unitLabel: 'km', label: 'VIP Transfer', icon: <Crown size={24}/>, color: 'text-emerald-700 bg-emerald-100', group: 'YOLCU' }
 };
 
 const getOrderIcon = (type: string) => {
@@ -86,6 +86,7 @@ export default function SettingsPage() {
 
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTargetId, setRatingTargetId] = useState<string | null>(null);
+  const [ratingDriverId, setRatingDriverId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -119,10 +120,28 @@ export default function SettingsPage() {
   };
 
   // Gerçek Rating API İsteği (İsteğe bağlı)
-  const handleRateSubmit = (data: { rating: number; comment: string; tags: string[] }) => {
-    console.log("Puanlanan Sipariş:", ratingTargetId, "Veri:", data);
-    // Burada API'ye gönderebilirsiniz. 
-    // fetch(`${API_URL}/orders/${ratingTargetId}/rate` ... )
+  const handleRateSubmit = async (data: { rating: number; comment: string; tags: string[] }) => {
+    if (!ratingDriverId) return;
+    await fetch(`${API_URL}/users/${ratingDriverId}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rating: data.rating,
+        comment: data.comment,
+        tags: data.tags,
+        orderId: ratingTargetId
+      })
+    });
+  };
+
+  const handleNotAgreed = async (orderId: string) => {
+    await fetch(`${API_URL}/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerOutcome: 'NOT_AGREED' })
+    });
+    await fetch(`${API_URL}/orders/${orderId}`, { method: 'DELETE' });
+    setOrders(prev => prev.filter(o => o._id !== orderId));
   };
 
   if (!isMounted) return null;
@@ -191,8 +210,8 @@ export default function SettingsPage() {
                             </div>
                           </div>
                           <div className="text-right bg-slate-50/50 px-5 py-3 rounded-2xl border border-white">
-                            <div className="text-xl md:text-2xl font-black text-slate-800 tracking-tighter leading-none">₺{val.open}</div>
-                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Açılış</div>
+                            <div className="text-xl md:text-2xl font-black text-slate-800 tracking-tighter leading-none">₺{val.unit}</div>
+                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">/{val.unitLabel}</div>
                           </div>
                         </div>
                       </div>
@@ -287,11 +306,11 @@ export default function SettingsPage() {
                           
                           <div className="flex justify-between items-center">
                             <div>
-                              <h4 className="font-black text-slate-800 text-sm md:text-base uppercase">{order.driverName || 'Lisanslı Sürücü'}</h4>
+                              <h4 className="font-black text-slate-800 text-sm md:text-base uppercase">{order?.driver?.businessName || 'Lisanslı Sürücü'}</h4>
                               <p className="text-[11px] text-slate-500 font-bold mt-1.5 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</p>
                             </div>
                             <div className="flex items-center gap-4 text-right">
-                               <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tighter">₺{order.totalPrice || '---'}</p>
+                               <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tighter">₺{order?.driver?.pricing?.pricePerUnit || '---'}</p>
                                {isExpanded ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}
                             </div>
                           </div>
@@ -301,10 +320,11 @@ export default function SettingsPage() {
                         <div className={`bg-slate-50/80 border-t border-slate-100 transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0 hidden'}`}>
                           <div className="p-4 grid grid-cols-2 gap-3">
                             <button 
-                              onClick={() => { 
-                                setRatingTargetId(order._id); 
-                                setShowRatingModal(true); 
-                              }} 
+                              onClick={() => {
+                                setRatingTargetId(order._id);
+                                setRatingDriverId(order?.driver?._id || null);
+                                setShowRatingModal(true);
+                              }}
                               className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:text-yellow-600 hover:border-yellow-200 transition-all active:scale-95 shadow-sm"
                             >
                               <Star size={16} /> Değerlendir
@@ -312,12 +332,18 @@ export default function SettingsPage() {
                             <button 
                               onClick={() => { 
                                 setReportTargetId(order._id); 
-                                setReportDriverId(order.driverId || null); 
+                                setReportDriverId(order?.driver?._id || null); 
                                 setShowReportModal(true); 
                               }} 
                               className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:text-red-600 hover:border-red-200 transition-all active:scale-95 shadow-sm"
                             >
                               <AlertTriangle size={16} /> Şikayet Et
+                            </button>
+                            <button
+                              onClick={() => handleNotAgreed(order._id)}
+                              className="col-span-2 flex items-center justify-center gap-2 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:text-slate-800 transition-all active:scale-95 shadow-sm"
+                            >
+                              Aradım Ama Anlaşamadım
                             </button>
                           </div>
                         </div>

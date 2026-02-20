@@ -1,18 +1,21 @@
-// src/reports/dto/create-report.dto.ts
-
 export enum ReportStatus {
-  OPEN = 'OPEN',           // Açık
-  IN_PROGRESS = 'IN_PROGRESS', // İnceleniyor
-  RESOLVED = 'RESOLVED',   // Çözüldü
-  CLOSED = 'CLOSED',       // Kapatıldı
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED',
 }
 
 export class CreateReportDto {
-  orderId: string;   // Hangi sipariş?
-  userId?: string;   // Şikayet eden User ID (Opsiyonel ama önerilir)
-  userPhone: string; // İletişim no
-  reason: string;    // Konu başlığı
-  details?: string;  // Detaylı açıklama
+  orderId?: string;
+  reportedDriverId?: string;
+  reporterPhone?: string;
+  userPhone?: string;
+  reportCategory?: string;
+  reasons?: string[];
+  description?: string;
+  details?: string;
+  reason?: string;
+  userId?: string;
 }
 
 export class UpdateReportDto {

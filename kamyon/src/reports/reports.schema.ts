@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { ReportStatus } from './dto/create-report.dto';
 
-// İlişki kuracağımız diğer şemaları import edelim
 import { Order } from '../orders/order.schema';
 import { User } from '../users/user.schema';
 
@@ -10,19 +9,29 @@ export type ReportDocument = ReportItem & Document;
 
 @Schema({ timestamps: true })
 export class ReportItem {
-  
-  // 🔥 DÜZELTME: Düz string yerine Sipariş Tablosuna Referans
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Order', required: true })
+
+  // Sipariş referansı — opsiyonel
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Order' })
   order: Order;
 
-  // Şikayet eden kullanıcı (Opsiyonel olabilir, misafir ise)
+  // Şikayet edilen sürücü/provider — opsiyonel
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'NewProvider' })
+  reportedDriver: any;
+
+  // Şikayet eden kullanıcı — opsiyonel
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   reporter: User;
 
-  @Prop({ required: true })
+  @Prop()
   userPhone: string;
 
-  @Prop({ required: true })
+  @Prop()
+  reportCategory: string;
+
+  @Prop({ type: [String], default: [] })
+  reasons: string[];
+
+  @Prop()
   reason: string;
 
   @Prop()

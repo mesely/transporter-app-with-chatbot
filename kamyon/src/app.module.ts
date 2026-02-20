@@ -13,6 +13,7 @@ import { ReportsModule } from './reports/reports.module';
 import { DatabaseModule } from './database/database.module';
 import { TariffsModule } from './tariffs/tariffs.module';
 import { DataModule } from './data/data.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DataModule } from './data/data.module';
     DatabaseModule,
     TariffsModule,
     DataModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

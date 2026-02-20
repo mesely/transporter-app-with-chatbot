@@ -296,7 +296,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     </button>
                     
                     <button 
-                      onClick={() => window.location.href=`sms:${item.phoneNumber}`}
+                      onClick={() => { onStartOrder(item, 'message'); window.location.href=`sms:${item.phoneNumber}`; }}
                       className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                     >
                       <MessageCircle size={13} /> MESAJ AT

@@ -16,9 +16,8 @@ export class UsersService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('🚀 Transporter V12 (Full Service): Sistem Hazır.');
-    // GeoSpatial Index oluşturma
-    try { 
-      await this.providerModel.collection.createIndex({ location: '2dsphere' }); 
+    try {
+      await this.providerModel.collection.createIndex({ location: '2dsphere' });
       this.logger.log('✅ Konum indeksi doğrulandı.');
     } catch (e) {
       this.logger.error('Index hatası (zaten varsa sorun yok):', e);
@@ -32,109 +31,111 @@ export class UsersService implements OnModuleInit {
       const rawPhone = data.phoneNumber ? String(data.phoneNumber).replace(/\D/g, '') : '';
       const email = data.email || `provider_${rawPhone.slice(-10)}@transporter.app`;
 
-      // 1. User Şemasını Güncelle/Oluştur (Link Dahil)
       let user = await this.userModel.findOne({ email });
       if (!user) {
         const hashedPassword = await bcrypt.hash(data.password || '123456', 10);
-        user = await new this.userModel({ 
-          email, 
-          password: hashedPassword, 
-          role: 'provider', 
+        user = await new this.userModel({
+          email,
+          password: hashedPassword,
+          role: 'provider',
           isActive: true,
-          link: data.website || data.link || '' 
+          link: data.website || data.link || ''
         }).save();
       } else if (data.website || data.link) {
         await this.userModel.updateOne(
-          { _id: user._id }, 
+          { _id: user._id },
           { $set: { link: data.website || data.link } }
         );
       }
 
-      // 🔥 FIX 1: KOORDİNAT OKUMA MANTIĞI DÜZELTİLDİ
-      // Sıkı bir kontrol yapıyoruz. Eğer frontend'den lat ve lng ayrı ayrı geldiyse öncelik veriyoruz.
-      let coords: [number, number] = [35.6667, 39.1667]; 
+      let coords: [number, number] = [35.6667, 39.1667];
       if (data.lng && data.lat) {
-          coords = [parseFloat(data.lng), parseFloat(data.lat)];
+        coords = [parseFloat(data.lng), parseFloat(data.lat)];
       } else if (data.location?.coordinates && Array.isArray(data.location.coordinates) && data.location.coordinates.length === 2) {
-          coords = [parseFloat(data.location.coordinates[0]), parseFloat(data.location.coordinates[1])];
+        coords = [parseFloat(data.location.coordinates[0]), parseFloat(data.location.coordinates[1])];
       }
 
       let mainType = 'KURTARICI';
       if (data.serviceType || data.service?.subType) {
-         const t = (data.service?.subType || data.serviceType).toUpperCase();
-         if (['NAKLIYE', 'SARJ', 'KURTARICI', 'YOLCU'].includes(t)) mainType = t;
-         else if (['TIR', 'KAMYON', 'KAMYONET', 'YURT_DISI_NAKLIYE'].includes(t)) mainType = 'NAKLIYE';
-         else if (['OTO_KURTARMA', 'VINC'].includes(t)) mainType = 'KURTARICI';
-         else if (['ISTASYON', 'SEYYAR_SARJ', 'MOBIL_UNIT'].includes(t)) mainType = 'SARJ';
-         else if (['YOLCU_TASIMA', 'MINIBUS', 'OTOBUS', 'MIDIBUS', 'VIP_TASIMA'].includes(t)) mainType = 'YOLCU';
+        const t = (data.service?.subType || data.serviceType).toUpperCase();
+        if (['NAKLIYE', 'SARJ', 'KURTARICI', 'YOLCU'].includes(t)) mainType = t;
+        else if (['TIR', 'KAMYON', 'KAMYONET', 'YURT_DISI_NAKLIYE', 'EVDEN_EVE'].includes(t)) mainType = 'NAKLIYE';
+        else if (['OTO_KURTARMA', 'VINC'].includes(t)) mainType = 'KURTARICI';
+        else if (['ISTASYON', 'SEYYAR_SARJ', 'MOBIL_UNIT'].includes(t)) mainType = 'SARJ';
+        else if (['YOLCU_TASIMA', 'MINIBUS', 'OTOBUS', 'MIDIBUS', 'VIP_TASIMA'].includes(t)) mainType = 'YOLCU';
       }
 
       const subTypeToSave = data.serviceType === 'MOBIL_UNIT' ? 'seyyar_sarj' : (data.serviceType || data.service?.subType || 'genel');
-
-      // 🔥 FIX 2: ADRES OBJESİ DOĞRU ŞEKİLDE PARSE EDİLDİ
-      // Frontend address'i string gönderiyor olabilir, obje gönderiyor olabilir. Hepsini garantiye alıyoruz.
       const fullTextAddress = typeof data.address === 'string' ? data.address : (data.address?.fullText || '');
 
-      // 2. Provider/Profile Şemasını Güncelle/Oluştur
+      const updatePayload: any = {
+        user: user._id,
+        businessName: cleanName || 'İsimsiz İşletme',
+        phoneNumber: rawPhone,
+        address: {
+          fullText: fullTextAddress,
+          city: data.city || data.address?.city || 'Bilinmiyor',
+          district: data.district || data.address?.district || 'Merkez'
+        },
+        service: {
+          mainType,
+          subType: subTypeToSave,
+          tags: data.filterTags || data.service?.tags || []
+        },
+        pricing: {
+          openingFee: 0,
+          pricePerUnit: Number(data.pricePerUnit || data.pricing?.pricePerUnit) || 40
+        },
+        location: {
+          type: 'Point',
+          coordinates: coords
+        },
+        link: data.website || data.link || '',
+        website: data.website || data.link || '',
+        rating: 5.0,
+        isVerified: Boolean(data.isVerified),
+        vehicleInfo: (data.vehicleInfo || '').trim(),
+        vehiclePhotos: Array.isArray(data.vehiclePhotos) ? data.vehiclePhotos : [],
+      };
+
+      if (data.photoUrl) {
+        updatePayload.photoUrl = data.photoUrl;
+        if (!updatePayload.vehiclePhotos.length) {
+          updatePayload.vehiclePhotos = [data.photoUrl];
+        }
+      }
+
       return this.providerModel.findOneAndUpdate(
         { user: user._id },
-        {
-          user: user._id,
-          businessName: cleanName || 'İsimsiz İşletme',
-          phoneNumber: rawPhone,
-          // 🔥 Adres objesi frontend'den gelen verilerle tam uyumlu eşleştirildi
-          address: { 
-            fullText: fullTextAddress, 
-            city: data.city || data.address?.city || 'Bilinmiyor', 
-            district: data.district || data.address?.district || 'Merkez' 
-          },
-          service: { 
-            mainType, 
-            subType: subTypeToSave, 
-            tags: data.filterTags || data.service?.tags || [] 
-          },
-          pricing: { 
-            openingFee: Number(data.openingFee || data.pricing?.openingFee) || 350, 
-            pricePerUnit: Number(data.pricePerUnit || data.pricing?.pricePerUnit) || 40 
-          },
-          // 🔥 Artık Türkiye'nin ortası değil, kesinleşmiş coords yazılacak
-          location: { 
-            type: 'Point', 
-            coordinates: coords 
-          },
-          link: data.website || data.link || '', 
-          website: data.website || data.link || '',
-          rating: 5.0 
-        },
+        updatePayload,
         { upsert: true, new: true }
       );
-    } catch (e) { 
+    } catch (e) {
       this.logger.error("Kullanıcı oluşturulurken hata:", e);
-      return null; 
+      return null;
     }
   }
 
-  // --- 2. FIND NEARBY (HARİTA & LİSTE İÇİN) ---
+  // --- 2. FIND NEARBY ---
   async findNearby(lat: number, lng: number, rawType: string, zoom: number) {
     const safeZoom = zoom ? Number(zoom) : 15;
-    let maxDist = 500000; 
+    let maxDist = 500000;
     let limit = 200;
 
-    // Geniş alan taraması ayarları
-    if (safeZoom < 8) { maxDist = 20000000; limit = 3000; } 
-    else if (safeZoom < 11) { maxDist = 2000000; limit = 1000; } 
+    if (safeZoom < 8) { maxDist = 20000000; limit = 3000; }
+    else if (safeZoom < 11) { maxDist = 2000000; limit = 1000; }
     else { maxDist = 100000; limit = 200; }
 
     const filterQuery: any = {};
     if (rawType && rawType !== '') {
-        const type = rawType.toLowerCase().trim();
-        if (type === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
-        else if (type === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
-        else if (type === 'sarj') filterQuery['service.mainType'] = 'SARJ';
-        else if (type === 'yolcu') filterQuery['service.mainType'] = 'YOLCU';
-        else if (type === 'sarj_istasyonu') filterQuery['service.subType'] = 'istasyon';
-        else if (type === 'seyyar_sarj') filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
-        else filterQuery['service.subType'] = type;
+      const type = rawType.toLowerCase().trim();
+      if (type === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
+      else if (type === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
+      else if (type === 'sarj') filterQuery['service.mainType'] = 'SARJ';
+      else if (type === 'yolcu') filterQuery['service.mainType'] = 'YOLCU';
+      else if (type === 'sarj_istasyonu') filterQuery['service.subType'] = 'istasyon';
+      else if (type === 'seyyar_sarj') filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
+      else filterQuery['service.subType'] = type;
     }
 
     return this.providerModel.aggregate([
@@ -145,13 +146,12 @@ export class UsersService implements OnModuleInit {
           key: 'location',
           maxDistance: maxDist,
           spherical: true,
-          query: filterQuery 
+          query: filterQuery
         }
       },
-      // 🟢 User (newusers) tablosundaki "link" bilgisini Profile (provider) içine gömüyoruz
       {
         $lookup: {
-          from: 'newusers', // Mongoose koleksiyon adı
+          from: 'newusers',
           localField: 'user',
           foreignField: '_id',
           as: 'userData'
@@ -168,36 +168,90 @@ export class UsersService implements OnModuleInit {
           address: 1,
           phoneNumber: 1,
           rating: 1,
+          ratingCount: 1,
+          reportCount: 1,
+          isVerified: 1,
+          photoUrl: 1,
           distance: 1,
-          // userData'daki linki öncelikli al, yoksa kendi linkini kullan
-          link: { $ifNull: [ "$userData.link", "$link" ] },
-          website: { $ifNull: [ "$userData.link", "$website" ] }
+          link: { $ifNull: ["$userData.link", "$link"] },
+          website: { $ifNull: ["$userData.link", "$website"] }
         }
       }
     ]).exec();
   }
 
-  // --- 3. DİĞER FONKSİYONLAR ---
+  // --- 3. ADD RATING ---
+  async addRating(providerId: string, data: { rating: number; comment?: string; tags?: string[]; orderId?: string }) {
+    const ratingEntry = {
+      rating: data.rating,
+      comment: data.comment || '',
+      tags: data.tags || [],
+      orderId: data.orderId,
+      createdAt: new Date(),
+    };
+
+    const provider = await this.providerModel.findByIdAndUpdate(
+      providerId,
+      {
+        $push: { ratings: { $each: [ratingEntry], $slice: -50 } },
+        $inc: { ratingCount: 1 }
+      },
+      { new: true }
+    ).exec();
+
+    if (provider && (provider as any).ratings && (provider as any).ratings.length > 0) {
+      const arr: any[] = (provider as any).ratings;
+      const avg = arr.reduce((sum: number, r: any) => sum + r.rating, 0) / arr.length;
+      await this.providerModel.findByIdAndUpdate(providerId, { rating: parseFloat(avg.toFixed(1)) }).exec();
+    }
+
+    return { success: true };
+  }
+
+  // --- 4. GET PROVIDER RATINGS ---
+  async getProviderRatings(providerId: string) {
+    const provider = await this.providerModel.findById(providerId).select('ratings ratingCount rating').exec();
+    if (!provider) return { ratings: [], ratingCount: 0, rating: 5.0 };
+    return {
+      ratings: (provider as any).ratings || [],
+      ratingCount: (provider as any).ratingCount || 0,
+      rating: (provider as any).rating || 5.0,
+    };
+  }
+
+  // --- 5. FIND BY PHONE ---
+  async findByPhone(phone: string) {
+    const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+    if (!cleanPhone) return null;
+    return this.providerModel.findOne({ phoneNumber: cleanPhone }).exec();
+  }
+
+  // --- 6. DELETE SELF (Aracımı Listeden Kaldır) ---
+  async deleteSelfProvider(id: string) {
+    return this.providerModel.findByIdAndDelete(id).exec();
+  }
+
+  // --- 7. OTHER FUNCTIONS ---
   async findDiverseList(lat: number, lng: number) {
-      return this.findNearby(lat, lng, '', 13);
+    return this.findNearby(lat, lng, '', 13);
   }
 
   async findFiltered(city?: string, type?: string) {
-      const query: any = {};
-      if (city && city !== 'Tümü') query['address.city'] = new RegExp(city, 'i');
-      if (type && type !== 'Tümü') {
-          if (['NAKLIYE', 'SARJ', 'KURTARICI', 'YOLCU'].includes(type.toUpperCase())) query['service.mainType'] = type.toUpperCase();
-          else query['service.subType'] = type;
-      }
-      return this.providerModel.find(query).sort({ _id: -1 }).limit(500).exec();
+    const query: any = {};
+    if (city && city !== 'Tümü') query['address.city'] = new RegExp(city, 'i');
+    if (type && type !== 'Tümü') {
+      if (['NAKLIYE', 'SARJ', 'KURTARICI', 'YOLCU'].includes(type.toUpperCase())) query['service.mainType'] = type.toUpperCase();
+      else query['service.subType'] = type;
+    }
+    return this.providerModel.find(query).sort({ _id: -1 }).limit(500).exec();
   }
 
-  async updateOne(id: string, data: any) { 
-      return this.providerModel.findByIdAndUpdate(id, data, { new: true }).exec(); 
+  async updateOne(id: string, data: any) {
+    return this.providerModel.findByIdAndUpdate(id, data, { new: true }).exec();
   }
-  
-  async deleteOne(id: string) { 
-      return this.providerModel.findByIdAndDelete(id).exec(); 
+
+  async deleteOne(id: string) {
+    return this.providerModel.findByIdAndDelete(id).exec();
   }
 
   async getServiceTypes() {
