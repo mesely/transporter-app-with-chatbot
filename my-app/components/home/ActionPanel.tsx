@@ -731,23 +731,6 @@ export default function ActionPanel({
                             {vehicleItems.map((vehicle, vIdx) => (
                               <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
                                 <div className="font-black uppercase">{vehicle.name || `Araç ${vIdx + 1}`}</div>
-                                {Array.isArray(vehicle.photoUrls) && vehicle.photoUrls.length > 0 ? (
-                                  <div className="mt-1 flex flex-wrap gap-2">
-                                    {vehicle.photoUrls.map((url, pIdx) => (
-                                      <button
-                                        key={`${driver._id}-vehicle-${vIdx}-photo-${pIdx}`}
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
-                                        className="h-14 w-14 rounded-lg overflow-hidden bg-white border border-slate-200"
-                                        title={`Fotoğraf ${pIdx + 1}`}
-                                      >
-                                        <img src={url} alt={`Araç ${vIdx + 1} fotoğraf ${pIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="text-[9px] text-gray-500 mt-1">Fotoğraf yok</div>
-                                )}
                               </div>
                             ))}
                           </div>
@@ -763,7 +746,7 @@ export default function ActionPanel({
                                     key={`${driver._id}-inline-photo-${idx}`}
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
-                                    className="h-20 w-full rounded-lg overflow-hidden bg-rose-50 border border-rose-100"
+                                    className="h-12 w-full rounded-lg overflow-hidden bg-rose-50 border border-rose-100"
                                     title={`Fotoğraf ${idx + 1}`}
                                   >
                                     <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
