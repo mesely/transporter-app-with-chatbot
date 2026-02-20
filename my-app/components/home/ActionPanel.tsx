@@ -598,7 +598,7 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-red-700 active:scale-95 transition-all bg-gradient-to-r from-white/62 to-rose-100/62 backdrop-blur-xl"
+                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-red-500/84 to-rose-700/84 backdrop-blur-xl"
                             >
                               Araçları Listele ({vehicleCount})
                             </button>
@@ -673,7 +673,7 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowRatingsModal(true);
                               }}
-                              className="flex-1 py-3 bg-gradient-to-r from-white/65 to-rose-100/65 border border-white/60 rounded-2xl text-[9px] font-black uppercase text-red-700 flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
+                              className="flex-1 py-3 bg-gradient-to-r from-red-500/84 to-rose-700/84 border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
                             >
                               <Star size={12}/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
                             </button>
@@ -684,7 +684,7 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowReportsModal(true);
                               }}
-                              className="flex-1 py-3 bg-gradient-to-r from-red-400/65 to-rose-700/65 border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
+                              className="flex-1 py-3 bg-gradient-to-r from-red-700/84 to-rose-900/84 border border-white/35 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
                             >
                               Şikayetleri Görüntüle ({driver.reportCount || 0})
                             </button>
