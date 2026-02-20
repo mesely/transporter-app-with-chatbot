@@ -177,6 +177,7 @@ export default function ActionPanel({
   const [modalDriverName, setModalDriverName] = useState<string>('');
   const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
   const [activePhotoCardId, setActivePhotoCardId] = useState<string | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
@@ -755,11 +756,17 @@ export default function ActionPanel({
                           <div className="border border-white/60 rounded-2xl p-3 backdrop-blur-xl" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
                             {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
                             {uniquePhotoUrls.length > 0 && (
-                              <div className="grid grid-cols-3 gap-2">
+                              <div className="grid grid-cols-6 gap-1.5">
                                 {uniquePhotoUrls.map((url, idx) => (
-                                  <div key={`${driver._id}-inline-photo-${idx}`} className="aspect-square rounded-xl overflow-hidden bg-rose-50 border border-rose-100">
+                                  <button
+                                    key={`${driver._id}-inline-photo-${idx}`}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
+                                    className="h-9 w-9 rounded-md overflow-hidden bg-rose-50 border border-rose-100"
+                                    title={`Fotoğraf ${idx + 1}`}
+                                  >
                                     <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                                  </div>
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -823,6 +830,24 @@ export default function ActionPanel({
       driverId={modalDriverId}
       driverName={modalDriverName}
     />
+    {previewPhotoUrl && (
+      <div
+        className="fixed inset-0 z-[100005] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={() => setPreviewPhotoUrl(null)}
+      >
+        <div className="relative max-w-[92vw] max-h-[82vh]">
+          <img src={previewPhotoUrl} alt="Araç fotoğrafı büyük önizleme" className="max-w-[92vw] max-h-[82vh] rounded-2xl object-contain border border-white/30 shadow-2xl" />
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(null); }}
+            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-gray-800 font-black text-xs"
+            aria-label="Kapat"
+          >
+            X
+          </button>
+        </div>
+      </div>
+    )}
     </>
   );
 }

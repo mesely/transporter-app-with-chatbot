@@ -19,7 +19,7 @@ import {
   Zap, Globe, Home, Package, Container,
   Snowflake, Box, Layers, Archive, Check, Settings2, Wallet,
   ArrowRight, Users, Bus, Crown, LocateFixed,
-  Truck, ChevronDown, ChevronUp, FileText, Shield
+  Truck, ChevronDown, ChevronUp, FileText, Shield, Image as ImageIcon
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
@@ -110,6 +110,7 @@ export default function ProfilePage() {
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activeVehicleIndex, setActiveVehicleIndex] = useState<number>(0);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [lastAddressKey, setLastAddressKey] = useState('');
   const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -474,31 +475,44 @@ export default function ProfilePage() {
                     />
                     {uploadingPhoto && activeVehicleIndex === idx && <span className="text-[10px] font-black text-[#3d686b]">Yükleniyor...</span>}
                   </div>
-                  {vehicle.photoUrls?.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {vehicle.photoUrls.map((url, pIdx) => (
-                        <div key={pIdx} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-white/40">
-                          <a href={url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 underline">
-                            Foto {pIdx + 1}
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({
-                              ...prev,
-                              vehicleItems: prev.vehicleItems.map((v, i) => i === idx
-                                ? { ...v, photoUrls: (v.photoUrls || []).filter((_, photoIdx) => photoIdx !== pIdx) }
-                                : v
-                              )
-                            }))}
-                            className="text-[9px] font-black text-red-600"
-                            aria-label="Fotoğrafı sil"
-                          >
-                            X
-                          </button>
+                  <div className="mt-2 grid grid-cols-4 gap-2">
+                    {Array.from({ length: 4 }).map((_, pIdx) => {
+                      const url = vehicle.photoUrls?.[pIdx];
+                      if (url) {
+                        return (
+                          <div key={pIdx} className="relative h-10 rounded-lg overflow-hidden border border-white/50 bg-white/70">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhotoUrl(url)}
+                              className="w-full h-full"
+                              title={`Fotoğraf ${pIdx + 1}`}
+                            >
+                              <img src={url} alt={`Araç fotoğrafı ${pIdx + 1}`} className="w-full h-full object-cover" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({
+                                ...prev,
+                                vehicleItems: prev.vehicleItems.map((v, i) => i === idx
+                                  ? { ...v, photoUrls: (v.photoUrls || []).filter((_, photoIdx) => photoIdx !== pIdx) }
+                                  : v
+                                )
+                              }))}
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[8px] font-black"
+                              aria-label="Fotoğrafı sil"
+                            >
+                              X
+                            </button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={pIdx} className="h-10 rounded-lg border border-white/50 bg-white/50 flex items-center justify-center">
+                          <ImageIcon size={12} className="text-gray-400" />
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -584,6 +598,25 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {previewPhotoUrl && (
+        <div
+          className="fixed inset-0 z-[10020] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewPhotoUrl(null)}
+        >
+          <div className="relative max-w-[92vw] max-h-[82vh]" onClick={(e) => e.stopPropagation()}>
+            <img src={previewPhotoUrl} alt="Araç fotoğrafı büyük önizleme" className="max-w-[92vw] max-h-[82vh] rounded-2xl object-contain border border-white/30 shadow-2xl" />
+            <button
+              type="button"
+              onClick={() => setPreviewPhotoUrl(null)}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-gray-800 font-black text-xs"
+              aria-label="Kapat"
+            >
+              X
+            </button>
+          </div>
+        </div>
+      )}
 
       {activeFolder && (
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4">
