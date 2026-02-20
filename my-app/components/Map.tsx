@@ -95,6 +95,7 @@ const darkenHex = (hex: string, amount: number) => {
 // --- İKON GENERATORLARI ---
 const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
   const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
+  const activeColor = darkenHex(config.color, 55);
   const baseSize = isActive ? 56 : Math.max(36, Math.min(48, zoom * 2.8)); 
   const iconHtml = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
 
@@ -102,11 +103,11 @@ const createCustomIcon = (type: string | undefined, zoom: number, isActive: bool
     className: `custom-pin-marker ${isActive ? 'z-[2000]' : ''}`,
     html: `
       <div style="
-        background-color: ${isActive ? '#16a34a' : config.color}; 
+        background-color: ${isActive ? activeColor : config.color}; 
         width: ${baseSize}px; height: ${baseSize}px; 
         border-radius: 50% 50% 50% 0; transform: rotate(-45deg); 
         border: ${isActive ? '4px' : '2px'} solid white; 
-        box-shadow: ${isActive ? '0 0 30px rgba(22,163,74,0.6)' : '0 4px 12px rgba(0,0,0,0.25)'}; 
+        box-shadow: ${isActive ? '0 0 30px rgba(0,0,0,0.35)' : '0 4px 12px rgba(0,0,0,0.25)'}; 
         display: flex; align-items: center; justify-content: center;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
         <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">

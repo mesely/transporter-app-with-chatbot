@@ -737,10 +737,11 @@ export default function ActionPanel({
                                       <button
                                         key={`${driver._id}-vehicle-${vIdx}-photo-${pIdx}`}
                                         type="button"
-                                        onClick={(e) => { e.stopPropagation(); setActivePhotoCardId(driver._id); }}
-                                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black uppercase text-slate-700"
+                                        onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
+                                        className="h-14 w-14 rounded-lg overflow-hidden bg-white border border-slate-200"
+                                        title={`Fotoğraf ${pIdx + 1}`}
                                       >
-                                        Fotoğraf {pIdx + 1}
+                                        <img src={url} alt={`Araç ${vIdx + 1} fotoğraf ${pIdx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                                       </button>
                                     ))}
                                   </div>
@@ -756,13 +757,13 @@ export default function ActionPanel({
                           <div className="border border-white/60 rounded-2xl p-3 backdrop-blur-xl" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
                             {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
                             {uniquePhotoUrls.length > 0 && (
-                              <div className="grid grid-cols-6 gap-1.5">
+                              <div className="grid grid-cols-3 gap-2">
                                 {uniquePhotoUrls.map((url, idx) => (
                                   <button
                                     key={`${driver._id}-inline-photo-${idx}`}
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
-                                    className="h-9 w-9 rounded-md overflow-hidden bg-rose-50 border border-rose-100"
+                                    className="h-20 w-full rounded-lg overflow-hidden bg-rose-50 border border-rose-100"
                                     title={`Fotoğraf ${idx + 1}`}
                                   >
                                     <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
