@@ -746,10 +746,10 @@ export default function ActionPanel({
                                     key={`${driver._id}-inline-photo-${idx}`}
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
-                                    className="h-12 w-full rounded-lg overflow-hidden bg-rose-50 border border-rose-100"
+                                    className="h-48 w-full rounded-lg overflow-hidden bg-rose-50 border border-rose-100"
                                     title={`Fotoğraf ${idx + 1}`}
                                   >
-                                    <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                    <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-contain" loading="lazy" />
                                   </button>
                                 ))}
                               </div>
