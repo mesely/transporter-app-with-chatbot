@@ -716,7 +716,7 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className="flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all backdrop-blur-xl`}
                               style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               Araç Fotoğraflarını Görüntüle ({photoCount})
