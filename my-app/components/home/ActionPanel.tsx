@@ -488,9 +488,12 @@ export default function ActionPanel({
                       : 'text-purple-700';
                 const theme = sub.includes('kurtarma') || sub === 'vinc'
                   ? {
-                      grad: 'from-red-500/82 to-rose-700/82',
-                      gradDark: 'from-red-700/86 to-rose-900/86',
-                      soft: 'from-red-400/24 to-rose-500/24',
+                      start: '#ef4444',
+                      end: '#be123c',
+                      darkStart: '#b91c1c',
+                      darkEnd: '#881337',
+                      softStart: 'rgba(248,113,113,0.25)',
+                      softEnd: 'rgba(244,63,94,0.25)',
                       text: 'text-red-700',
                       star: 'fill-red-500 text-red-500',
                       starOff: 'text-red-200',
@@ -498,9 +501,12 @@ export default function ActionPanel({
                     }
                   : isPassenger
                     ? {
-                        grad: 'from-emerald-500/82 to-green-700/82',
-                        gradDark: 'from-emerald-700/86 to-green-900/86',
-                        soft: 'from-emerald-400/24 to-green-500/24',
+                        start: '#10b981',
+                        end: '#15803d',
+                        darkStart: '#047857',
+                        darkEnd: '#14532d',
+                        softStart: 'rgba(52,211,153,0.25)',
+                        softEnd: 'rgba(34,197,94,0.25)',
                         text: 'text-emerald-700',
                         star: 'fill-emerald-500 text-emerald-500',
                         starOff: 'text-emerald-200',
@@ -508,9 +514,12 @@ export default function ActionPanel({
                       }
                     : isStation
                       ? {
-                          grad: 'from-blue-500/82 to-indigo-700/82',
-                          gradDark: 'from-blue-700/86 to-indigo-900/86',
-                          soft: 'from-blue-400/24 to-indigo-500/24',
+                          start: '#3b82f6',
+                          end: '#3730a3',
+                          darkStart: '#1d4ed8',
+                          darkEnd: '#312e81',
+                          softStart: 'rgba(96,165,250,0.25)',
+                          softEnd: 'rgba(99,102,241,0.25)',
                           text: 'text-blue-700',
                           star: 'fill-blue-500 text-blue-500',
                           starOff: 'text-blue-200',
@@ -518,18 +527,24 @@ export default function ActionPanel({
                         }
                       : isMobileCharge
                         ? {
-                            grad: 'from-cyan-400/82 to-sky-600/82',
-                            gradDark: 'from-cyan-600/86 to-sky-800/86',
-                            soft: 'from-cyan-300/24 to-sky-500/24',
+                            start: '#22d3ee',
+                            end: '#0284c7',
+                            darkStart: '#0891b2',
+                            darkEnd: '#075985',
+                            softStart: 'rgba(103,232,249,0.25)',
+                            softEnd: 'rgba(14,165,233,0.25)',
                             text: 'text-cyan-700',
                             star: 'fill-cyan-500 text-cyan-500',
                             starOff: 'text-cyan-200',
                             ring: 'border-cyan-400 ring-cyan-300/30',
                           }
                         : {
-                            grad: 'from-purple-500/82 to-violet-700/82',
-                            gradDark: 'from-purple-700/86 to-violet-900/86',
-                            soft: 'from-purple-400/24 to-violet-500/24',
+                            start: '#a855f7',
+                            end: '#6d28d9',
+                            darkStart: '#7e22ce',
+                            darkEnd: '#4c1d95',
+                            softStart: 'rgba(192,132,252,0.25)',
+                            softEnd: 'rgba(139,92,246,0.25)',
                             text: 'text-purple-700',
                             star: 'fill-purple-500 text-purple-500',
                             starOff: 'text-purple-200',
@@ -559,7 +574,10 @@ export default function ActionPanel({
                 >
                     {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
                       <div className="absolute top-4 right-4 text-right">
-                        <div className={`px-2.5 py-1 rounded-xl bg-gradient-to-r ${theme.grad} backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm`}>
+                        <div
+                          className="px-2.5 py-1 rounded-xl backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
+                        >
                           Doğrulanmış Fiyat
                         </div>
                         <div className={`mt-1 text-[11px] font-black ${theme.text}`}>
@@ -627,16 +645,25 @@ export default function ActionPanel({
                               const lng = driver.location?.coordinates?.[0];
                               if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
                             }}
-                            className={`w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r ${theme.grad} backdrop-blur-xl transition-transform`}
+                            className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 backdrop-blur-xl transition-transform"
+                            style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           >
                             <MapIcon size={16} /> GOOGLE MAPS'TE AÇ
                           </button>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 bg-gradient-to-r ${theme.grad} backdrop-blur-xl`}><Phone size={14}/> ARA</button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }}
+                            className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 backdrop-blur-xl`}
+                            style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
+                          ><Phone size={14}/> ARA</button>
 
                           {!isStation && (
-                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className={`flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 bg-gradient-to-r ${theme.gradDark} backdrop-blur-xl`}><MessageCircle size={14}/> MESAJ AT</button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
+                              className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 backdrop-blur-xl"
+                              style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
+                            ><MessageCircle size={14}/> MESAJ AT</button>
                           )}
                         </div>
 
@@ -647,7 +674,8 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className={`flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r ${theme.grad} backdrop-blur-xl`}
+                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
+                              style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                             >
                               Araçları Listele ({vehicleCount})
                             </button>
@@ -656,7 +684,8 @@ export default function ActionPanel({
                                 e.stopPropagation();
                                 setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                               }}
-                              className={`flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r ${theme.gradDark} backdrop-blur-xl`}
+                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
+                              style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
                             >
                               Araç Fotoğraflarını Görüntüle ({photoCount})
                             </button>
@@ -664,7 +693,7 @@ export default function ActionPanel({
                         )}
 
                         {!isStation && activeVehicleCardId === driver._id && (
-                          <div className={`bg-gradient-to-r ${theme.soft} border border-white/60 rounded-2xl p-3 space-y-2 backdrop-blur-xl`}>
+                          <div className="border border-white/60 rounded-2xl p-3 space-y-2 backdrop-blur-xl" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
                             {vehicleItems.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı araç bilgisi yok.</div>}
                             {vehicleItems.map((vehicle, vIdx) => (
                               <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
@@ -691,7 +720,7 @@ export default function ActionPanel({
                         )}
 
                         {!isStation && activePhotoCardId === driver._id && (
-                          <div className={`bg-gradient-to-r ${theme.soft} border border-white/60 rounded-2xl p-3 backdrop-blur-xl`}>
+                          <div className="border border-white/60 rounded-2xl p-3 backdrop-blur-xl" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
                             {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
                             {uniquePhotoUrls.length > 0 && (
                               <div className="grid grid-cols-3 gap-2">
@@ -722,7 +751,8 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowRatingsModal(true);
                               }}
-                              className={`flex-1 py-3 bg-gradient-to-r ${theme.grad} border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
+                              className="flex-1 py-3 border border-white/40 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
+                              style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                             >
                               <Star size={12}/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
                             </button>
@@ -733,7 +763,8 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowReportsModal(true);
                               }}
-                              className={`flex-1 py-3 bg-gradient-to-r ${theme.gradDark} border border-white/35 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
+                              className="flex-1 py-3 border border-white/35 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
+                              style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
                             >
                               Şikayetleri Görüntüle ({driver.reportCount || 0})
                             </button>
