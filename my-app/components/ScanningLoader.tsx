@@ -9,6 +9,7 @@ export default function ScanningLoader() {
   const messages = [
     'Yeni nesil lojistik ağı hazırlanıyor',
     'Konuma en yakın araçlar listeleniyor',
+    'En yakın kurtarıcı, vinç ve nakliye araçları bulunuyor',
     'Uygun hizmet sağlayıcılar filtreleniyor',
     'Güvenilir ve hızlı eşleşmeler oluşturuluyor'
   ];

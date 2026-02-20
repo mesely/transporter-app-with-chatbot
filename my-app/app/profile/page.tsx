@@ -206,7 +206,16 @@ export default function ProfilePage() {
         method: 'POST',
         body: fd
       });
-      if (!res.ok) throw new Error('upload_failed');
+      if (!res.ok) {
+        let message = 'Fotoğraf yüklenemedi.';
+        try {
+          const err = await res.json();
+          message = err?.message || message;
+        } catch {
+          // noop
+        }
+        throw new Error(message);
+      }
       const data = await res.json();
       const url = data.url || '';
       if (url) {
@@ -218,8 +227,8 @@ export default function ProfilePage() {
           )
         }));
       }
-    } catch {
-      alert('Fotoğraf yüklenemedi.');
+    } catch (error: any) {
+      alert(error?.message || 'Fotoğraf yüklenemedi.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -309,7 +318,7 @@ export default function ProfilePage() {
         address: `${formData.streetAddress}, ${formData.district}, ${formData.city}`,
         city: formData.city, district: formData.district, role: 'provider',
         isVerified: true,
-        pricing: { openingFee: 0, pricePerUnit: Number(formData.pricePerUnit) },
+        pricing: { pricePerUnit: Number(formData.pricePerUnit) },
         taxNumber: formData.taxNumber,
         vehicleItems: cleanVehicleItems,
         vehicleInfo: cleanVehicleItems.map(v => v.name).filter(Boolean).join(', '),
@@ -443,7 +452,7 @@ export default function ProfilePage() {
                   <div className="mt-2 flex items-center gap-2">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
                       onChange={(e)=>{ const file = e.target.files?.[0]; if (file) { setActiveVehicleIndex(idx); handlePhotoUpload(idx, file); } }}
                       className="text-[10px] font-bold"
                     />
@@ -452,9 +461,25 @@ export default function ProfilePage() {
                   {vehicle.photoUrls?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {vehicle.photoUrls.map((url, pIdx) => (
-                        <a key={pIdx} href={url} target="_blank" className="text-[9px] font-black text-blue-600 underline">
-                          Foto {pIdx + 1}
-                        </a>
+                        <div key={pIdx} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-white/40">
+                          <a href={url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 underline">
+                            Foto {pIdx + 1}
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({
+                              ...prev,
+                              vehicleItems: prev.vehicleItems.map((v, i) => i === idx
+                                ? { ...v, photoUrls: (v.photoUrls || []).filter((_, photoIdx) => photoIdx !== pIdx) }
+                                : v
+                              )
+                            }))}
+                            className="text-[9px] font-black text-red-600"
+                            aria-label="Fotoğrafı sil"
+                          >
+                            X
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}

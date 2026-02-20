@@ -513,12 +513,6 @@ export default function ActionPanel({
                                     {isSpecialCategory && <span className={`text-[9px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : isStation ? 'text-blue-600' : 'text-cyan-600'}`}>Türkiye Geneli</span>}
                                 </div>
 
-                                {!isSelected && !isStation && (
-                                  <p className="mt-1.5 text-[8px] font-black text-blue-500 uppercase tracking-wide">
-                                    Fiyat almak için tıkla &amp; ara
-                                  </p>
-                                )}
-
                                 {driver.service?.tags?.length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-2 items-start">
                                     {driver.service.tags.map((tag: string) => {
@@ -579,7 +573,7 @@ export default function ActionPanel({
                             }}
                             className="w-full py-3 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase text-gray-700 active:scale-95 transition-all"
                           >
-                            Araçları Listele ({vehicleItems.length})
+                            Araçları Görüntüle ({vehicleItems.length})
                           </button>
                         )}
 
@@ -598,7 +592,7 @@ export default function ActionPanel({
                                         onClick={(e) => e.stopPropagation()}
                                         className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black uppercase text-slate-700"
                                       >
-                                        Fotoğrafları Gör {pIdx + 1}
+                                        Fotoğraf {pIdx + 1}
                                       </a>
                                     ))}
                                   </div>
@@ -619,7 +613,7 @@ export default function ActionPanel({
                             }}
                             className="w-full py-3 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-700 active:scale-95 transition-all"
                           >
-                            Fotoğrafları Listele
+                            Fotoğrafları Görüntüle ({(driver.vehiclePhotos?.length || 0) + (driver.photoUrl ? 1 : 0)})
                           </button>
                         )}
 

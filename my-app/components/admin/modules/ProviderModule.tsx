@@ -60,6 +60,7 @@ const SERVICE_OPTIONS = [
 ];
 
 export default function ProviderModule() {
+  type VehicleEntry = { name: string; photoUrls: string[] };
   const [providers, setProviders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -70,10 +71,13 @@ export default function ProviderModule() {
   const [filterCity, setFilterCity] = useState('Tümü');
   const [filterType, setFilterType] = useState('Tümü');
   const [cityData, setCityData] = useState<Record<string, string[]>>({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [activeVehicleIndex, setActiveVehicleIndex] = useState<number>(0);
 
   const [formData, setFormData] = useState<any>({
     _id: '', businessName: '', email: '', phoneNumber: '', city: 'İstanbul', district: 'Tuzla', address: '',
-    serviceTypes: [] as string[], pricePerUnit: 40, filterTags: [] as string[], website: '' 
+    serviceTypes: [] as string[], pricePerUnit: 40, filterTags: [] as string[], website: '',
+    taxNumber: '', vehicleItems: [{ name: '', photoUrls: [] }] as VehicleEntry[]
   });
 
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -168,7 +172,14 @@ export default function ProviderModule() {
       city: addr.city || 'İstanbul', district: addr.district || 'Tuzla', address: streetPart,
       serviceTypes: (p.service?.mainType === 'YOLCU' ? ['yolcu'] : [p.service?.subType || p.serviceType || '']),
       pricePerUnit: p.pricing?.pricePerUnit || 40,
-      filterTags: p.service?.tags || [], website: p.website || p.link || ''
+      filterTags: p.service?.tags || [], website: p.website || p.link || '',
+      taxNumber: p.taxNumber || '',
+      vehicleItems: Array.isArray(p.vehicleItems) && p.vehicleItems.length > 0
+        ? p.vehicleItems
+        : [{
+            name: p.vehicleInfo || '',
+            photoUrls: p.vehiclePhotos || (p.photoUrl ? [p.photoUrl] : [])
+          }]
     });
     setIsEditing(true);
     setShowModal(true);
@@ -212,11 +223,23 @@ export default function ProviderModule() {
         service: { mainType: mappedMain, subType: selected, tags: formData.filterTags },
         address: `${formData.address}, ${formData.district}, ${formData.city}`,
         city: formData.city, district: formData.district, role: 'provider', website: formData.website,
-        pricing: { openingFee: 0, pricePerUnit: Number(formData.pricePerUnit) },
+        pricing: { pricePerUnit: Number(formData.pricePerUnit) },
+        taxNumber: formData.taxNumber,
+        vehicleItems: formData.vehicleItems
+          .map((v: VehicleEntry) => ({
+            name: String(v.name || '').trim(),
+            photoUrls: Array.isArray(v.photoUrls) ? v.photoUrls.filter(Boolean) : []
+          }))
+          .filter((v: VehicleEntry) => v.name || v.photoUrls.length > 0),
         isVerified: false,
         location: { type: "Point", coordinates: [coords.lng, coords.lat] },
         lat: coords.lat, lng: coords.lng
       };
+      const cleanVehicleItems = payload.vehicleItems as VehicleEntry[];
+      const flatPhotos = cleanVehicleItems.flatMap(v => v.photoUrls);
+      payload.vehicleInfo = cleanVehicleItems.map(v => v.name).filter(Boolean).join(', ');
+      payload.vehiclePhotos = flatPhotos;
+      payload.photoUrl = flatPhotos[0] || '';
 
       const res = await fetch(targetId ? `${API_URL}/users/${targetId}` : `${API_URL}/users`, {
         method: finalMethod,
@@ -231,6 +254,56 @@ export default function ProviderModule() {
     } catch (e) { alert("Bağlantı hatası."); } finally { setLoading(false); }
   };
 
+  const handlePhotoUpload = async (vehicleIndex: number, file: File) => {
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch(`${API_URL}/upload/vehicle-photo`, { method: 'POST', body: fd });
+      if (!res.ok) {
+        let message = 'Fotoğraf yüklenemedi.';
+        try {
+          const err = await res.json();
+          message = err?.message || message;
+        } catch {
+          // noop
+        }
+        throw new Error(message);
+      }
+      const data = await res.json();
+      const url = data.url || '';
+      if (!url) return;
+      setFormData((prev: any) => ({
+        ...prev,
+        vehicleItems: prev.vehicleItems.map((v: VehicleEntry, i: number) => i === vehicleIndex
+          ? { ...v, photoUrls: [...(v.photoUrls || []), url] }
+          : v
+        )
+      }));
+    } catch (error: any) {
+      alert(error?.message || 'Fotoğraf yüklenemedi.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const addVehicleRow = () => {
+    setFormData((prev: any) => ({
+      ...prev,
+      vehicleItems: [...(prev.vehicleItems || []), { name: '', photoUrls: [] }]
+    }));
+    setActiveVehicleIndex((formData.vehicleItems || []).length);
+  };
+
+  const removeVehicleRow = (index: number) => {
+    setFormData((prev: any) => {
+      const next = (prev.vehicleItems || []).filter((_: VehicleEntry, i: number) => i !== index);
+      return { ...prev, vehicleItems: next.length ? next : [{ name: '', photoUrls: [] }] };
+    });
+    setActiveVehicleIndex(0);
+  };
+
   const currentFolderConfig = SERVICE_OPTIONS.find(s => s.id === activeFolder);
 
   return (
@@ -242,7 +315,7 @@ export default function ProviderModule() {
         </div>
         <div className="flex gap-3">
           {selectedProviders.length > 0 && <button onClick={handleBulkDelete} className="bg-red-600 text-white px-6 py-4 rounded-3xl text-xs font-black uppercase shadow-xl hover:bg-red-700 transition-colors flex items-center gap-2"><Trash2 size={18}/> Sil ({selectedProviders.length})</button>}
-          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:''}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
+          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:'', taxNumber: '', vehicleItems: [{ name: '', photoUrls: [] }]}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
         </div>
       </header>
 
@@ -294,6 +367,7 @@ export default function ProviderModule() {
                 <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-black text-xs outline-none focus:bg-white/80 transition-colors text-gray-900">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none focus:bg-white/80 transition-colors text-gray-900">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
                 <textarea placeholder="MAHALLE, SOKAK, CADDE, NO..." value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-medium text-xs h-32 outline-none resize-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
                 <input placeholder="WEB SİTESİ" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
+                <input placeholder="VERGİ NUMARASI (OPSİYONEL)" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
               </div>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
@@ -312,6 +386,62 @@ export default function ProviderModule() {
                   ))}
                 </div>
                 <div className="grid grid-cols-1 gap-4"><div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl"><label className="text-[8px] font-black uppercase text-gray-500 block mb-1">Birim</label><input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-gray-900"/></div></div>
+                <div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[8px] font-black uppercase text-gray-500 block">Araçlar ve Fotoğraflar (Opsiyonel)</label>
+                    <button type="button" onClick={addVehicleRow} className="px-3 py-1 rounded-xl bg-black text-white text-[9px] font-black uppercase">Araç Ekle</button>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {formData.vehicleItems.map((vehicle: VehicleEntry, idx: number) => (
+                      <div key={idx} className="bg-white/70 border border-white/50 rounded-xl p-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={vehicle.name}
+                            onChange={(e)=>setFormData((prev: any) => ({
+                              ...prev,
+                              vehicleItems: prev.vehicleItems.map((v: VehicleEntry, i: number) => i === idx ? { ...v, name: e.target.value } : v)
+                            }))}
+                            placeholder={`Araç ${idx + 1} (örn: Isuzu NPR)`}
+                            className="flex-1 bg-transparent font-bold text-[11px] outline-none text-gray-900"
+                          />
+                          <button type="button" onClick={() => removeVehicleRow(idx)} className="px-2 rounded-lg border border-red-200 text-red-600 text-[9px] font-black">Sil</button>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            onChange={(e) => { const file = e.target.files?.[0]; if (file) { setActiveVehicleIndex(idx); handlePhotoUpload(idx, file); } }}
+                            className="text-[10px] font-bold"
+                          />
+                          {uploadingPhoto && activeVehicleIndex === idx && <span className="text-[9px] font-black text-gray-600">Yükleniyor...</span>}
+                        </div>
+                        {vehicle.photoUrls?.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {vehicle.photoUrls.map((url, pIdx) => (
+                              <div key={pIdx} className="px-2 py-1 rounded-lg bg-white border border-slate-200 flex items-center gap-1">
+                                <a href={url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 underline">Foto {pIdx + 1}</a>
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData((prev: any) => ({
+                                    ...prev,
+                                    vehicleItems: prev.vehicleItems.map((v: VehicleEntry, i: number) => i === idx
+                                      ? { ...v, photoUrls: (v.photoUrls || []).filter((_: string, photoIdx: number) => photoIdx !== pIdx) }
+                                      : v
+                                    )
+                                  }))}
+                                  className="text-[9px] font-black text-red-600"
+                                >
+                                  X
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2 min-h-[60px] p-4 bg-white/50 backdrop-blur-sm border border-white/50 border-dashed rounded-2xl shadow-inner">{formData.filterTags.map((t:any)=>(<span key={t} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-1 shadow-sm">{t.replace('_',' ')} <X size={12} className="cursor-pointer hover:text-red-400 transition-colors" onClick={()=>setFormData({...formData, filterTags: formData.filterTags.filter((tag:any)=>tag!==t)})}/></span>))}</div>
               </div>
             </div>
