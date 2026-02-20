@@ -694,7 +694,7 @@ export default function ActionPanel({
                             <button
                               onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
                               className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
+                              style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                             ><MessageCircle size={14}/> MESAJ AT</button>
                           )}
                         </div>
@@ -717,7 +717,7 @@ export default function ActionPanel({
                                 setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                               }}
                               className="flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.start}CC, ${theme.end}CC)` }}
+                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               Araç Fotoğraflarını Görüntüle ({photoCount})
                             </button>
@@ -795,8 +795,8 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowReportsModal(true);
                               }}
-                              className="flex-1 py-3 border border-white/35 rounded-2xl text-[9px] font-black uppercase text-white flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
+                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               Şikayetleri Görüntüle ({driver.reportCount || 0})
                             </button>
