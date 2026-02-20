@@ -416,28 +416,35 @@ export default function ProviderModule() {
                           />
                           {uploadingPhoto && activeVehicleIndex === idx && <span className="text-[9px] font-black text-gray-600">Yükleniyor...</span>}
                         </div>
-                        {vehicle.photoUrls?.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {vehicle.photoUrls.map((url, pIdx) => (
-                              <div key={pIdx} className="px-2 py-1 rounded-lg bg-white border border-slate-200 flex items-center gap-1">
-                                <a href={url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 underline">Foto {pIdx + 1}</a>
-                                <button
-                                  type="button"
-                                  onClick={() => setFormData((prev: any) => ({
-                                    ...prev,
-                                    vehicleItems: prev.vehicleItems.map((v: VehicleEntry, i: number) => i === idx
-                                      ? { ...v, photoUrls: (v.photoUrls || []).filter((_: string, photoIdx: number) => photoIdx !== pIdx) }
-                                      : v
-                                    )
-                                  }))}
-                                  className="text-[9px] font-black text-red-600"
-                                >
-                                  X
-                                </button>
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                          {Array.from({ length: 3 }).map((_, slotIdx) => {
+                            const url = vehicle.photoUrls?.[slotIdx];
+                            return (
+                              <div key={slotIdx} className="aspect-square rounded-xl border border-white/60 bg-white/60 overflow-hidden flex items-center justify-center">
+                                {url ? (
+                                  <div className="w-full h-full relative">
+                                    <img src={url} alt={`Araç ${idx + 1} Foto ${slotIdx + 1}`} className="w-full h-full object-cover" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setFormData((prev: any) => ({
+                                        ...prev,
+                                        vehicleItems: prev.vehicleItems.map((v: VehicleEntry, i: number) => i === idx
+                                          ? { ...v, photoUrls: (v.photoUrls || []).filter((_: string, photoIdx: number) => photoIdx !== slotIdx) }
+                                          : v
+                                        )
+                                      }))}
+                                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600/90 text-white text-[9px] font-black"
+                                    >
+                                      X
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[9px] font-black text-gray-400 uppercase">Boş</span>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        )}
+                            );
+                          })}
+                        </div>
                       </div>
                     ))}
                   </div>

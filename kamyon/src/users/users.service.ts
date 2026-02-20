@@ -173,6 +173,7 @@ export class UsersService implements OnModuleInit {
           ratingCount: 1,
           reportCount: 1,
           isVerified: 1,
+          updatedAt: 1,
           photoUrl: 1,
           vehiclePhotos: 1,
           vehicleInfo: 1,

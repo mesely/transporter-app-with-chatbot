@@ -176,6 +176,7 @@ export default function ActionPanel({
   const [modalDriverId, setModalDriverId] = useState<string | null>(null);
   const [modalDriverName, setModalDriverName] = useState<string>('');
   const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
+  const [activePhotoCardId, setActivePhotoCardId] = useState<string | null>(null);
 
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
@@ -472,6 +473,12 @@ export default function ActionPanel({
                 const photoCountFromVehicles = vehicleItems.reduce((sum, v) => sum + (Array.isArray(v.photoUrls) ? v.photoUrls.length : 0), 0);
                 const legacyPhotoCount = (driver.vehiclePhotos?.length || 0) + (driver.photoUrl ? 1 : 0);
                 const photoCount = photoCountFromVehicles > 0 ? photoCountFromVehicles : legacyPhotoCount;
+                const allPhotoUrls = [
+                  ...(Array.isArray(driver.vehiclePhotos) ? driver.vehiclePhotos : []),
+                  ...(driver.photoUrl ? [driver.photoUrl] : []),
+                  ...vehicleItems.flatMap((v) => (Array.isArray(v.photoUrls) ? v.photoUrls : [])),
+                ].filter(Boolean) as string[];
+                const uniquePhotoUrls = Array.from(new Set(allPhotoUrls));
                 const hintColorClass = sub.includes('kurtarma') || sub === 'vinc'
                   ? 'text-red-600'
                   : isPassenger
@@ -499,8 +506,21 @@ export default function ActionPanel({
                             }
                         }
                     }}
-                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer active:scale-[0.98] ${isSelected ? 'border-green-500 ring-2 ring-green-500/10' : 'border-white/40'}`}
+                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer active:scale-[0.98] relative ${isSelected ? 'border-rose-400 ring-2 ring-rose-300/30' : 'border-white/40'}`}
                 >
+                    {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
+                      <div className="absolute top-4 right-4 text-right">
+                        <div className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-rose-500/85 to-red-600/85 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm">
+                          Doğrulanmış Fiyat
+                        </div>
+                        <div className="mt-1 text-[11px] font-black text-red-700">
+                          ₺{Number(driver.pricing.pricePerUnit).toFixed(0)} / {['istasyon', 'seyyar_sarj'].includes(driver.service?.subType) ? 'kW' : 'km'}
+                        </div>
+                        <div className="text-[8px] font-bold text-red-500 uppercase">
+                          {new Date(driver.updatedAt || Date.now()).toLocaleDateString('tr-TR', { month: '2-digit', year: 'numeric' })}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex justify-between items-start text-gray-900">
                         <div className="flex gap-4 flex-1 overflow-hidden">
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
@@ -511,7 +531,7 @@ export default function ActionPanel({
                                     {formatTitle(driver.businessName)}
                                 </h4>
                                 <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                    {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
+                                    {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? 'fill-red-500 text-red-500' : 'text-red-200'}/>)}
 
                                     {!isSpecialCategory && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1 shrink-0">{(driver.distance / 1000).toFixed(1)} km</span>}
 
@@ -558,40 +578,42 @@ export default function ActionPanel({
                               const lng = driver.location?.coordinates?.[0];
                               if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
                             }}
-                            className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"
+                            className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/30 bg-gradient-to-r from-red-500/85 to-rose-700/85 backdrop-blur-md transition-transform"
                           >
                             <MapIcon size={16} /> GOOGLE MAPS'TE AÇ
                           </button>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2`}><Phone size={14}/> ARA</button>
+                          <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/30 bg-gradient-to-r from-rose-400/90 to-red-600/90 backdrop-blur-md`}><Phone size={14}/> ARA</button>
 
                           {!isStation && (isSpecialCategory ? (
-                            <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || driver.link || 'https://transport245.com', '_blank'); }} className={`flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 ${iconBg}`}><Globe size={14}/> SİTEYE GİT</button>
+                            <button onClick={(e) => { e.stopPropagation(); window.open(driver.website || driver.link || 'https://transport245.com', '_blank'); }} className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/30 bg-gradient-to-r from-red-500/90 to-rose-700/90 backdrop-blur-md"><Globe size={14}/> SİTEYE GİT</button>
                           ) : (
-                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 bg-green-600 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><MessageCircle size={14}/> MESAJ AT</button>
+                            <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }} className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/30 bg-gradient-to-r from-rose-500/90 to-red-700/90 backdrop-blur-md"><MessageCircle size={14}/> MESAJ AT</button>
                           ))}
                         </div>
 
-                        {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
-                          <div className="pt-3 border-t border-gray-100">
-                            <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Doğrulanmış Fiyat</div>
-                            <div className="text-xs font-black text-gray-700 mt-1">
-                              ₺{Number(driver.pricing.pricePerUnit).toFixed(0)} / {['istasyon', 'seyyar_sarj'].includes(driver.service?.subType) ? 'kW' : 'km'}
-                            </div>
-                          </div>
-                        )}
-
                         {!isStation && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
-                            }}
-                            className="w-full py-3 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase text-gray-700 active:scale-95 transition-all"
-                          >
-                            Araçları Listele ({vehicleCount})
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
+                              }}
+                              className="flex-1 py-3 border border-white/30 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-rose-400/85 to-red-600/85 backdrop-blur-md"
+                            >
+                              Araçları Listele ({vehicleCount})
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
+                              }}
+                              className="flex-1 py-3 border border-white/30 rounded-2xl text-[10px] font-black uppercase text-white active:scale-95 transition-all bg-gradient-to-r from-red-500/85 to-rose-700/85 backdrop-blur-md"
+                            >
+                              Araç Fotoğraflarını Görüntüle ({photoCount})
+                            </button>
+                          </div>
                         )}
 
                         {!isStation && activeVehicleCardId === driver._id && (
@@ -603,15 +625,14 @@ export default function ActionPanel({
                                 {Array.isArray(vehicle.photoUrls) && vehicle.photoUrls.length > 0 ? (
                                   <div className="mt-1 flex flex-wrap gap-2">
                                     {vehicle.photoUrls.map((url, pIdx) => (
-                                      <a
+                                      <button
                                         key={`${driver._id}-vehicle-${vIdx}-photo-${pIdx}`}
-                                        href={url}
-                                        target="_blank"
-                                        onClick={(e) => e.stopPropagation()}
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setActivePhotoCardId(driver._id); }}
                                         className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black uppercase text-slate-700"
                                       >
                                         Fotoğraf {pIdx + 1}
-                                      </a>
+                                      </button>
                                     ))}
                                   </div>
                                 ) : (
@@ -622,33 +643,26 @@ export default function ActionPanel({
                           </div>
                         )}
 
-                        {!isStation && activeVehicleCardId !== driver._id && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const firstPhoto = driver.photoUrl || driver.vehiclePhotos?.[0];
-                              if (firstPhoto) {
-                                window.open(firstPhoto, '_blank');
-                                return;
-                              }
-                              const firstVehiclePhoto = vehicleItems.find((v) => Array.isArray(v.photoUrls) && v.photoUrls.length > 0)?.photoUrls?.[0];
-                              if (firstVehiclePhoto) {
-                                window.open(firstVehiclePhoto, '_blank');
-                                return;
-                              }
-                              alert('Kayıtlı fotoğraf bulunmuyor.');
-                            }}
-                            className="w-full py-3 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-700 active:scale-95 transition-all"
-                          >
-                            Araç Fotoğraflarını Görüntüle ({photoCount})
-                          </button>
+                        {!isStation && activePhotoCardId === driver._id && (
+                          <div className="bg-white/60 border border-rose-100 rounded-2xl p-3">
+                            {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
+                            {uniquePhotoUrls.length > 0 && (
+                              <div className="grid grid-cols-3 gap-2">
+                                {uniquePhotoUrls.map((url, idx) => (
+                                  <div key={`${driver._id}-inline-photo-${idx}`} className="aspect-square rounded-xl overflow-hidden bg-rose-50 border border-rose-100">
+                                    <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
 
                         {/* Değerlendirmeler & Şikayetler */}
                         <div className="pt-4 border-t border-gray-100">
                           <div className="text-[8px] font-black text-gray-400 uppercase mb-3 tracking-widest">Değerlendirmeler &amp; Şikayetler</div>
                           <div className="flex items-center gap-1 mb-3">
-                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= (driver.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}
+                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= (driver.rating || 0) ? 'fill-red-500 text-red-500' : 'text-red-200'}/>)}
                             <span className="text-[9px] text-gray-500 font-bold ml-1">
                               {driver.rating ? `${Number(driver.rating).toFixed(1)} Puan` : 'Henüz değerlendirilmedi'}
                             </span>

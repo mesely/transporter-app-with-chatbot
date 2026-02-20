@@ -282,7 +282,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   
                   <div className="flex items-center gap-0.5 mb-4">
                     {[1,2,3,4,5].map(s => (
-                      <Star key={s} size={11} className={s <= (item.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+                      <Star key={s} size={11} className={s <= (item.rating || 5) ? 'fill-red-500 text-red-500' : 'text-red-200'} />
                     ))}
                     <span className="text-[10px] font-bold text-gray-400 ml-1">({item.rating || 5}.0)</span>
                   </div>
@@ -290,14 +290,14 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   <div className="flex gap-2 border-t border-gray-100 pt-3.5">
                     <button 
                       onClick={() => { onStartOrder(item, 'call'); window.location.href=`tel:${item.phoneNumber}`; }}
-                      className="flex-1 bg-gray-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
+                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 bg-gradient-to-r from-rose-400/90 to-red-600/90 backdrop-blur-md"
                     >
                       <Phone size={13} /> ARA
                     </button>
                     
                     <button 
                       onClick={() => { onStartOrder(item, 'message'); window.location.href=`sms:${item.phoneNumber}`; }}
-                      className="flex-1 bg-green-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
+                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 bg-gradient-to-r from-rose-500/90 to-red-700/90 backdrop-blur-md"
                     >
                       <MessageCircle size={13} /> MESAJ AT
                     </button>
@@ -305,7 +305,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                   
                   <button 
   onClick={() => window.open(`https://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
-  className="w-full mt-2 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+  className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 bg-gradient-to-r from-red-500/85 to-rose-700/85 backdrop-blur-md transition-all"
 >
   <MapPin size={12} /> HARİTADA GÖSTER
 </button>
