@@ -70,6 +70,9 @@ export class NewProvider {
   @Prop()
   website?: string;
 
+  @Prop()
+  link?: string;
+
   @Prop({ default: 5.0 })
   rating: number;
 
