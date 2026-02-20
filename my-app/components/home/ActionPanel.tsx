@@ -740,13 +740,13 @@ export default function ActionPanel({
                           <div className="border border-white/60 rounded-2xl p-3 backdrop-blur-xl" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
                             {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
                             {uniquePhotoUrls.length > 0 && (
-                              <div className="flex flex-wrap gap-2 justify-start">
+                              <div className="grid grid-cols-3 gap-2">
                                 {uniquePhotoUrls.map((url, idx) => (
                                   <button
                                     key={`${driver._id}-inline-photo-${idx}`}
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
-                                    className="h-48 w-40 rounded-lg overflow-hidden bg-rose-50 border border-rose-100"
+                                    className="h-48 w-full rounded-lg overflow-hidden bg-transparent border border-white/20"
                                     title={`Fotoğraf ${idx + 1}`}
                                   >
                                     <img src={url} alt={`Araç fotoğrafı ${idx + 1}`} className="w-full h-full object-contain" loading="lazy" />
