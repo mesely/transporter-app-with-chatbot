@@ -740,7 +740,10 @@ export default function ActionPanel({
                           <div className="border border-white/60 rounded-2xl p-3 backdrop-blur-xl" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
                             {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">Kayıtlı fotoğraf yok.</div>}
                             {uniquePhotoUrls.length > 0 && (
-                              <div className="grid grid-cols-3 gap-2">
+                              <div
+                                className="grid gap-2"
+                                style={{ gridTemplateColumns: `repeat(${Math.min(uniquePhotoUrls.length, 3)}, minmax(0, 1fr))` }}
+                              >
                                 {uniquePhotoUrls.map((url, idx) => (
                                   <button
                                     key={`${driver._id}-inline-photo-${idx}`}
