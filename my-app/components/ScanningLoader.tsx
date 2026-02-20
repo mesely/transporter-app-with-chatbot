@@ -5,6 +5,13 @@ import { Truck, ShieldCheck } from 'lucide-react';
 
 export default function ScanningLoader() {
   const [progress, setProgress] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
+  const messages = [
+    'Yeni nesil lojistik ağı hazırlanıyor',
+    'Konuma en yakın araçlar listeleniyor',
+    'Uygun hizmet sağlayıcılar filtreleniyor',
+    'Güvenilir ve hızlı eşleşmeler oluşturuluyor'
+  ];
 
   useEffect(() => {
     const totalTime = 7000;
@@ -23,6 +30,13 @@ export default function ScanningLoader() {
     }, intervalTime);
 
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setMessageIndex(prev => (prev + 1) % messages.length);
+    }, 1400);
+    return () => clearInterval(id);
   }, []);
 
   return (
@@ -48,6 +62,9 @@ export default function ScanningLoader() {
             className="h-full bg-gradient-to-r from-gray-800 via-blue-600 to-gray-900 rounded-full transition-all duration-150 ease-linear"
             style={{ width: `${progress}%` }}
           ></div>
+        </div>
+        <div className="text-[10px] font-black uppercase tracking-wide text-gray-800 text-center bg-white/60 px-3 py-2 rounded-xl border border-white/60 min-h-[38px] flex items-center justify-center">
+          {messages[messageIndex]}
         </div>
       </div>
 

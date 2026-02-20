@@ -96,6 +96,8 @@ export class UsersService implements OnModuleInit {
         isVerified: Boolean(data.isVerified),
         vehicleInfo: (data.vehicleInfo || '').trim(),
         vehiclePhotos: Array.isArray(data.vehiclePhotos) ? data.vehiclePhotos : [],
+        vehicleItems: Array.isArray(data.vehicleItems) ? data.vehicleItems : [],
+        taxNumber: (data.taxNumber || '').trim(),
       };
 
       if (data.photoUrl) {
@@ -172,6 +174,10 @@ export class UsersService implements OnModuleInit {
           reportCount: 1,
           isVerified: 1,
           photoUrl: 1,
+          vehiclePhotos: 1,
+          vehicleInfo: 1,
+          vehicleItems: 1,
+          taxNumber: 1,
           distance: 1,
           link: { $ifNull: ["$userData.link", "$link"] },
           website: { $ifNull: ["$userData.link", "$website"] }

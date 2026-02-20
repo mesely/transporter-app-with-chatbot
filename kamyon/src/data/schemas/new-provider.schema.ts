@@ -33,6 +33,14 @@ class AddressInfo {
   district: string;
 }
 
+class VehicleItem {
+  @Prop()
+  name: string;
+
+  @Prop({ type: [String], default: [] })
+  photoUrls: string[];
+}
+
 @Schema({ timestamps: true, collection: 'new_providers' })
 export class NewProvider {
   @Prop({ type: Types.ObjectId, ref: 'NewUser', required: true })
@@ -82,6 +90,12 @@ export class NewProvider {
 
   @Prop({ type: [String], default: [] })
   vehiclePhotos?: string[];
+
+  @Prop({ type: [VehicleItem], default: [] })
+  vehicleItems?: VehicleItem[];
+
+  @Prop()
+  taxNumber?: string;
 
   @Prop({ type: [Object], default: [] })
   ratings: Array<{

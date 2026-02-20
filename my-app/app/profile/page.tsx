@@ -96,6 +96,7 @@ const AGREEMENT_SECTIONS = [
 const normalizeString = (str: string) => str ? str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase().trim() : '';
 
 export default function ProfilePage() {
+  type VehicleEntry = { name: string; photoUrls: string[] };
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,11 +109,14 @@ export default function ProfilePage() {
   const [legalTab, setLegalTab] = useState<'kvkk' | 'sozlesme'>('kvkk');
   const [checkingPhone, setCheckingPhone] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [activeVehicleIndex, setActiveVehicleIndex] = useState<number>(0);
 
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
     city: 'İstanbul', district: 'Tuzla', streetAddress: '',
-    filterTags: [] as string[], pricePerUnit: '40', website: '', vehicleInfo: '', photoUrl: ''
+    filterTags: [] as string[], pricePerUnit: '40', website: '',
+    taxNumber: '',
+    vehicleItems: [{ name: '', photoUrls: [] }] as VehicleEntry[],
   });
 
   useEffect(() => {
@@ -177,8 +181,13 @@ export default function ProfilePage() {
         filterTags: found.service?.tags || [],
         website: found.website || found.link || prev.website,
         pricePerUnit: String(found.pricing?.pricePerUnit || prev.pricePerUnit),
-        vehicleInfo: found.vehicleInfo || prev.vehicleInfo,
-        photoUrl: found.photoUrl || found.vehiclePhotos?.[0] || prev.photoUrl,
+        taxNumber: found.taxNumber || prev.taxNumber,
+        vehicleItems: Array.isArray(found.vehicleItems) && found.vehicleItems.length > 0
+          ? found.vehicleItems
+          : [{
+              name: found.vehicleInfo || '',
+              photoUrls: found.vehiclePhotos || (found.photoUrl ? [found.photoUrl] : [])
+            }],
       }));
     } catch {
       // sessiz fail
@@ -187,7 +196,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePhotoUpload = async (file: File) => {
+  const handlePhotoUpload = async (vehicleIndex: number, file: File) => {
     if (!file) return;
     setUploadingPhoto(true);
     try {
@@ -199,12 +208,34 @@ export default function ProfilePage() {
       });
       if (!res.ok) throw new Error('upload_failed');
       const data = await res.json();
-      setFormData(prev => ({ ...prev, photoUrl: data.url || '' }));
+      const url = data.url || '';
+      if (url) {
+        setFormData(prev => ({
+          ...prev,
+          vehicleItems: prev.vehicleItems.map((v, i) => i === vehicleIndex
+            ? { ...v, photoUrls: [...(v.photoUrls || []), url] }
+            : v
+          )
+        }));
+      }
     } catch {
       alert('Fotoğraf yüklenemedi.');
     } finally {
       setUploadingPhoto(false);
     }
+  };
+
+  const addVehicleRow = () => {
+    setFormData(prev => ({ ...prev, vehicleItems: [...prev.vehicleItems, { name: '', photoUrls: [] }] }));
+    setActiveVehicleIndex(formData.vehicleItems.length);
+  };
+
+  const removeVehicleRow = (index: number) => {
+    setFormData(prev => {
+      const next = prev.vehicleItems.filter((_, i) => i !== index);
+      return { ...prev, vehicleItems: next.length ? next : [{ name: '', photoUrls: [] }] };
+    });
+    setActiveVehicleIndex(0);
   };
 
   const handleRemoveFromList = async () => {
@@ -218,7 +249,8 @@ export default function ProfilePage() {
         setFormData({
           businessName: '', email: '', phoneNumber: '', serviceTypes: [],
           city: 'İstanbul', district: 'Tuzla', streetAddress: '',
-          filterTags: [], pricePerUnit: '40', website: '', vehicleInfo: '', photoUrl: ''
+          filterTags: [], pricePerUnit: '40', website: '', taxNumber: '',
+          vehicleItems: [{ name: '', photoUrls: [] }]
         });
         alert('Kayıt kaldırıldı.');
       }
@@ -263,6 +295,14 @@ export default function ProfilePage() {
 
       if (!coords) { setSaving(false); return alert("Adres bulunamadı."); }
 
+      const cleanVehicleItems = formData.vehicleItems
+        .map(v => ({
+          name: String(v.name || '').trim(),
+          photoUrls: Array.isArray(v.photoUrls) ? v.photoUrls.filter(Boolean) : []
+        }))
+        .filter(v => v.name || v.photoUrls.length > 0);
+      const flatPhotos = cleanVehicleItems.flatMap(v => v.photoUrls);
+
       const payload = {
         ...formData, firstName: formData.businessName, mainType: mappedMain, serviceType: selected,
         service: { mainType: mappedMain, subType: selected, tags: formData.filterTags },
@@ -270,9 +310,11 @@ export default function ProfilePage() {
         city: formData.city, district: formData.district, role: 'provider',
         isVerified: true,
         pricing: { openingFee: 0, pricePerUnit: Number(formData.pricePerUnit) },
-        vehicleInfo: formData.vehicleInfo,
-        photoUrl: formData.photoUrl,
-        vehiclePhotos: formData.photoUrl ? [formData.photoUrl] : [],
+        taxNumber: formData.taxNumber,
+        vehicleItems: cleanVehicleItems,
+        vehicleInfo: cleanVehicleItems.map(v => v.name).filter(Boolean).join(', '),
+        photoUrl: flatPhotos[0] || '',
+        vehiclePhotos: flatPhotos,
         location: { type: "Point", coordinates: [coords.lng, coords.lat] }, lat: coords.lat, lng: coords.lng
       };
 
@@ -373,17 +415,52 @@ export default function ProfilePage() {
             <input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/>
           </div>
           <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40 shadow-sm">
-            <label className="text-[8px] font-black uppercase text-[#00c5c0]">Araç Bilgisi (Opsiyonel)</label>
-            <input type="text" value={formData.vehicleInfo} onChange={e=>setFormData({...formData, vehicleInfo: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Örn: 2022 Ford Transit"/>
+            <label className="text-[8px] font-black uppercase text-[#00c5c0]">Vergi Numarası (Opsiyonel)</label>
+            <input type="text" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Vergi no"/>
           </div>
           <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
-          <div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl md:col-span-2">
-            <label className="text-[8px] font-black uppercase text-[#00c5c0] block mb-2">Araç Fotoğrafı (Opsiyonel)</label>
-            <div className="flex items-center gap-3">
-              <input type="file" accept="image/*" onChange={(e)=>{ const file = e.target.files?.[0]; if (file) handlePhotoUpload(file); }} className="text-xs font-bold"/>
-              {uploadingPhoto && <span className="text-[10px] font-black text-[#3d686b]">Yükleniyor...</span>}
+          <div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl md:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[8px] font-black uppercase text-[#00c5c0] block">Araçlar ve Fotoğraflar (Opsiyonel)</label>
+              <button type="button" onClick={addVehicleRow} className="px-3 py-1 rounded-xl bg-black text-white text-[9px] font-black uppercase">Araç Ekle</button>
             </div>
-            {formData.photoUrl && <a className="text-[10px] font-black text-blue-600 underline mt-2 inline-block" href={formData.photoUrl} target="_blank">Yüklenen fotoğrafı aç</a>}
+            <div className="space-y-3">
+              {formData.vehicleItems.map((vehicle, idx) => (
+                <div key={idx} className="border border-white/40 rounded-2xl p-3 bg-white/50">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={vehicle.name}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        vehicleItems: prev.vehicleItems.map((v, i) => i === idx ? { ...v, name: e.target.value } : v)
+                      }))}
+                      className="flex-1 bg-transparent font-bold text-xs outline-none text-[#3d686b]"
+                      placeholder={`Araç ${idx + 1} (örn: 2020 Isuzu NPR)`}
+                    />
+                    <button type="button" onClick={() => removeVehicleRow(idx)} className="px-2 rounded-lg border border-red-200 text-red-600 text-[9px] font-black">Sil</button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e)=>{ const file = e.target.files?.[0]; if (file) { setActiveVehicleIndex(idx); handlePhotoUpload(idx, file); } }}
+                      className="text-[10px] font-bold"
+                    />
+                    {uploadingPhoto && activeVehicleIndex === idx && <span className="text-[10px] font-black text-[#3d686b]">Yükleniyor...</span>}
+                  </div>
+                  {vehicle.photoUrls?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {vehicle.photoUrls.map((url, pIdx) => (
+                        <a key={pIdx} href={url} target="_blank" className="text-[9px] font-black text-blue-600 underline">
+                          Foto {pIdx + 1}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
           <textarea placeholder="MAHALLE, SOKAK, CADDE..." value={formData.streetAddress} className="bg-white/50 backdrop-blur-sm border border-white/40 p-6 rounded-3xl font-bold text-sm h-24 outline-none md:col-span-2 placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" onChange={e=>setFormData({...formData, streetAddress: e.target.value})}/>
         </section>

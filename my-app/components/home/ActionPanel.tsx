@@ -175,6 +175,7 @@ export default function ActionPanel({
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [modalDriverId, setModalDriverId] = useState<string | null>(null);
   const [modalDriverName, setModalDriverName] = useState<string>('');
+  const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
 
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
@@ -461,6 +462,13 @@ export default function ActionPanel({
                 else if (isPassenger) iconBg = 'bg-emerald-600';
                 else if (['nakliye', 'kamyon', 'tir', 'evden_eve', 'yurt_disi_nakliye'].some(t => sub.includes(t))) iconBg = 'bg-purple-600';
 
+                const vehicleItems: Array<{ name: string; photoUrls: string[] }> =
+                  Array.isArray(driver.vehicleItems) && driver.vehicleItems.length > 0
+                    ? driver.vehicleItems
+                    : (driver.vehicleInfo
+                        ? [{ name: driver.vehicleInfo, photoUrls: driver.vehiclePhotos || (driver.photoUrl ? [driver.photoUrl] : []) }]
+                        : []);
+
                 return (
                 <div
                     key={driver._id}
@@ -505,7 +513,7 @@ export default function ActionPanel({
                                     {isSpecialCategory && <span className={`text-[9px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : isStation ? 'text-blue-600' : 'text-cyan-600'}`}>Türkiye Geneli</span>}
                                 </div>
 
-                                {!isSelected && (
+                                {!isSelected && !isStation && (
                                   <p className="mt-1.5 text-[8px] font-black text-blue-500 uppercase tracking-wide">
                                     Fiyat almak için tıkla &amp; ara
                                   </p>
@@ -532,7 +540,17 @@ export default function ActionPanel({
                     {isSelected && (
                     <div className="mt-6 pt-6 border-t border-white/20 space-y-4 animate-in fade-in duration-200">
                         {(!isSpecialCategory || isStation) && (
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`http://googleusercontent.com/maps.google.com/maps?q=${driver.location?.coordinates[1]},${driver.location?.coordinates[0]}`, '_blank'); }} className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"><MapIcon size={16} /> HARİTADA GİT (ROTA)</button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const lat = driver.location?.coordinates?.[1];
+                              const lng = driver.location?.coordinates?.[0];
+                              if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
+                            }}
+                            className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white bg-gray-800 transition-transform"
+                          >
+                            <MapIcon size={16} /> GOOGLE MAPS'TE AÇ
+                          </button>
                         )}
                         <div className="flex gap-2">
                           <button onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }} className="flex-1 bg-black text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2"><Phone size={14}/> ARA</button>
@@ -553,16 +571,46 @@ export default function ActionPanel({
                           </div>
                         )}
 
-                        {!!driver.vehicleInfo && (
+                        {vehicleItems.length > 0 && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); alert(`Araçlar: ${driver.vehicleInfo}`); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
+                            }}
                             className="w-full py-3 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase text-gray-700 active:scale-95 transition-all"
                           >
-                            Araçları Listele
+                            Araçları Listele ({vehicleItems.length})
                           </button>
                         )}
 
-                        {(driver.photoUrl || (driver.vehiclePhotos && driver.vehiclePhotos.length > 0)) && (
+                        {activeVehicleCardId === driver._id && vehicleItems.length > 0 && (
+                          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 space-y-2">
+                            {vehicleItems.map((vehicle, vIdx) => (
+                              <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
+                                <div className="font-black uppercase">{vehicle.name || `Araç ${vIdx + 1}`}</div>
+                                {Array.isArray(vehicle.photoUrls) && vehicle.photoUrls.length > 0 ? (
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {vehicle.photoUrls.map((url, pIdx) => (
+                                      <a
+                                        key={`${driver._id}-vehicle-${vIdx}-photo-${pIdx}`}
+                                        href={url}
+                                        target="_blank"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black uppercase text-slate-700"
+                                      >
+                                        Fotoğrafları Gör {pIdx + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-[9px] text-gray-500 mt-1">Fotoğraf yok</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {(driver.photoUrl || (driver.vehiclePhotos && driver.vehiclePhotos.length > 0)) && activeVehicleCardId !== driver._id && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

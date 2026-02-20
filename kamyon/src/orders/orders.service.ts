@@ -35,7 +35,7 @@ export class OrdersService {
       // 🔥 KRİTİK DEĞİŞİKLİK: Sürücü artık NewProvider!
       // 'firstName lastName' YERİNE 'businessName' çekiyoruz.
       // Ayrıca 'service' objesini de çekiyoruz ki 'kurtarici' mı 'vinc' mi görelim.
-      .populate('driver', 'businessName phoneNumber rating service pricing location reportCount ratingCount isVerified photoUrl vehicleInfo vehiclePhotos') 
+      .populate('driver', 'businessName phoneNumber rating service pricing location reportCount ratingCount isVerified photoUrl vehicleInfo vehiclePhotos vehicleItems taxNumber') 
       .exec();
   }
 
@@ -44,7 +44,7 @@ export class OrdersService {
     const order = await this.orderModel.findById(id)
       .populate('customer', 'firstName lastName phoneNumber email')
       // 🔥 AYNI DEĞİŞİKLİK BURADA DA GEÇERLİ
-      .populate('driver', 'businessName phoneNumber rating service pricing reportCount ratingCount isVerified photoUrl vehicleInfo vehiclePhotos')
+      .populate('driver', 'businessName phoneNumber rating service pricing reportCount ratingCount isVerified photoUrl vehicleInfo vehiclePhotos vehicleItems taxNumber')
       .exec();
       
     if (!order) throw new NotFoundException('Sipariş bulunamadı');
