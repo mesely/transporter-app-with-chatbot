@@ -304,7 +304,7 @@ export default function ActionPanel({
     dragStartY.current = null;
   };
 
-  const sizeClass = panelState === 3 ? 'h-[92vh]' : panelState === 2 ? 'h-[55vh]' : panelState === 1 ? 'h-36' : 'h-14';
+  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-36' : 'h-14';
 
   const formatTitle = (name?: string) => {
     if (!name) return '';
@@ -431,7 +431,7 @@ export default function ActionPanel({
           </div>
         )}
 
-        <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain contain-content">
+        <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
           {loading ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">Yükleniyor...</p></div> ) : (
             displayDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
@@ -692,36 +692,48 @@ export default function ActionPanel({
                           ><Phone size={14}/> ARA</button>
 
                           {!isStation && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
-                              className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 backdrop-blur-xl"
-                              style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
-                            ><MessageCircle size={14}/> MESAJ AT</button>
+                            (isMobileCharge || isPassenger) ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); if (driver.website) window.open(driver.website, '_blank'); }}
+                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 backdrop-blur-xl"
+                                style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
+                              ><Globe size={14}/> SİTEYE GİT</button>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
+                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40 backdrop-blur-xl"
+                                style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
+                              ><MessageCircle size={14}/> MESAJ AT</button>
+                            )
                           )}
                         </div>
 
-                        {!isStation && (
+                        {!isStation && (vehicleCount > 0 || photoCount > 0) && (
                           <div className="flex gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
-                              }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all backdrop-blur-xl`}
-                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
-                            >
-                              Araçları Listele ({vehicleCount})
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
-                              }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all backdrop-blur-xl`}
-                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
-                            >
-                              Araç Fotoğraflarını Görüntüle ({photoCount})
-                            </button>
+                            {vehicleCount > 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
+                                }}
+                                className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all backdrop-blur-xl`}
+                                style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
+                              >
+                                Araçları Listele ({vehicleCount})
+                              </button>
+                            )}
+                            {photoCount > 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
+                                }}
+                                className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all backdrop-blur-xl`}
+                                style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
+                              >
+                                Araç Fotoğraflarını Görüntüle ({photoCount})
+                              </button>
+                            )}
                           </div>
                         )}
 
@@ -774,10 +786,10 @@ export default function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowRatingsModal(true);
                               }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-center justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-start justify-center gap-1 active:scale-95 transition-all backdrop-blur-xl`}
                               style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
-                              <Star size={12}/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
+                              <Star size={12} className="shrink-0 mt-px"/> Değerlendirmeleri Görüntüle ({driver.ratingCount || 0})
                             </button>
                             <button
                               onClick={(e) => {
