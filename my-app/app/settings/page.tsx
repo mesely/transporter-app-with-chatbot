@@ -69,6 +69,19 @@ export default function SettingsPage() {
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
 
+  const toggleNotif = () => {
+    setNotifEnabled(prev => {
+      localStorage.setItem('Transport_notif', String(!prev));
+      return !prev;
+    });
+  };
+  const toggleLocation = () => {
+    setLocationEnabled(prev => {
+      localStorage.setItem('Transport_location', String(!prev));
+      return !prev;
+    });
+  };
+
   // Accordion (Geçmiş Sipariş Detayları)
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
@@ -92,6 +105,10 @@ export default function SettingsPage() {
     setIsMounted(true);
     const storedName = localStorage.getItem('Transport_user_name');
     setUserName(storedName || 'Misafir Kullanıcı');
+    const storedNotif = localStorage.getItem('Transport_notif');
+    const storedLocation = localStorage.getItem('Transport_location');
+    if (storedNotif !== null) setNotifEnabled(storedNotif === 'true');
+    if (storedLocation !== null) setLocationEnabled(storedLocation === 'true');
   }, []);
 
   useEffect(() => {
@@ -150,7 +167,7 @@ export default function SettingsPage() {
     <main className="relative w-full min-h-screen flex flex-col font-sans text-gray-900 bg-gradient-to-br from-[#e0e7ff] via-[#f1f5f9] to-[#e2e8f0] overflow-hidden">
       
       {/* HEADER - Glassmorphism */}
-      <div className="px-6 md:px-12 pt-14 pb-8 z-10 shrink-0 bg-white/40 backdrop-blur-2xl border-b border-white/50 shadow-sm">
+      <div className="px-6 md:px-12 pt-14 pb-8 z-10 shrink-0 bg-white/60 border-b border-white/50 shadow-sm">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-6 mb-8">
             <button 
@@ -187,7 +204,7 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto px-6 md:px-12 py-10 custom-scrollbar">
         <div className="max-w-4xl mx-auto">
           {activeTab === 'tariff' && (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="space-y-10">
               <div className="p-5 rounded-[2rem] bg-red-50/80 backdrop-blur-sm border border-red-100 flex items-center gap-4 shadow-sm">
                 <div className="bg-red-100 p-3 rounded-full shrink-0"><Heart size={20} className="text-red-500 fill-red-500" /></div>
                 <p className="text-xs font-black text-red-800 leading-tight uppercase tracking-tight">Kazancın %10'una kadarı yardım kuruluşlarına aktarılmaktadır.</p>
@@ -222,14 +239,14 @@ export default function SettingsPage() {
 
               <div className="space-y-4 pt-6">
                 <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Tercihler</span>
-                <div onClick={() => setNotifEnabled(!notifEnabled)} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 backdrop-blur-xl border-2 border-white shadow-sm transition-all active:scale-[0.98] cursor-pointer">
+                <div onClick={toggleNotif} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 border-2 border-white shadow-sm active:scale-[0.98] cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-xl ${notifEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}><Bell size={20} /></div>
                     <span className="text-sm font-black text-slate-700 uppercase">Bildirimler</span>
                   </div>
                   {notifEnabled ? <ToggleRight size={40} className="text-blue-600 fill-current"/> : <ToggleLeft size={40} className="text-slate-300"/>}
                 </div>
-                <div onClick={() => setLocationEnabled(!locationEnabled)} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 backdrop-blur-xl border-2 border-white shadow-sm transition-all active:scale-[0.98] cursor-pointer">
+                <div onClick={toggleLocation} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 border-2 border-white shadow-sm active:scale-[0.98] cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-xl ${locationEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}><Locate size={20} /></div>
                     <span className="text-sm font-black text-slate-700 uppercase">Konum Takibi</span>
@@ -272,7 +289,7 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'history' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="space-y-6">
                {loading ? (
                   <div className="flex flex-col items-center py-40 gap-6 text-slate-400">
                     <Loader2 className="animate-spin text-blue-600" size={40} />
@@ -358,7 +375,7 @@ export default function SettingsPage() {
       </div>
 
       {/* FOOTER (Sabit Alt Kısım) */}
-      <div className="p-6 md:p-8 bg-white/80 backdrop-blur-2xl border-t border-white/60 text-center shrink-0 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-10">
+      <div className="p-6 md:p-8 bg-white/90 border-t border-white/60 text-center shrink-0 rounded-t-[2.5rem] shadow-[0_-4px_12px_rgba(0,0,0,0.04)] z-10">
         <div className="max-w-md mx-auto">
           <button onClick={() => setShowSettings(true)} className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] border-2 border-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all bg-white hover:bg-slate-50">
              <Settings size={20} /> Gelişmiş Ayarlar

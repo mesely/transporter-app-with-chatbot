@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Bell, Shield, CreditCard, LogOut, Trash2, ChevronRight, Heart } from 'lucide-react';
+import { X, Shield, CreditCard, LogOut, Trash2, ChevronRight, Heart } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -70,14 +70,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* MENÜ GRUBU 1 (Glass List) */}
           <div className="rounded-3xl p-2 shadow-sm border border-white/60 bg-white/40 backdrop-blur-md">
-            <button className="w-full flex items-center justify-between p-4 hover:bg-white/60 rounded-2xl transition-colors group">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-blue-50/80 border border-blue-100 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm"><Bell size={18}/></div>
-                <span className="text-xs font-black text-gray-700 uppercase">Bildirimler</span>
-              </div>
-              <ChevronRight size={16} className="text-gray-400/70" />
-            </button>
-            <div className="h-[1px] bg-white/30 mx-4"></div>
             <button className="w-full flex items-center justify-between p-4 hover:bg-white/60 rounded-2xl transition-colors group">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-green-50/80 border border-green-100 text-green-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm"><Shield size={18}/></div>
