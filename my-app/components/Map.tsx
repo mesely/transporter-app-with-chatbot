@@ -84,24 +84,38 @@ const SERVICE_CONFIG: any = {
   other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
 };
 
-const SERVICE_LABELS: Record<string, { tr: string; en: string }> = {
-  oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery' },
-  vinc: { tr: 'Vinç', en: 'Crane' },
-  kurtarici: { tr: 'Kurtarıcı', en: 'Recovery' },
-  nakliye: { tr: 'Nakliye', en: 'Transport' },
-  evden_eve: { tr: 'Evden Eve', en: 'Home Moving' },
-  tir: { tr: 'TIR', en: 'Truck Trailer' },
-  kamyon: { tr: 'Kamyon', en: 'Truck' },
-  kamyonet: { tr: 'Kamyonet', en: 'Van' },
-  yurt_disi_nakliye: { tr: 'Uluslararası', en: 'International' },
-  istasyon: { tr: 'İstasyon', en: 'Station' },
-  seyyar_sarj: { tr: 'Mobil Şarj', en: 'Mobile Charge' },
-  minibus: { tr: 'Minibüs', en: 'Minibus' },
-  otobus: { tr: 'Otobüs', en: 'Bus' },
-  midibus: { tr: 'Midibüs', en: 'Midibus' },
-  vip_tasima: { tr: 'VIP Transfer', en: 'VIP Transfer' },
-  yolcu: { tr: 'Yolcu Taşıma', en: 'Passenger' },
-  other: { tr: 'Hizmet', en: 'Service' }
+const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
+  oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Dépannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Эвакуатор', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
+  vinc: { tr: 'Vinç', en: 'Crane', de: 'Kran', fr: 'Grue', it: 'Gru', es: 'Grúa', pt: 'Guindaste', ru: 'Кран', zh: '吊车', ja: 'クレーン', ko: '크레인', ar: 'رافعة' },
+  kurtarici: { tr: 'Kurtarıcı', en: 'Recovery', de: 'Bergung', fr: 'Remorquage', it: 'Recupero', es: 'Rescate', pt: 'Resgate', ru: 'Эвакуация', zh: '救援', ja: '救援', ko: '구난', ar: 'إنقاذ' },
+  nakliye: { tr: 'Nakliye', en: 'Transport', de: 'Transport', fr: 'Transport', it: 'Trasporto', es: 'Transporte', pt: 'Transporte', ru: 'Перевозка', zh: '运输', ja: '輸送', ko: '운송', ar: 'نقل' },
+  evden_eve: { tr: 'Evden Eve', en: 'Home Moving', de: 'Umzug', fr: 'Déménagement', it: 'Trasloco', es: 'Mudanza', pt: 'Mudança', ru: 'Переезд', zh: '搬家', ja: '引っ越し', ko: '이사', ar: 'نقل منزلي' },
+  tir: { tr: 'TIR', en: 'Trailer Truck', de: 'Sattelzug', fr: 'Semi-remorque', it: 'Autoarticolato', es: 'Tráiler', pt: 'Caminhão carreta', ru: 'Фура', zh: '半挂车', ja: 'トレーラー', ko: '트레일러', ar: 'شاحنة مقطورة' },
+  kamyon: { tr: 'Kamyon', en: 'Truck', de: 'LKW', fr: 'Camion', it: 'Camion', es: 'Camión', pt: 'Caminhão', ru: 'Грузовик', zh: '卡车', ja: 'トラック', ko: '트럭', ar: 'شاحنة' },
+  kamyonet: { tr: 'Kamyonet', en: 'Van', de: 'Transporter', fr: 'Fourgon', it: 'Furgone', es: 'Furgoneta', pt: 'Van', ru: 'Фургон', zh: '厢式车', ja: 'バン', ko: '밴', ar: 'فان' },
+  yurt_disi_nakliye: { tr: 'Uluslararası', en: 'International', de: 'International', fr: 'International', it: 'Internazionale', es: 'Internacional', pt: 'Internacional', ru: 'Международный', zh: '国际运输', ja: '国際輸送', ko: '국제 운송', ar: 'دولي' },
+  istasyon: { tr: 'İstasyon', en: 'Station', de: 'Station', fr: 'Station', it: 'Stazione', es: 'Estación', pt: 'Estação', ru: 'Станция', zh: '充电站', ja: 'ステーション', ko: '스테이션', ar: 'محطة' },
+  seyyar_sarj: { tr: 'Mobil Şarj', en: 'Mobile Charge', de: 'Mobiles Laden', fr: 'Charge mobile', it: 'Ricarica mobile', es: 'Carga móvil', pt: 'Carga móvel', ru: 'Мобильная зарядка', zh: '移动充电', ja: '移動充電', ko: '이동 충전', ar: 'شحن متنقل' },
+  minibus: { tr: 'Minibüs', en: 'Minibus', de: 'Minibus', fr: 'Minibus', it: 'Minibus', es: 'Minibús', pt: 'Micro-ônibus', ru: 'Микроавтобус', zh: '小巴', ja: 'ミニバス', ko: '미니버스', ar: 'ميني باص' },
+  otobus: { tr: 'Otobüs', en: 'Bus', de: 'Bus', fr: 'Bus', it: 'Autobus', es: 'Autobús', pt: 'Ônibus', ru: 'Автобус', zh: '公交车', ja: 'バス', ko: '버스', ar: 'حافلة' },
+  midibus: { tr: 'Midibüs', en: 'Midibus', de: 'Midibus', fr: 'Midibus', it: 'Midibus', es: 'Midibús', pt: 'Midi-ônibus', ru: 'Мидибус', zh: '中巴', ja: 'ミディバス', ko: '미디버스', ar: 'ميدي باص' },
+  vip_tasima: { tr: 'VIP Transfer', en: 'VIP Transfer', de: 'VIP Transfer', fr: 'Transfert VIP', it: 'Transfer VIP', es: 'Traslado VIP', pt: 'Transfer VIP', ru: 'VIP трансфер', zh: 'VIP接送', ja: 'VIP送迎', ko: 'VIP 이동', ar: 'نقل VIP' },
+  yolcu: { tr: 'Yolcu Taşıma', en: 'Passenger', de: 'Personentransport', fr: 'Transport passager', it: 'Trasporto passeggeri', es: 'Transporte de pasajeros', pt: 'Transporte de passageiros', ru: 'Пассажирский', zh: '客运', ja: '旅客輸送', ko: '승객 운송', ar: 'نقل ركاب' },
+  other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Serviço', ru: 'Сервис', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' }
+};
+const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; show: string }> = {
+  tr: { call: 'ARA', message: 'MESAJ AT', show: 'HARİTADA GÖSTER' },
+  en: { call: 'CALL', message: 'MESSAGE', show: 'SHOW ON MAP' },
+  de: { call: 'ANRUFEN', message: 'NACHRICHT', show: 'AUF KARTE ZEIGEN' },
+  fr: { call: 'APPELER', message: 'MESSAGE', show: 'VOIR SUR LA CARTE' },
+  it: { call: 'CHIAMA', message: 'MESSAGGIO', show: 'MOSTRA SULLA MAPPA' },
+  es: { call: 'LLAMAR', message: 'MENSAJE', show: 'VER EN MAPA' },
+  pt: { call: 'LIGAR', message: 'MENSAGEM', show: 'VER NO MAPA' },
+  ru: { call: 'ПОЗВОНИТЬ', message: 'СООБЩЕНИЕ', show: 'ПОКАЗАТЬ НА КАРТЕ' },
+  zh: { call: '拨打电话', message: '发送消息', show: '在地图中显示' },
+  ja: { call: '電話する', message: 'メッセージ', show: '地図で表示' },
+  ko: { call: '전화하기', message: '메시지', show: '지도에서 보기' },
+  ar: { call: 'اتصال', message: 'رسالة', show: 'عرض على الخريطة' }
 };
 
 const darkenHex = (hex: string, amount: number) => {
@@ -194,8 +208,7 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
 // --- ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
   const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
-  const uiLang: 'tr' | 'en' = lang === 'tr' ? 'tr' : 'en';
-  const isEn = uiLang === 'en';
+  const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
   const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
@@ -295,7 +308,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
           const isActive = activeDriverId === item._id;
           const config = SERVICE_CONFIG[subType] || SERVICE_CONFIG.other;
-          const label = SERVICE_LABELS[subType]?.[uiLang] || SERVICE_LABELS.other[uiLang];
+          const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang] || SERVICE_LABELS.other.en;
 
           return (
             <Marker 
@@ -336,7 +349,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
                       style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 45)})` }}
                     >
-                      <Phone size={13} /> {isEn ? 'CALL' : 'ARA'}
+                      <Phone size={13} /> {uiText.call}
                     </button>
                     
                     <button
@@ -344,7 +357,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
                       style={{ background: `linear-gradient(135deg, ${darkenHex(config.color, 18)}, ${darkenHex(config.color, 65)})` }}
                     >
-                      <MessageCircle size={13} /> {isEn ? 'MESSAGE' : 'MESAJ AT'}
+                      <MessageCircle size={13} /> {uiText.message}
                     </button>
                   </div>
                   
@@ -353,7 +366,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 backdrop-blur-md transition-all"
                     style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 55)})` }}
                   >
-                    <MapPin size={12} /> {isEn ? 'SHOW ON MAP' : 'HARİTADA GÖSTER'}
+                    <MapPin size={12} /> {uiText.show}
                   </button>
                 </div>
               </Popup>

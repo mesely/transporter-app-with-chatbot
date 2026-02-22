@@ -119,10 +119,26 @@ const CONTENT: any = {
   }
 };
 
+const PRIVACY_UI: Record<AppLang, any> = {
+  tr: {},
+  en: {},
+  de: { title: 'Rechtliches Zentrum', contactTitle: 'Rechtlicher Kontakt', kvkkTitle: 'TEIL 1: DATENSCHUTZ', agreementTitle: 'TEIL 2: NUTZERVEREINBARUNG', back: 'Zur Startseite' },
+  fr: { title: 'Centre juridique', contactTitle: 'Contact juridique', kvkkTitle: 'PARTIE 1: POLITIQUE DE CONFIDENTIALITÉ', agreementTitle: 'PARTIE 2: CONTRAT UTILISATEUR', back: "Retour à l'accueil" },
+  it: { title: 'Centro legale', contactTitle: 'Contatto legale', kvkkTitle: 'PARTE 1: INFORMATIVA PRIVACY', agreementTitle: 'PARTE 2: CONTRATTO UTENTE', back: 'Torna alla home' },
+  es: { title: 'Centro legal', contactTitle: 'Contacto legal', kvkkTitle: 'PARTE 1: POLÍTICA DE PRIVACIDAD', agreementTitle: 'PARTE 2: ACUERDO DE USUARIO', back: 'Volver al inicio' },
+  pt: { title: 'Centro jurídico', contactTitle: 'Contato jurídico', kvkkTitle: 'PARTE 1: POLÍTICA DE PRIVACIDADE', agreementTitle: 'PARTE 2: ACORDO DO USUÁRIO', back: 'Voltar para início' },
+  ru: { title: 'Юридический центр', contactTitle: 'Юридический контакт', kvkkTitle: 'РАЗДЕЛ 1: ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ', agreementTitle: 'РАЗДЕЛ 2: ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ', back: 'Назад на главную' },
+  zh: { title: '法律中心', contactTitle: '法律联系', kvkkTitle: '第1部分：隐私政策', agreementTitle: '第2部分：用户协议', back: '返回首页' },
+  ja: { title: '法務センター', contactTitle: '法務連絡先', kvkkTitle: '第1部：プライバシーポリシー', agreementTitle: '第2部：利用規約', back: 'ホームへ戻る' },
+  ko: { title: '법률 센터', contactTitle: '법률 문의', kvkkTitle: '1부: 개인정보 처리방침', agreementTitle: '2부: 이용약관', back: '홈으로 돌아가기' },
+  ar: { title: 'المركز القانوني', contactTitle: 'التواصل القانوني', kvkkTitle: 'القسم 1: سياسة الخصوصية', agreementTitle: 'القسم 2: اتفاقية المستخدم', back: 'العودة للرئيسية' }
+};
+
 export default function PrivacyPage() {
   const router = useRouter();
   const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
-  const t = CONTENT[lang === 'tr' ? 'tr' : 'en'];
+  const base = CONTENT[lang === 'tr' ? 'tr' : 'en'];
+  const t = { ...base, ...(PRIVACY_UI[lang] || {}) };
 
   useEffect(() => {
     const preferred = getPreferredLang();
@@ -146,7 +162,7 @@ export default function PrivacyPage() {
           onClick={() => router.push('/')}
           className="text-slate-900 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:text-blue-600 transition-colors"
         >
-          <ArrowLeft size={16} /> {lang === 'tr' ? 'Ana Sayfaya Dön' : 'Back to Home'}
+          <ArrowLeft size={16} /> {(PRIVACY_UI[lang] && PRIVACY_UI[lang].back) || (lang === 'tr' ? 'Ana Sayfaya Dön' : 'Back to Home')}
         </button>
         
         <div className="flex items-center gap-2">

@@ -76,7 +76,7 @@ export default function RootLayout({
               Transport 245
             </h1>
             <div className="bg-white/50 border border-white/80 backdrop-blur-md px-5 py-2 rounded-2xl shadow-sm inline-block">
-               <p className="text-cyan-600 text-[10px] font-black uppercase tracking-[0.4em] leading-none">
+               <p id="splash-tagline" className="text-cyan-600 text-[10px] font-black uppercase tracking-[0.4em] leading-none">
                  Geleceğin Lojistik Ağı
                </p>
             </div>
@@ -93,8 +93,25 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             const splash = document.getElementById('splash-screen');
+            const tagline = document.getElementById('splash-tagline');
             const path = window.location.pathname;
             const isNoSplashPage = path.includes('privacy') || path.includes('gizlilik') || path.includes('kvkk');
+            const lang = (localStorage.getItem('Transport_lang') || navigator.language || 'tr').toLowerCase().split('-')[0];
+            const splashTaglines = {
+              tr: 'Geleceğin Lojistik Ağı',
+              en: 'Logistics Network of the Future',
+              de: 'Logistiknetz der Zukunft',
+              fr: 'Réseau logistique du futur',
+              it: 'Rete logistica del futuro',
+              es: 'Red logística del futuro',
+              pt: 'Rede logística do futuro',
+              ru: 'Логистическая сеть будущего',
+              zh: '未来物流网络',
+              ja: '未来の物流ネットワーク',
+              ko: '미래 물류 네트워크',
+              ar: 'شبكة لوجستية للمستقبل'
+            };
+            if (tagline) tagline.textContent = splashTaglines[lang] || splashTaglines.en;
 
             // Hata Düzeltme: style.overflowY = "hidden" yerine classList kullanıyoruz.
             if (isNoSplashPage) {
