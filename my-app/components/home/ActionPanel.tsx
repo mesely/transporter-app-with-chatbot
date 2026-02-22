@@ -708,7 +708,7 @@ export default function ActionPanel({
                           )}
                         </div>
 
-                        {!isStation && (vehicleCount > 0 || photoCount > 0) && (
+                        {!isStation && driver.isVerified && (vehicleCount > 0 || photoCount > 0) && (
                           <div className="flex gap-2">
                             {vehicleCount > 0 && (
                               <button

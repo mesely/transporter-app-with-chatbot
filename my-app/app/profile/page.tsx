@@ -282,6 +282,7 @@ export default function ProfilePage() {
     if (!agreed) return alert("Hizmet şartlarını onaylayın.");
     if (formData.businessName.length < 2) return alert("İşletme veya şahıs adı girin.");
     if (formData.serviceTypes.length === 0) return alert("Branş seçin.");
+    if (!String(formData.taxNumber || '').trim()) return alert("Vergi levhası bilgisi zorunludur.");
 
     let targetId = existingId;
     let finalMethod = existingId ? 'PUT' : 'POST';
@@ -302,6 +303,7 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const selected = formData.serviceTypes[0];
+      const extraServiceTypes = formData.serviceTypes.slice(1);
       let mappedMain = 'NAKLIYE';
       if (['oto_kurtarma', 'vinc'].includes(selected)) mappedMain = 'KURTARICI';
       else if (['istasyon', 'seyyar_sarj'].includes(selected)) mappedMain = 'SARJ';
@@ -329,12 +331,16 @@ export default function ProfilePage() {
 
       const payload = {
         ...formData, firstName: formData.businessName, mainType: mappedMain, serviceType: selected,
-        service: { mainType: mappedMain, subType: selected, tags: formData.filterTags },
+        service: {
+          mainType: mappedMain,
+          subType: selected,
+          tags: Array.from(new Set([...(formData.filterTags || []), ...extraServiceTypes])),
+        },
         address: `${formData.streetAddress}, ${formData.district}, ${formData.city}`,
         city: formData.city, district: formData.district, role: 'provider',
         isVerified: true,
         pricing: { pricePerUnit: Number(formData.pricePerUnit) },
-        taxNumber: formData.taxNumber,
+        taxNumber: String(formData.taxNumber || '').trim(),
         vehicleItems: cleanVehicleItems,
         vehicleInfo: cleanVehicleItems.map(v => v.name).filter(Boolean).join(', '),
         photoUrl: flatPhotos[0] || '',
@@ -402,9 +408,9 @@ export default function ProfilePage() {
                  key={opt.id}
                  onClick={() => {
                    if (isSelected) {
-                     setFormData({ ...formData, serviceTypes: [], filterTags: [] });
+                     setFormData(prev => ({ ...prev, serviceTypes: prev.serviceTypes.filter((id) => id !== opt.id) }));
                    } else {
-                     setFormData({ ...formData, serviceTypes: [opt.id], filterTags: [] });
+                     setFormData(prev => ({ ...prev, serviceTypes: [...prev.serviceTypes, opt.id] }));
                      if (opt.subs.length > 0) {
                        setActiveFolder(opt.id);
                      }
@@ -441,8 +447,8 @@ export default function ProfilePage() {
             <input type="number" value={formData.pricePerUnit} onChange={e=>setFormData({...formData, pricePerUnit: e.target.value})} className="w-full bg-transparent font-black text-xl outline-none text-[#3d686b]"/>
           </div>
           <div className="bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/40 shadow-sm">
-            <label className="text-[8px] font-black uppercase text-[#00c5c0]">Vergi Numarası (Opsiyonel)</label>
-            <input type="text" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Vergi no"/>
+            <label className="text-[8px] font-black uppercase text-[#00c5c0]">Vergi Levhası No (Zorunlu)</label>
+            <input type="text" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Vergi levhası no"/>
           </div>
           <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
           <div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl md:col-span-2 space-y-3">
