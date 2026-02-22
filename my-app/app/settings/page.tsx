@@ -235,6 +235,29 @@ export default function SettingsPage() {
         <div className="max-w-4xl mx-auto">
           {activeTab === 'tariff' && (
             <div className="space-y-10">
+              <div className="p-5 rounded-[2rem] bg-white/70 backdrop-blur-sm border-2 border-white shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-blue-100 text-blue-600"><Globe size={20} /></div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ayarlar</p>
+                      <p className="text-sm font-black text-slate-700 uppercase">Dil Seçimi</p>
+                    </div>
+                  </div>
+                  <select
+                    value={appLang}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 uppercase outline-none"
+                  >
+                    {LANG_OPTIONS.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="p-5 rounded-[2rem] bg-red-50/80 backdrop-blur-sm border border-red-100 flex items-center gap-4 shadow-sm">
                 <div className="bg-red-100 p-3 rounded-full shrink-0"><Heart size={20} className="text-red-500 fill-red-500" /></div>
                 <p className="text-xs font-black text-red-800 leading-tight uppercase tracking-tight">Kazancın %10'una kadarı yardım kuruluşlarına aktarılmaktadır.</p>
@@ -282,23 +305,6 @@ export default function SettingsPage() {
                     <span className="text-sm font-black text-slate-700 uppercase">Konum Takibi</span>
                   </div>
                   {locationEnabled ? <ToggleRight size={40} className="text-blue-600 fill-current"/> : <ToggleLeft size={40} className="text-slate-300"/>}
-                </div>
-                <div className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 border-2 border-white shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-blue-100 text-blue-600"><Globe size={20} /></div>
-                    <span className="text-sm font-black text-slate-700 uppercase">Dil</span>
-                  </div>
-                  <select
-                    value={appLang}
-                    onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 uppercase outline-none"
-                  >
-                    {LANG_OPTIONS.map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
 
