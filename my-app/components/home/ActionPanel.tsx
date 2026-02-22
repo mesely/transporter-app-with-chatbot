@@ -214,8 +214,9 @@ export default function ActionPanel({
   const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
   const [activePhotoCardId, setActivePhotoCardId] = useState<string | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const isEn = lang !== 'tr';
   const tx = useMemo(() => (
-    lang === 'en'
+    isEn
       ? {
           kurtarici: 'Recovery', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger',
           geziciSarj: 'Mobile Charge', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE',
@@ -430,35 +431,35 @@ export default function ActionPanel({
           {showTowRow && (
             <div className="flex gap-2">
               <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> Oto Kurtarma</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> {lang === 'en' ? 'Crane' : 'Vinç'}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> {isEn ? 'Crane' : 'Vinç'}</button>
             </div>
           )}
           {(showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
              <div className="flex gap-2">
-                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{lang === 'en' ? 'Domestic' : 'Yurt İçi'}</button>
-                <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={14} className="inline mr-1"/> {lang === 'en' ? 'International' : 'Yurt Dışı'}</button>
+                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{isEn ? 'Domestic' : 'Yurt İçi'}</button>
+                <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={14} className="inline mr-1"/> {isEn ? 'International' : 'Yurt Dışı'}</button>
              </div>
           )}
           {showDomesticRow && actionType !== 'yurt_disi_nakliye' && (
             <div className="grid grid-cols-4 gap-2">
-               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> {lang === 'en' ? 'Home Moving' : 'Evden Eve'}</button>
-               <button onClick={() => handleTransportTypeClick('tir')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={14}/> {lang === 'en' ? 'Trailer' : 'Tır'}</button>
-               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> {lang === 'en' ? 'Truck' : 'Kamyon'}</button>
-               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={14}/> {lang === 'en' ? 'Van' : 'Kamyonet'}</button>
+               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> {isEn ? 'Home Moving' : 'Evden Eve'}</button>
+               <button onClick={() => handleTransportTypeClick('tir')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={14}/> {isEn ? 'Trailer' : 'Tır'}</button>
+               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> {isEn ? 'Truck' : 'Kamyon'}</button>
+               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={14}/> {isEn ? 'Van' : 'Kamyonet'}</button>
             </div>
           )}
           {activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => (
                     <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-3 rounded-xl text-[8px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-all ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
-                        {activeTags.includes(sub.id) && <Check size={10} strokeWidth={4} />} {lang === 'en' ? (SUB_LABEL_EN[sub.id] || sub.label) : sub.label}
+                        {activeTags.includes(sub.id) && <Check size={10} strokeWidth={4} />} {isEn ? (SUB_LABEL_EN[sub.id] || sub.label) : sub.label}
                     </button>
                 ))}
              </div>
           )}
           {showChargeRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> {lang === 'en' ? 'Station' : 'İstasyon'}</button>
+              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> {isEn ? 'Station' : 'İstasyon'}</button>
               <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
                 <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> {tx.geziciSarj}
               </button>
@@ -469,7 +470,7 @@ export default function ActionPanel({
                {SUB_FILTERS.yolcu.map((sub) => (
                   <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
                     {sub.id === 'minibus' && <CarFront size={14}/>} {sub.id === 'otobus' && <Bus size={14}/>} {sub.id === 'midibus' && <Bus size={14}/>} {sub.id === 'vip_tasima' && <Crown size={14}/>}
-                    {lang === 'en' ? (SUB_LABEL_EN[sub.id] || sub.label) : sub.label}
+                    {isEn ? (SUB_LABEL_EN[sub.id] || sub.label) : sub.label}
                   </button>
                ))}
             </div>
@@ -714,7 +715,7 @@ export default function ActionPanel({
                                 {driver.service?.tags?.length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-2 items-start">
                                     {driver.service.tags.map((tag: string) => {
-                                      const details = (lang === 'en' ? TAG_DETAILS_EN : TAG_DETAILS)[tag];
+                                      const details = (isEn ? TAG_DETAILS_EN : TAG_DETAILS)[tag];
                                       if (!details) return null;
                                       return (
                                         <div key={tag} className="text-[8px] text-gray-500 flex flex-col leading-tight bg-gray-50 p-1.5 rounded-lg border border-gray-100">
@@ -809,7 +810,7 @@ export default function ActionPanel({
                             {vehicleItems.length === 0 && <div className="text-[10px] font-bold text-gray-500">{tx.noVehicles}</div>}
                             {vehicleItems.map((vehicle, vIdx) => (
                               <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
-                                <div className="font-black uppercase">{vehicle.name || `${lang === 'en' ? 'Vehicle' : 'Araç'} ${vIdx + 1}`}</div>
+                                <div className="font-black uppercase">{vehicle.name || `${isEn ? 'Vehicle' : 'Araç'} ${vIdx + 1}`}</div>
                               </div>
                             ))}
                           </div>
@@ -826,9 +827,9 @@ export default function ActionPanel({
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
                                     className="h-48 w-full rounded-lg overflow-hidden bg-transparent border border-white/20"
-                                    title={`${lang === 'en' ? 'Photo' : 'Fotoğraf'} ${idx + 1}`}
+                                    title={`${isEn ? 'Photo' : 'Fotoğraf'} ${idx + 1}`}
                                   >
-                                    <img src={url} alt={`${lang === 'en' ? 'Vehicle photo' : 'Araç fotoğrafı'} ${idx + 1}`} className="w-full h-full object-contain" loading="lazy" />
+                                    <img src={url} alt={`${isEn ? 'Vehicle photo' : 'Araç fotoğrafı'} ${idx + 1}`} className="w-full h-full object-contain" loading="lazy" />
                                   </button>
                                 ))}
                               </div>
@@ -899,7 +900,7 @@ export default function ActionPanel({
         onClick={() => setPreviewPhotoUrl(null)}
       >
         <div className="relative max-w-[92vw] max-h-[82vh]">
-          <img src={previewPhotoUrl} alt={lang === 'en' ? 'Large vehicle photo preview' : 'Araç fotoğrafı büyük önizleme'} className="max-w-[92vw] max-h-[82vh] rounded-2xl object-contain border border-white/30 shadow-2xl" />
+          <img src={previewPhotoUrl} alt={isEn ? 'Large vehicle photo preview' : 'Araç fotoğrafı büyük önizleme'} className="max-w-[92vw] max-h-[82vh] rounded-2xl object-contain border border-white/30 shadow-2xl" />
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(null); }}

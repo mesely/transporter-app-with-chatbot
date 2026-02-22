@@ -194,6 +194,8 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
 // --- ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
   const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
+  const uiLang: 'tr' | 'en' = lang === 'tr' ? 'tr' : 'en';
+  const isEn = uiLang === 'en';
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
   const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
@@ -293,7 +295,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
           const isActive = activeDriverId === item._id;
           const config = SERVICE_CONFIG[subType] || SERVICE_CONFIG.other;
-          const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang];
+          const label = SERVICE_LABELS[subType]?.[uiLang] || SERVICE_LABELS.other[uiLang];
 
           return (
             <Marker 
@@ -334,7 +336,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
                       style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 45)})` }}
                     >
-                      <Phone size={13} /> {lang === 'en' ? 'CALL' : 'ARA'}
+                      <Phone size={13} /> {isEn ? 'CALL' : 'ARA'}
                     </button>
                     
                     <button
@@ -342,7 +344,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
                       style={{ background: `linear-gradient(135deg, ${darkenHex(config.color, 18)}, ${darkenHex(config.color, 65)})` }}
                     >
-                      <MessageCircle size={13} /> {lang === 'en' ? 'MESSAGE' : 'MESAJ AT'}
+                      <MessageCircle size={13} /> {isEn ? 'MESSAGE' : 'MESAJ AT'}
                     </button>
                   </div>
                   
@@ -351,7 +353,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 backdrop-blur-md transition-all"
                     style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 55)})` }}
                   >
-                    <MapPin size={12} /> {lang === 'en' ? 'SHOW ON MAP' : 'HARİTADA GÖSTER'}
+                    <MapPin size={12} /> {isEn ? 'SHOW ON MAP' : 'HARİTADA GÖSTER'}
                   </button>
                 </div>
               </Popup>

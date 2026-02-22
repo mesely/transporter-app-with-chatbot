@@ -122,7 +122,7 @@ const CONTENT: any = {
 export default function PrivacyPage() {
   const router = useRouter();
   const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
-  const t = CONTENT[lang];
+  const t = CONTENT[lang === 'tr' ? 'tr' : 'en'];
 
   useEffect(() => {
     const preferred = getPreferredLang();

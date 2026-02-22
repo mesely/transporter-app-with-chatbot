@@ -8,7 +8,8 @@ export default function ScanningLoader() {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
-  const messages = lang === 'en'
+  const isEn = lang !== 'tr';
+  const messages = isEn
     ? [
         'Preparing next-generation logistics network',
         'Listing vehicles closest to your location',

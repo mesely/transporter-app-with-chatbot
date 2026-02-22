@@ -195,9 +195,9 @@ export default function SettingsPage() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTargetId, setRatingTargetId] = useState<string | null>(null);
   const [ratingDriverId, setRatingDriverId] = useState<string | null>(null);
-  const normalizedLang = appLang === 'en' ? 'en' : 'tr';
+  const normalizedLang = appLang === 'tr' ? 'tr' : 'en';
   const t = UI_TEXT[normalizedLang];
-  const dateLocale = appLang === 'en' ? 'en-US' : 'tr-TR';
+  const dateLocale = appLang === 'tr' ? 'tr-TR' : 'en-US';
 
   useEffect(() => {
     setIsMounted(true);
