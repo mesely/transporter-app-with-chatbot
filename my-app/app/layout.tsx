@@ -98,18 +98,18 @@ export default function RootLayout({
             const isNoSplashPage = path.includes('privacy') || path.includes('gizlilik') || path.includes('kvkk');
             const lang = (localStorage.getItem('Transport_lang') || navigator.language || 'tr').toLowerCase().split('-')[0];
             const splashTaglines = {
-              tr: 'Geleceğin Lojistik Ağı',
-              en: 'Logistics Network of the Future',
-              de: 'Logistiknetz der Zukunft',
-              fr: 'Réseau logistique du futur',
-              it: 'Rete logistica del futuro',
-              es: 'Red logística del futuro',
-              pt: 'Rede logística do futuro',
-              ru: 'Логистическая сеть будущего',
-              zh: '未来物流网络',
-              ja: '未来の物流ネットワーク',
-              ko: '미래 물류 네트워크',
-              ar: 'شبكة لوجستية للمستقبل'
+              tr: "Geleceğin Lojistik Ağı",
+              en: "Logistics Network of the Future",
+              de: "Logistiknetz der Zukunft",
+              fr: "Réseau logistique du futur",
+              it: "Rete logistica del futuro",
+              es: "Red logística del futuro",
+              pt: "Rede logística do futuro",
+              ru: "Логистическая сеть будущего",
+              zh: "未来物流网络",
+              ja: "未来の物流ネットワーク",
+              ko: "미래 물류 네트워크",
+              ar: "شبكة لوجستية للمستقبل"
             };
             if (tagline) tagline.textContent = splashTaglines[lang] || splashTaglines.en;
 
