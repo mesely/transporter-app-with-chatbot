@@ -7,7 +7,7 @@ import { AppLang, getPreferredLang } from '../utils/language';
 export default function ScanningLoader() {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
-  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
+  const [lang, setLang] = useState<AppLang>('tr');
   const messagesByLang: Record<AppLang, string[]> = {
     tr: [
       'Yeni nesil lojistik ağı hazırlanıyor',

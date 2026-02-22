@@ -136,7 +136,7 @@ const PRIVACY_UI: Record<AppLang, any> = {
 
 export default function PrivacyPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
+  const [lang, setLang] = useState<AppLang>('tr');
   const base = CONTENT[lang === 'tr' ? 'tr' : 'en'];
   const t = { ...base, ...(PRIVACY_UI[lang] || {}) };
 

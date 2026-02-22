@@ -202,7 +202,7 @@ export default function ActionPanel({
   onSearchLocation, onFilterApply, onStartOrder, actionType, onActionChange,
   drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen
 }: ActionPanelProps) {
-  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
+  const [lang, setLang] = useState<AppLang>('tr');
 
   const [panelState, setPanelState] = useState<0 | 1 | 2 | 3>(1);
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);

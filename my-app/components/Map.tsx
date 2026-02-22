@@ -207,7 +207,7 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
 
 // --- ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
-  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
+  const [lang, setLang] = useState<AppLang>('tr');
   const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
