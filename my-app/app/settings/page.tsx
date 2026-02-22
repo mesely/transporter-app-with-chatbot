@@ -195,7 +195,8 @@ export default function SettingsPage() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTargetId, setRatingTargetId] = useState<string | null>(null);
   const [ratingDriverId, setRatingDriverId] = useState<string | null>(null);
-  const t = appLang === 'en' ? UI_TEXT.en : UI_TEXT.tr;
+  const normalizedLang = appLang === 'en' ? 'en' : 'tr';
+  const t = UI_TEXT[normalizedLang];
   const dateLocale = appLang === 'en' ? 'en-US' : 'tr-TR';
 
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function SettingsPage() {
     setUserName(storedName || 'Misafir Kullanıcı');
     const storedNotif = localStorage.getItem('Transport_notif');
     const storedLocation = localStorage.getItem('Transport_location');
-    const storedLang = localStorage.getItem(LANG_STORAGE_KEY);
+    const storedLang = (localStorage.getItem(LANG_STORAGE_KEY) || '').toLowerCase();
     const deviceLang = (navigator.language || 'tr').split('-')[0].toLowerCase();
     const resolvedLang = LANG_OPTIONS.some(l => l.code === storedLang)
       ? String(storedLang)
@@ -217,9 +218,11 @@ export default function SettingsPage() {
   }, []);
 
   const handleLanguageChange = (nextLang: string) => {
+    if (nextLang === appLang) return;
     setAppLang(nextLang);
     localStorage.setItem(LANG_STORAGE_KEY, nextLang);
     document.documentElement.lang = nextLang;
+    window.location.reload();
   };
 
   useEffect(() => {
