@@ -6,10 +6,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Globe, ShieldCheck, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { AppLang, getPreferredLang, LANG_STORAGE_KEY } from '../../utils/language';
 
 const CONTENT: any = {
   tr: {
@@ -121,8 +121,21 @@ const CONTENT: any = {
 
 export default function PrivacyPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<'tr' | 'en'>('tr');
+  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
   const t = CONTENT[lang];
+
+  useEffect(() => {
+    const preferred = getPreferredLang();
+    setLang(preferred);
+    document.documentElement.lang = preferred;
+  }, []);
+
+  const handleToggleLang = () => {
+    const next = lang === 'tr' ? 'en' : 'tr';
+    setLang(next);
+    localStorage.setItem(LANG_STORAGE_KEY, next);
+    document.documentElement.lang = next;
+  };
 
   return (
     <div className="w-full min-h-screen bg-[#f8fafc] text-slate-900 overflow-y-auto font-sans">
@@ -142,7 +155,7 @@ export default function PrivacyPage() {
         </div>
 
         <button 
-          onClick={() => setLang(lang === 'tr' ? 'en' : 'tr')}
+          onClick={handleToggleLang}
           className="flex items-center gap-2 bg-slate-900 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-lg"
         >
           <Globe size={14} /> {lang === 'tr' ? 'EN' : 'TR'}

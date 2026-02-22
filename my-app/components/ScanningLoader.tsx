@@ -2,17 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { Truck, ShieldCheck } from 'lucide-react';
+import { AppLang, getPreferredLang } from '../utils/language';
 
 export default function ScanningLoader() {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
-  const messages = [
-    'Yeni nesil lojistik ağı hazırlanıyor',
-    'Konuma en yakın araçlar listeleniyor',
-    'En yakın kurtarıcı, vinç ve nakliye araçları bulunuyor',
-    'Uygun hizmet sağlayıcılar filtreleniyor',
-    'Güvenilir ve hızlı eşleşmeler oluşturuluyor'
-  ];
+  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
+  const messages = lang === 'en'
+    ? [
+        'Preparing next-generation logistics network',
+        'Listing vehicles closest to your location',
+        'Finding nearest recovery, crane, and transport services',
+        'Filtering suitable service providers',
+        'Building reliable and fast matches'
+      ]
+    : [
+        'Yeni nesil lojistik ağı hazırlanıyor',
+        'Konuma en yakın araçlar listeleniyor',
+        'En yakın kurtarıcı, vinç ve nakliye araçları bulunuyor',
+        'Uygun hizmet sağlayıcılar filtreleniyor',
+        'Güvenilir ve hızlı eşleşmeler oluşturuluyor'
+      ];
+
+  useEffect(() => {
+    setLang(getPreferredLang());
+  }, []);
 
   useEffect(() => {
     const totalTime = 7000;

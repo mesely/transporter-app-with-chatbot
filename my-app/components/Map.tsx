@@ -13,6 +13,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { AppLang, getPreferredLang } from '../utils/language';
 
 // --- ICONS ---
 import { 
@@ -81,6 +82,26 @@ const SERVICE_CONFIG: any = {
   vip_tasima:   { color: '#064e3b', Icon: Crown, label: 'VIP Transfer' },
   yolcu:        { color: '#10b981', Icon: Users, label: 'Yolcu Taşıma' },
   other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
+};
+
+const SERVICE_LABELS: Record<string, { tr: string; en: string }> = {
+  oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery' },
+  vinc: { tr: 'Vinç', en: 'Crane' },
+  kurtarici: { tr: 'Kurtarıcı', en: 'Recovery' },
+  nakliye: { tr: 'Nakliye', en: 'Transport' },
+  evden_eve: { tr: 'Evden Eve', en: 'Home Moving' },
+  tir: { tr: 'TIR', en: 'Truck Trailer' },
+  kamyon: { tr: 'Kamyon', en: 'Truck' },
+  kamyonet: { tr: 'Kamyonet', en: 'Van' },
+  yurt_disi_nakliye: { tr: 'Uluslararası', en: 'International' },
+  istasyon: { tr: 'İstasyon', en: 'Station' },
+  seyyar_sarj: { tr: 'Mobil Şarj', en: 'Mobile Charge' },
+  minibus: { tr: 'Minibüs', en: 'Minibus' },
+  otobus: { tr: 'Otobüs', en: 'Bus' },
+  midibus: { tr: 'Midibüs', en: 'Midibus' },
+  vip_tasima: { tr: 'VIP Transfer', en: 'VIP Transfer' },
+  yolcu: { tr: 'Yolcu Taşıma', en: 'Passenger' },
+  other: { tr: 'Hizmet', en: 'Service' }
 };
 
 const darkenHex = (hex: string, amount: number) => {
@@ -172,6 +193,7 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
 
 // --- ANA BİLEŞEN ---
 export default function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
+  const [lang, setLang] = useState<AppLang>(() => getPreferredLang());
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
   const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
@@ -182,6 +204,10 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
   }, [activeDriverId, drivers]);
 
   const hiddenCategories = ['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'];
+
+  useEffect(() => {
+    setLang(getPreferredLang());
+  }, []);
 
   const visibleMarkers = useMemo(() => {
     const mapDrivers = drivers.filter(d => !hiddenCategories.includes(d.service?.subType || ''));
@@ -267,6 +293,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
 
           const isActive = activeDriverId === item._id;
           const config = SERVICE_CONFIG[subType] || SERVICE_CONFIG.other;
+          const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang];
 
           return (
             <Marker 
@@ -283,7 +310,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                 <div className="p-1 font-sans text-gray-900">
                   <div className="flex justify-between items-start mb-2.5">
                     <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
-                      {config.label}
+                      {label}
                     </span>
                     {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
                   </div>
@@ -307,7 +334,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
                       style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 45)})` }}
                     >
-                      <Phone size={13} /> ARA
+                      <Phone size={13} /> {lang === 'en' ? 'CALL' : 'ARA'}
                     </button>
                     
                     <button
@@ -315,7 +342,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                       className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
                       style={{ background: `linear-gradient(135deg, ${darkenHex(config.color, 18)}, ${darkenHex(config.color, 65)})` }}
                     >
-                      <MessageCircle size={13} /> MESAJ AT
+                      <MessageCircle size={13} /> {lang === 'en' ? 'MESSAGE' : 'MESAJ AT'}
                     </button>
                   </div>
                   
@@ -324,7 +351,7 @@ export default function Map({ searchCoords, drivers, onStartOrder, activeDriverI
                     className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 backdrop-blur-md transition-all"
                     style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 55)})` }}
                   >
-                    <MapPin size={12} /> HARİTADA GÖSTER
+                    <MapPin size={12} /> {lang === 'en' ? 'SHOW ON MAP' : 'HARİTADA GÖSTER'}
                   </button>
                 </div>
               </Popup>
