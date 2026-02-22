@@ -45,16 +45,95 @@ const LANG_OPTIONS = [
   { code: 'ar', label: 'العربية' }
 ];
 
+const UI_TEXT = {
+  tr: {
+    menu: 'Menü',
+    cityActive: 'Şehir Aktif',
+    tariffs: 'Tarifeler',
+    history: 'Geçmiş',
+    settings: 'Ayarlar',
+    language: 'Dil Seçimi',
+    donation: "Kazancın %10'una kadarı yardım kuruluşlarına aktarılmaktadır.",
+    groups: { KURTARMA: 'Kurtarma', NAKLIYE: 'Nakliye', ENERJI: 'Enerji', YOLCU: 'Yolcu' },
+    unit: 'Birim',
+    preferences: 'Tercihler',
+    notifications: 'Bildirimler',
+    locationTracking: 'Konum Takibi',
+    agreement: 'Sözleşme',
+    kvkk: 'KVKK Metni',
+    contact: 'Görüş ve şikayetleriniz için',
+    contactTail: 'adresinden iletişim kurabilirsiniz.',
+    deleteAccount: 'Hesabımı Sil',
+    historyLoading: 'Geçmiş Taranıyor...',
+    noHistory: 'Henüz İşlem Bulunmuyor',
+    completed: 'Tamamlandı',
+    licensedDriver: 'Lisanslı Sürücü',
+    rate: 'Değerlendir',
+    complain: 'Şikayet Et',
+    notAgreed: 'Aradım Ama Anlaşamadım',
+    advancedSettings: 'Gelişmiş Ayarlar',
+    services: {
+      kurtarici: 'Oto Kurtarma',
+      vinc: 'Ağır Vinç',
+      nakliye: 'Nakliye (Yurt İçi)',
+      yurt_disi_nakliye: 'Yurt Dışı Lojistik',
+      seyyar_sarj: 'Gezici Şarj',
+      istasyon: 'Şarj İstasyonu',
+      minibus: 'Minibüs',
+      otobus: 'Otobüs',
+      vip_tasima: 'VIP Transfer'
+    }
+  },
+  en: {
+    menu: 'Menu',
+    cityActive: 'City Active',
+    tariffs: 'Tariffs',
+    history: 'History',
+    settings: 'Settings',
+    language: 'Language',
+    donation: 'Up to 10% of revenue is donated to charities.',
+    groups: { KURTARMA: 'Recovery', NAKLIYE: 'Transport', ENERJI: 'Energy', YOLCU: 'Passenger' },
+    unit: 'Unit',
+    preferences: 'Preferences',
+    notifications: 'Notifications',
+    locationTracking: 'Location Tracking',
+    agreement: 'Agreement',
+    kvkk: 'Privacy Text',
+    contact: 'For feedback and complaints, contact us at',
+    contactTail: '',
+    deleteAccount: 'Delete My Account',
+    historyLoading: 'Scanning history...',
+    noHistory: 'No records yet',
+    completed: 'Completed',
+    licensedDriver: 'Licensed Driver',
+    rate: 'Rate',
+    complain: 'Report',
+    notAgreed: "I Called But Didn't Agree",
+    advancedSettings: 'Advanced Settings',
+    services: {
+      kurtarici: 'Roadside Recovery',
+      vinc: 'Heavy Crane',
+      nakliye: 'Domestic Transport',
+      yurt_disi_nakliye: 'International Logistics',
+      seyyar_sarj: 'Mobile Charging',
+      istasyon: 'Charging Station',
+      minibus: 'Minibus',
+      otobus: 'Bus',
+      vip_tasima: 'VIP Transfer'
+    }
+  }
+} as const;
+
 const BASE_DATA: any = {
-  kurtarici: { unit: 45, unitLabel: 'km', label: 'Oto Kurtarma', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },
-  vinc: { unit: 250, unitLabel: 'km', label: 'Ağır Vinç', icon: <Construction size={24}/>, color: 'text-red-800 bg-red-200', group: 'KURTARMA' },
-  nakliye: { unit: 50, unitLabel: 'km', label: 'Nakliye (Yurt İçi)', icon: <Truck size={24}/>, color: 'text-purple-600 bg-purple-100', group: 'NAKLİYE' },
-  yurt_disi_nakliye: { unit: 150, unitLabel: 'km', label: 'Yurt Dışı Lojistik', icon: <Globe size={24}/>, color: 'text-indigo-600 bg-indigo-100', group: 'NAKLİYE' },
-  seyyar_sarj: { unit: 30, unitLabel: 'kw', label: 'Gezici Şarj', icon: <Zap size={24}/>, color: 'text-blue-600 bg-blue-100', group: 'ENERJİ' },
-  istasyon: { unit: 15, unitLabel: 'kw', label: 'Şarj İstasyonu', icon: <Navigation size={24}/>, color: 'text-blue-800 bg-blue-200', group: 'ENERJİ' },
-  minibus: { unit: 35, unitLabel: 'km', label: 'Minibüs', icon: <Users size={24}/>, color: 'text-teal-600 bg-teal-100', group: 'YOLCU' },
-  otobus: { unit: 80, unitLabel: 'km', label: 'Otobüs', icon: <Bus size={24}/>, color: 'text-teal-800 bg-teal-200', group: 'YOLCU' },
-  vip_tasima: { unit: 60, unitLabel: 'km', label: 'VIP Transfer', icon: <Crown size={24}/>, color: 'text-emerald-700 bg-emerald-100', group: 'YOLCU' }
+  kurtarici: { unit: 45, unitLabel: 'km', labelKey: 'kurtarici', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },
+  vinc: { unit: 250, unitLabel: 'km', labelKey: 'vinc', icon: <Construction size={24}/>, color: 'text-red-800 bg-red-200', group: 'KURTARMA' },
+  nakliye: { unit: 50, unitLabel: 'km', labelKey: 'nakliye', icon: <Truck size={24}/>, color: 'text-purple-600 bg-purple-100', group: 'NAKLIYE' },
+  yurt_disi_nakliye: { unit: 150, unitLabel: 'km', labelKey: 'yurt_disi_nakliye', icon: <Globe size={24}/>, color: 'text-indigo-600 bg-indigo-100', group: 'NAKLIYE' },
+  seyyar_sarj: { unit: 30, unitLabel: 'kw', labelKey: 'seyyar_sarj', icon: <Zap size={24}/>, color: 'text-blue-600 bg-blue-100', group: 'ENERJI' },
+  istasyon: { unit: 15, unitLabel: 'kw', labelKey: 'istasyon', icon: <Navigation size={24}/>, color: 'text-blue-800 bg-blue-200', group: 'ENERJI' },
+  minibus: { unit: 35, unitLabel: 'km', labelKey: 'minibus', icon: <Users size={24}/>, color: 'text-teal-600 bg-teal-100', group: 'YOLCU' },
+  otobus: { unit: 80, unitLabel: 'km', labelKey: 'otobus', icon: <Bus size={24}/>, color: 'text-teal-800 bg-teal-200', group: 'YOLCU' },
+  vip_tasima: { unit: 60, unitLabel: 'km', labelKey: 'vip_tasima', icon: <Crown size={24}/>, color: 'text-emerald-700 bg-emerald-100', group: 'YOLCU' }
 };
 
 const getOrderIcon = (type: string) => {
@@ -116,6 +195,8 @@ export default function SettingsPage() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTargetId, setRatingTargetId] = useState<string | null>(null);
   const [ratingDriverId, setRatingDriverId] = useState<string | null>(null);
+  const t = appLang === 'en' ? UI_TEXT.en : UI_TEXT.tr;
+  const dateLocale = appLang === 'en' ? 'en-US' : 'tr-TR';
 
   useEffect(() => {
     setIsMounted(true);
@@ -206,7 +287,7 @@ export default function SettingsPage() {
             >
               <ArrowLeft size={24} strokeWidth={2.5}/>
             </button>
-            <h1 className="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">Menü</h1>
+            <h1 className="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">{t.menu}</h1>
           </div>
 
           <div onClick={() => setShowProfile(true)} className="rounded-[2.5rem] p-6 border-2 border-white bg-white/40 backdrop-blur-md shadow-xl cursor-pointer hover:bg-white/60 active:scale-[0.98] transition-all mb-8">
@@ -217,15 +298,15 @@ export default function SettingsPage() {
                 <div className="min-w-0 flex-1">
                   <h3 className="font-black uppercase text-xl text-slate-800 truncate">{userName}</h3>
                   <p className="text-[11px] text-blue-600 font-black uppercase mt-1 flex items-center gap-1.5 bg-blue-50/50 w-fit px-3 py-1 rounded-lg">
-                    <MapPin size={12} /> Şehir Aktif
+                    <MapPin size={12} /> {t.cityActive}
                   </p>
                 </div>
              </div>
           </div>
 
           <div className="flex bg-slate-200/50 p-2 rounded-3xl border border-white/40 backdrop-blur-sm shadow-inner">
-            <button onClick={() => setActiveTab('tariff')} className={`flex-1 py-4 text-xs font-black rounded-2xl transition-all uppercase tracking-widest ${activeTab === 'tariff' ? 'bg-white text-slate-800 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>Tarifeler</button>
-            <button onClick={() => setActiveTab('history')} className={`flex-1 py-4 text-xs font-black rounded-2xl transition-all uppercase tracking-widest ${activeTab === 'history' ? 'bg-white text-slate-800 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>Geçmiş</button>
+            <button onClick={() => setActiveTab('tariff')} className={`flex-1 py-4 text-xs font-black rounded-2xl transition-all uppercase tracking-widest ${activeTab === 'tariff' ? 'bg-white text-slate-800 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>{t.tariffs}</button>
+            <button onClick={() => setActiveTab('history')} className={`flex-1 py-4 text-xs font-black rounded-2xl transition-all uppercase tracking-widest ${activeTab === 'history' ? 'bg-white text-slate-800 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>{t.history}</button>
           </div>
         </div>
       </div>
@@ -240,8 +321,8 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-blue-100 text-blue-600"><Globe size={20} /></div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ayarlar</p>
-                      <p className="text-sm font-black text-slate-700 uppercase">Dil Seçimi</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t.settings}</p>
+                      <p className="text-sm font-black text-slate-700 uppercase">{t.language}</p>
                     </div>
                   </div>
                   <select
@@ -260,13 +341,13 @@ export default function SettingsPage() {
 
               <div className="p-5 rounded-[2rem] bg-red-50/80 backdrop-blur-sm border border-red-100 flex items-center gap-4 shadow-sm">
                 <div className="bg-red-100 p-3 rounded-full shrink-0"><Heart size={20} className="text-red-500 fill-red-500" /></div>
-                <p className="text-xs font-black text-red-800 leading-tight uppercase tracking-tight">Kazancın %10'una kadarı yardım kuruluşlarına aktarılmaktadır.</p>
+                <p className="text-xs font-black text-red-800 leading-tight uppercase tracking-tight">{t.donation}</p>
               </div>
 
-              {['KURTARMA', 'NAKLİYE', 'ENERJİ', 'YOLCU'].map(group => (
+              {['KURTARMA', 'NAKLIYE', 'ENERJI', 'YOLCU'].map(group => (
                 <div key={group} className="space-y-4">
                   <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> {group}
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> {t.groups[group as keyof typeof t.groups]}
                   </span>
                   <div className="grid grid-cols-1 gap-4">
                     {Object.entries(BASE_DATA).filter(([_, v]:any) => v.group === group).map(([key, val]: [string, any]) => (
@@ -275,8 +356,8 @@ export default function SettingsPage() {
                           <div className="flex items-center gap-5">
                             <div className={`p-4 rounded-[1.5rem] ${val.color} shadow-sm border border-white/50`}>{val.icon}</div>
                             <div>
-                              <h4 className="font-black text-slate-800 text-sm md:text-base uppercase leading-none">{val.label}</h4>
-                              <p className="text-[11px] font-black text-blue-600 mt-1.5 uppercase tracking-wide">Birim: ₺{val.unit} / {val.unitLabel}</p>
+                              <h4 className="font-black text-slate-800 text-sm md:text-base uppercase leading-none">{t.services[val.labelKey as keyof typeof t.services]}</h4>
+                              <p className="text-[11px] font-black text-blue-600 mt-1.5 uppercase tracking-wide">{t.unit}: ₺{val.unit} / {val.unitLabel}</p>
                             </div>
                           </div>
                           <div className="text-right bg-slate-50/50 px-5 py-3 rounded-2xl border border-white">
@@ -291,18 +372,18 @@ export default function SettingsPage() {
               ))}
 
               <div className="space-y-4 pt-6">
-                <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Tercihler</span>
+                <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> {t.preferences}</span>
                 <div onClick={toggleNotif} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 border-2 border-white shadow-sm active:scale-[0.98] cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-xl ${notifEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}><Bell size={20} /></div>
-                    <span className="text-sm font-black text-slate-700 uppercase">Bildirimler</span>
+                    <span className="text-sm font-black text-slate-700 uppercase">{t.notifications}</span>
                   </div>
                   {notifEnabled ? <ToggleRight size={40} className="text-blue-600 fill-current"/> : <ToggleLeft size={40} className="text-slate-300"/>}
                 </div>
                 <div onClick={toggleLocation} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 border-2 border-white shadow-sm active:scale-[0.98] cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-xl ${locationEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}><Locate size={20} /></div>
-                    <span className="text-sm font-black text-slate-700 uppercase">Konum Takibi</span>
+                    <span className="text-sm font-black text-slate-700 uppercase">{t.locationTracking}</span>
                   </div>
                   {locationEnabled ? <ToggleRight size={40} className="text-blue-600 fill-current"/> : <ToggleLeft size={40} className="text-slate-300"/>}
                 </div>
@@ -311,11 +392,11 @@ export default function SettingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <button onClick={() => setShowAgreement(true)} className="flex flex-col items-center justify-center gap-3 p-8 rounded-[2rem] bg-white/60 backdrop-blur-xl border-2 border-white text-slate-500 hover:text-blue-600 transition-all shadow-sm active:scale-95">
                   <div className="bg-slate-100 p-4 rounded-2xl text-inherit"><FileText size={28} /></div>
-                  <span className="text-[11px] font-black uppercase tracking-widest">Sözleşme</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest">{t.agreement}</span>
                 </button>
                 <button onClick={() => setShowKVKK(true)} className="flex flex-col items-center justify-center gap-3 p-8 rounded-[2rem] bg-white/60 backdrop-blur-xl border-2 border-white text-slate-500 hover:text-green-600 transition-all shadow-sm active:scale-95">
                   <div className="bg-slate-100 p-4 rounded-2xl text-inherit"><Shield size={28} /></div>
-                  <span className="text-[11px] font-black uppercase tracking-widest">KVKK Metni</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest">{t.kvkk}</span>
                 </button>
               </div>
 
@@ -323,11 +404,11 @@ export default function SettingsPage() {
                 <div className="w-full p-6 bg-slate-50/80 backdrop-blur-sm border-2 border-slate-200 rounded-[2rem] flex items-start gap-4">
                   <div className="p-2 bg-blue-100 rounded-xl shrink-0 mt-0.5"><Mail size={16} className="text-blue-600" /></div>
                   <p className="text-xs font-black text-slate-700 leading-relaxed">
-                    Görüş ve şikayetleriniz için{' '}
+                    {t.contact}{' '}
                     <a href="mailto:iletisimtransporter@gmail.com" className="text-blue-600 underline break-all">
                       iletisimtransporter@gmail.com
                     </a>{' '}
-                    adresinden iletişim kurabilirsiniz.
+                    {t.contactTail}
                   </p>
                 </div>
 
@@ -335,7 +416,7 @@ export default function SettingsPage() {
                   onClick={() => setShowDeleteModal(true)}
                   className="w-full py-6 bg-red-50/80 backdrop-blur-sm border-2 border-red-200 rounded-[2rem] text-xs font-black text-red-600 uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-red-100 transition-all active:scale-95 shadow-md"
                 >
-                  <Trash2 size={18} /> Hesabımı Sil
+                  <Trash2 size={18} /> {t.deleteAccount}
                 </button>
               </div>
             </div>
@@ -346,14 +427,14 @@ export default function SettingsPage() {
                {loading ? (
                   <div className="flex flex-col items-center py-40 gap-6 text-slate-400">
                     <Loader2 className="animate-spin text-blue-600" size={40} />
-                    <span className="text-xs font-black uppercase tracking-widest bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm">Geçmiş Taranıyor...</span>
+                    <span className="text-xs font-black uppercase tracking-widest bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm">{t.historyLoading}</span>
                   </div>
                ) : orders.length === 0 ? (
                   <div className="text-center py-40 text-slate-400">
                     <div className="bg-white/50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-sm border border-white">
                       <History size={48} className="opacity-40" />
                     </div>
-                    <p className="text-sm font-black uppercase tracking-widest">Henüz İşlem Bulunmuyor</p>
+                    <p className="text-sm font-black uppercase tracking-widest">{t.noHistory}</p>
                   </div>
                ) : (
                   orders.map((order) => {
@@ -371,13 +452,13 @@ export default function SettingsPage() {
                               {getOrderIcon(order.serviceType)}
                               <span className="text-[10px] font-black uppercase tracking-wider">{order.serviceType?.replace('_', ' ')}</span>
                             </div>
-                            <span className="text-[10px] font-black text-emerald-600 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 uppercase tracking-widest italic">Tamamlandı</span>
+                            <span className="text-[10px] font-black text-emerald-600 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 uppercase tracking-widest italic">{t.completed}</span>
                           </div>
                           
                           <div className="flex justify-between items-center">
                             <div>
-                              <h4 className="font-black text-slate-800 text-sm md:text-base uppercase">{order?.driver?.businessName || 'Lisanslı Sürücü'}</h4>
-                              <p className="text-[11px] text-slate-500 font-bold mt-1.5 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</p>
+                              <h4 className="font-black text-slate-800 text-sm md:text-base uppercase">{order?.driver?.businessName || t.licensedDriver}</h4>
+                              <p className="text-[11px] text-slate-500 font-bold mt-1.5 uppercase tracking-widest">{new Date(order.createdAt).toLocaleDateString(dateLocale)}</p>
                             </div>
                             <div className="flex items-center gap-4 text-right">
                                <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tighter">₺{order?.driver?.pricing?.pricePerUnit || '---'}</p>
@@ -397,7 +478,7 @@ export default function SettingsPage() {
                               }}
                               className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:text-yellow-600 hover:border-yellow-200 transition-all active:scale-95 shadow-sm"
                             >
-                              <Star size={16} /> Değerlendir
+                              <Star size={16} /> {t.rate}
                             </button>
                             <button 
                               onClick={() => { 
@@ -407,13 +488,13 @@ export default function SettingsPage() {
                               }} 
                               className="flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:text-red-600 hover:border-red-200 transition-all active:scale-95 shadow-sm"
                             >
-                              <AlertTriangle size={16} /> Şikayet Et
+                              <AlertTriangle size={16} /> {t.complain}
                             </button>
                             <button
                               onClick={() => handleNotAgreed(order._id)}
                               className="col-span-2 flex items-center justify-center gap-2 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] font-black uppercase text-slate-600 hover:text-slate-800 transition-all active:scale-95 shadow-sm"
                             >
-                              Aradım Ama Anlaşamadım
+                              {t.notAgreed}
                             </button>
                           </div>
                         </div>
@@ -431,7 +512,7 @@ export default function SettingsPage() {
       <div className="p-6 md:p-8 bg-white/90 border-t border-white/60 text-center shrink-0 rounded-t-[2.5rem] shadow-[0_-4px_12px_rgba(0,0,0,0.04)] z-10">
         <div className="max-w-md mx-auto">
           <button onClick={() => setShowSettings(true)} className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] border-2 border-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all bg-white hover:bg-slate-50">
-             <Settings size={20} /> Gelişmiş Ayarlar
+             <Settings size={20} /> {t.advancedSettings}
           </button>
           <div className="flex items-center justify-center gap-2 opacity-30 mt-6">
             <ShieldCheck size={16} />
