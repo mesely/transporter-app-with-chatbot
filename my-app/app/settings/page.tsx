@@ -29,6 +29,21 @@ import ReportModal from '../../components/ReportModal';
 import RatingModal from '../../components/RatingModal';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const LANG_STORAGE_KEY = 'Transport_lang';
+const LANG_OPTIONS = [
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'en', label: 'English' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'fr', label: 'Français' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'es', label: 'Español' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'zh', label: '中文' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' },
+  { code: 'ar', label: 'العربية' }
+];
 
 const BASE_DATA: any = {
   kurtarici: { unit: 45, unitLabel: 'km', label: 'Oto Kurtarma', icon: <Wrench size={24}/>, color: 'text-red-600 bg-red-100', group: 'KURTARMA' },
@@ -68,6 +83,7 @@ export default function SettingsPage() {
 
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
+  const [appLang, setAppLang] = useState('tr');
 
   const toggleNotif = () => {
     setNotifEnabled(prev => {
@@ -107,9 +123,23 @@ export default function SettingsPage() {
     setUserName(storedName || 'Misafir Kullanıcı');
     const storedNotif = localStorage.getItem('Transport_notif');
     const storedLocation = localStorage.getItem('Transport_location');
+    const storedLang = localStorage.getItem(LANG_STORAGE_KEY);
+    const deviceLang = (navigator.language || 'tr').split('-')[0].toLowerCase();
+    const resolvedLang = LANG_OPTIONS.some(l => l.code === storedLang)
+      ? String(storedLang)
+      : (LANG_OPTIONS.some(l => l.code === deviceLang) ? deviceLang : 'tr');
     if (storedNotif !== null) setNotifEnabled(storedNotif === 'true');
     if (storedLocation !== null) setLocationEnabled(storedLocation === 'true');
+    setAppLang(resolvedLang);
+    localStorage.setItem(LANG_STORAGE_KEY, resolvedLang);
+    document.documentElement.lang = resolvedLang;
   }, []);
+
+  const handleLanguageChange = (nextLang: string) => {
+    setAppLang(nextLang);
+    localStorage.setItem(LANG_STORAGE_KEY, nextLang);
+    document.documentElement.lang = nextLang;
+  };
 
   useEffect(() => {
     if (activeTab === 'history') {
@@ -252,6 +282,23 @@ export default function SettingsPage() {
                     <span className="text-sm font-black text-slate-700 uppercase">Konum Takibi</span>
                   </div>
                   {locationEnabled ? <ToggleRight size={40} className="text-blue-600 fill-current"/> : <ToggleLeft size={40} className="text-slate-300"/>}
+                </div>
+                <div className="flex items-center justify-between p-6 rounded-[2rem] bg-white/60 border-2 border-white shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-blue-100 text-blue-600"><Globe size={20} /></div>
+                    <span className="text-sm font-black text-slate-700 uppercase">Dil</span>
+                  </div>
+                  <select
+                    value={appLang}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 uppercase outline-none"
+                  >
+                    {LANG_OPTIONS.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
