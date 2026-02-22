@@ -1,6 +1,5 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
-import Image from "next/image";
 import { Metadata } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -49,104 +48,8 @@ export default function RootLayout({
         className={`${inter.className} h-full bg-[#fdfdfd] antialiased`}
         suppressHydrationWarning
       >
-        
-        {/* REFINED CRYSTAL SPLASH SCREEN */}
-        <div 
-          id="splash-screen" 
-          className="fixed inset-0 z-[100000] bg-[#fdfdfd] flex flex-col items-center justify-center transition-all duration-1000 ease-in-out splash-failsafe-hide"
-        >
-          <div className="absolute top-[25%] right-[-5%] w-[400px] h-[400px] bg-cyan-400/10 rounded-full animate-crystal-glow pointer-events-none"></div>
-          <div className="absolute bottom-[15%] left-[-5%] w-[350px] h-[350px] bg-teal-300/10 rounded-full animate-crystal-glow pointer-events-none" style={{ animationDelay: '2s' }}></div>
-
-          <div className="relative animate-refined">
-            <div className="relative w-40 h-40 glass-card-refined rounded-[3.5rem] flex items-center justify-center">
-               <Image 
-                 src="/favicon.ico" 
-                 width={120} 
-                 height={120} 
-                 alt="Logo" 
-                 priority 
-                 className="drop-shadow-md"
-               />
-            </div>
-          </div>
-          
-          <div className="mt-8 text-center space-y-3 relative z-10">
-            <h1 className="text-slate-900 font-extrabold text-3xl uppercase italic tracking-tighter text-shadow-sm">
-              Transport 245
-            </h1>
-            <div className="bg-white/50 border border-white/80 backdrop-blur-md px-5 py-2 rounded-2xl shadow-sm inline-block">
-               <p id="splash-tagline" className="text-cyan-600 text-[10px] font-black uppercase tracking-[0.4em] leading-none">
-                 Geleceğin Lojistik Ağı
-               </p>
-            </div>
-          </div>
-
-          <div className="absolute bottom-10 opacity-20">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">Transport 245 AI 2026</span>
-          </div>
-        </div>
 
         {children}
-
-        {/* AKILLI SPLASH YÖNETİMİ (Class-Based) */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function() {
-            const splash = document.getElementById('splash-screen');
-            const tagline = document.getElementById('splash-tagline');
-            const path = window.location.pathname;
-            const isNoSplashPage = path.includes('privacy') || path.includes('gizlilik') || path.includes('kvkk');
-            const lang = (localStorage.getItem('Transport_lang') || navigator.language || 'tr').toLowerCase().split('-')[0];
-            const splashTaglines = {
-              tr: "Geleceğin Lojistik Ağı",
-              en: "Logistics Network of the Future",
-              de: "Logistiknetz der Zukunft",
-              fr: "Réseau logistique du futur",
-              it: "Rete logistica del futuro",
-              es: "Red logística del futuro",
-              pt: "Rede logística do futuro",
-              ru: "Логистическая сеть будущего",
-              zh: "未来物流网络",
-              ja: "未来の物流ネットワーク",
-              ko: "미래 물류 네트워크",
-              ar: "شبكة لوجستية للمستقبل"
-            };
-            if (tagline) tagline.textContent = splashTaglines[lang] || splashTaglines.en;
-
-            // Hata Düzeltme: style.overflowY = "hidden" yerine classList kullanıyoruz.
-            if (isNoSplashPage) {
-              if (splash) splash.style.display = 'none';
-              document.body.classList.remove('overflow-hidden');
-            } else {
-              document.body.classList.add('overflow-hidden');
-              let splashClosed = false;
-              const closeSplash = function(delayMs) {
-                if (splashClosed) return;
-                splashClosed = true;
-                setTimeout(function() {
-                  if (splash) {
-                    splash.style.opacity = '0';
-                    splash.style.filter = 'blur(15px)';
-                    splash.style.transform = 'scale(1.05)';
-                    setTimeout(function() {
-                      if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
-                      document.body.classList.remove('overflow-hidden');
-                    }, 1000);
-                  } else {
-                    document.body.classList.remove('overflow-hidden');
-                  }
-                }, delayMs);
-              };
-
-              // 1) Normal akış: sayfa tamamen yüklendiğinde kapat
-              if (document.readyState === 'complete') closeSplash(1200);
-              else window.addEventListener('load', function() { closeSplash(1800); }, { once: true });
-
-              // 2) Güvenlik: load event kaçarsa en geç 4.5sn'de zorla kapat
-              setTimeout(function() { closeSplash(0); }, 4500);
-            }
-          })();
-        `}} />
       </body>
     </html>
   );
