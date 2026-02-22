@@ -119,19 +119,31 @@ export default function RootLayout({
               document.body.classList.remove('overflow-hidden');
             } else {
               document.body.classList.add('overflow-hidden');
-              window.addEventListener('load', function() {
+              let splashClosed = false;
+              const closeSplash = function(delayMs) {
+                if (splashClosed) return;
+                splashClosed = true;
                 setTimeout(function() {
                   if (splash) {
                     splash.style.opacity = '0';
                     splash.style.filter = 'blur(15px)';
                     splash.style.transform = 'scale(1.05)';
-                    setTimeout(() => {
-                      splash.remove();
+                    setTimeout(function() {
+                      if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
                       document.body.classList.remove('overflow-hidden');
                     }, 1000);
+                  } else {
+                    document.body.classList.remove('overflow-hidden');
                   }
-                }, 1800);
-              });
+                }, delayMs);
+              };
+
+              // 1) Normal akış: sayfa tamamen yüklendiğinde kapat
+              if (document.readyState === 'complete') closeSplash(1200);
+              else window.addEventListener('load', function() { closeSplash(1800); }, { once: true });
+
+              // 2) Güvenlik: load event kaçarsa en geç 4.5sn'de zorla kapat
+              setTimeout(function() { closeSplash(0); }, 4500);
             }
           })();
         `}} />
