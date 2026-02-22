@@ -53,7 +53,7 @@ export default function RootLayout({
         {/* REFINED CRYSTAL SPLASH SCREEN */}
         <div 
           id="splash-screen" 
-          className="fixed inset-0 z-[100000] bg-[#fdfdfd] flex flex-col items-center justify-center transition-all duration-1000 ease-in-out"
+          className="fixed inset-0 z-[100000] bg-[#fdfdfd] flex flex-col items-center justify-center transition-all duration-1000 ease-in-out splash-failsafe-hide"
         >
           <div className="absolute top-[25%] right-[-5%] w-[400px] h-[400px] bg-cyan-400/10 rounded-full animate-crystal-glow pointer-events-none"></div>
           <div className="absolute bottom-[15%] left-[-5%] w-[350px] h-[350px] bg-teal-300/10 rounded-full animate-crystal-glow pointer-events-none" style={{ animationDelay: '2s' }}></div>
