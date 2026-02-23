@@ -55,8 +55,10 @@ export default function Home() {
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const actionTypeRef = useRef(actionType);
+  const FETCH_CACHE_TTL_MS = 15000;
 
-  const lastFetchKeyRef = useRef<string>('');
+  const lastAppliedFetchRef = useRef<{ key: string; ts: number } | null>(null);
+  const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
 
   // 🔥 YENİ LOADER İÇİN ZAMANLAYICI (7.5 Saniye sonra gizler)
@@ -73,12 +75,18 @@ export default function Home() {
 
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
     const key = `${type}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
-    if (lastFetchKeyRef.current === key) return;
-    lastFetchKeyRef.current = key;
+    if (inflightFetchKeyRef.current === key) return;
+    if (
+      lastAppliedFetchRef.current?.key === key &&
+      Date.now() - lastAppliedFetchRef.current.ts < FETCH_CACHE_TTL_MS
+    ) {
+      return;
+    }
 
     if (fetchAbortRef.current) fetchAbortRef.current.abort();
     const controller = new AbortController();
     fetchAbortRef.current = controller;
+    inflightFetchKeyRef.current = key;
 
     setLoading(true);
     try {
@@ -89,11 +97,15 @@ export default function Home() {
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : []);
+      lastAppliedFetchRef.current = { key, ts: Date.now() };
     } catch (err) {
       if ((err as any)?.name !== 'AbortError') {
         console.error('Fetch Error:', err);
       }
     } finally {
+      if (inflightFetchKeyRef.current === key) {
+        inflightFetchKeyRef.current = null;
+      }
       setLoading(false);
     }
   }, []);

@@ -24,7 +24,7 @@ import {
   Archive,
   Snowflake
 } from 'lucide-react';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import ViewRatingsModal from '../ViewRatingsModal';
 import ViewReportsModal from '../ViewReportsModal';
 import { AppLang, getPreferredLang } from '../../utils/language';
@@ -198,7 +198,7 @@ interface ActionPanelProps {
   isSidebarOpen: boolean;
 }
 
-export default function ActionPanel({
+function ActionPanel({
   onSearchLocation, onFilterApply, onStartOrder, actionType, onActionChange,
   drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen
 }: ActionPanelProps) {
@@ -218,6 +218,7 @@ export default function ActionPanel({
 
   const [activeTransportFilter, setActiveTransportFilter] = useState<string | null>(null);
   const dragStartY = useRef<number | null>(null);
+  const locatingRef = useRef(false);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const listContainerRef = useRef<HTMLDivElement>(null);
 
@@ -325,6 +326,8 @@ export default function ActionPanel({
     });
 
   const findMyLocation = useCallback(async (silent = false) => {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
     setIsLocating(true);
     try {
       if (!navigator.geolocation) {
@@ -374,6 +377,7 @@ export default function ActionPanel({
     } catch {
       onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
     } finally {
+      locatingRef.current = false;
       setIsLocating(false);
     }
   }, [onSearchLocation]);
@@ -933,3 +937,5 @@ export default function ActionPanel({
     </>
   );
 }
+
+export default memo(ActionPanel);
