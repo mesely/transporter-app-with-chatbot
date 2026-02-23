@@ -13,7 +13,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Loader2, ShieldCheck, X, Anchor, CarFront,
   Zap, Globe, Home, Package, Container,
@@ -94,6 +94,8 @@ const AGREEMENT_SECTIONS = [
 ];
 
 const normalizeString = (str: string) => str ? str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase().trim() : '';
+const PROVIDER_PHONE_KEY = 'Transport_provider_phone';
+const PROVIDER_ID_KEY = 'Transport_provider_id';
 
 export default function ProfilePage() {
   type VehicleEntry = { name: string; photoUrls: string[] };
@@ -113,6 +115,8 @@ export default function ProfilePage() {
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [lastAddressKey, setLastAddressKey] = useState('');
   const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [profileDisplayName, setProfileDisplayName] = useState('');
+  const [autoLookupTried, setAutoLookupTried] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: '', email: '', phoneNumber: '', serviceTypes: [] as string[],
@@ -158,53 +162,72 @@ export default function ProfilePage() {
   const normalizeAddressKey = (street: string, district: string, city: string) =>
     `${String(street || '').trim().toLocaleLowerCase('tr')}|${String(district || '').trim().toLocaleLowerCase('tr')}|${String(city || '').trim().toLocaleLowerCase('tr')}`;
 
-  const handlePhoneLookup = async () => {
-    const phone = normalizePhone(formData.phoneNumber);
-    if (phone.length < 10) return;
+  const hydrateProfileFromUser = useCallback((found: any) => {
+    if (!found?._id) return;
+    const addrText = typeof found.address === 'string'
+      ? found.address
+      : (found.address?.fullText || '');
+    const mainAddress = addrText.split(',')[0]?.trim() || '';
+    const foundCoords = Array.isArray(found?.location?.coordinates) && found.location.coordinates.length === 2
+      ? { lng: Number(found.location.coordinates[0]), lat: Number(found.location.coordinates[1]) }
+      : null;
+    const normalizedPhone = normalizePhone(found.phoneNumber || '');
+    setExistingId(found._id);
+    setProfileDisplayName(found.businessName || found.firstName || '');
+    setFormData(prev => ({
+      ...prev,
+      businessName: found.businessName || found.firstName || prev.businessName,
+      email: found.email || prev.email,
+      phoneNumber: found.phoneNumber || prev.phoneNumber,
+      serviceTypes: [found.service?.subType || found.serviceType || prev.serviceTypes[0]].filter(Boolean) as string[],
+      city: found.address?.city || found.city || prev.city,
+      district: found.address?.district || found.district || prev.district,
+      streetAddress: mainAddress || prev.streetAddress,
+      filterTags: found.service?.tags || [],
+      website: found.website || found.link || prev.website,
+      pricePerUnit: String(found.pricing?.pricePerUnit || prev.pricePerUnit),
+      taxNumber: found.taxNumber || prev.taxNumber,
+      vehicleItems: Array.isArray(found.vehicleItems) && found.vehicleItems.length > 0
+        ? found.vehicleItems
+        : [{
+            name: found.vehicleInfo || '',
+            photoUrls: found.vehiclePhotos || (found.photoUrl ? [found.photoUrl] : [])
+          }],
+    }));
+    setLastAddressKey(normalizeAddressKey(mainAddress, found.address?.district || found.district || '', found.address?.city || found.city || ''));
+    setLastCoords(foundCoords);
+    if (normalizedPhone) localStorage.setItem(PROVIDER_PHONE_KEY, normalizedPhone);
+    localStorage.setItem(PROVIDER_ID_KEY, found._id);
+  }, []);
+
+  const handlePhoneLookup = useCallback(async (phoneInput?: string) => {
+    const phone = normalizePhone(phoneInput ?? formData.phoneNumber);
+    if (phone.length < 10) return false;
     setCheckingPhone(true);
     try {
       const res = await fetch(`${API_URL}/users/by-phone?phone=${phone}`);
-      if (!res.ok) return;
+      if (!res.ok) return false;
       const found = await res.json();
-      if (!found?._id) return;
-
-      const addrText = typeof found.address === 'string'
-        ? found.address
-        : (found.address?.fullText || '');
-      const mainAddress = addrText.split(',')[0]?.trim() || '';
-      const foundCoords = Array.isArray(found?.location?.coordinates) && found.location.coordinates.length === 2
-        ? { lng: Number(found.location.coordinates[0]), lat: Number(found.location.coordinates[1]) }
-        : null;
-
-      setExistingId(found._id);
-      setFormData(prev => ({
-        ...prev,
-        businessName: found.businessName || prev.businessName,
-        email: found.email || prev.email,
-        phoneNumber: found.phoneNumber || prev.phoneNumber,
-        serviceTypes: [found.service?.subType || found.serviceType || prev.serviceTypes[0]].filter(Boolean) as string[],
-        city: found.address?.city || found.city || prev.city,
-        district: found.address?.district || found.district || prev.district,
-        streetAddress: mainAddress || prev.streetAddress,
-        filterTags: found.service?.tags || [],
-        website: found.website || found.link || prev.website,
-        pricePerUnit: String(found.pricing?.pricePerUnit || prev.pricePerUnit),
-        taxNumber: found.taxNumber || prev.taxNumber,
-        vehicleItems: Array.isArray(found.vehicleItems) && found.vehicleItems.length > 0
-          ? found.vehicleItems
-          : [{
-              name: found.vehicleInfo || '',
-              photoUrls: found.vehiclePhotos || (found.photoUrl ? [found.photoUrl] : [])
-            }],
-      }));
-      setLastAddressKey(normalizeAddressKey(mainAddress, found.address?.district || found.district || '', found.address?.city || found.city || ''));
-      setLastCoords(foundCoords);
+      if (!found?._id) return false;
+      hydrateProfileFromUser(found);
+      return true;
     } catch {
-      // sessiz fail
+      return false;
     } finally {
       setCheckingPhone(false);
     }
-  };
+  }, [formData.phoneNumber, hydrateProfileFromUser]);
+
+  useEffect(() => {
+    if (autoLookupTried) return;
+    const savedPhone = localStorage.getItem(PROVIDER_PHONE_KEY) || '';
+    if (!savedPhone) {
+      setAutoLookupTried(true);
+      return;
+    }
+    setFormData(prev => ({ ...prev, phoneNumber: savedPhone }));
+    handlePhoneLookup(savedPhone).finally(() => setAutoLookupTried(true));
+  }, [autoLookupTried, handlePhoneLookup]);
 
   const handlePhotoUpload = async (vehicleIndex: number, file: File) => {
     if (!file) return;
@@ -265,6 +288,9 @@ export default function ProfilePage() {
       if (res.ok) {
         setExistingId(null);
         setIsSaved(false);
+        setProfileDisplayName('');
+        localStorage.removeItem(PROVIDER_PHONE_KEY);
+        localStorage.removeItem(PROVIDER_ID_KEY);
         setFormData({
           businessName: '', email: '', phoneNumber: '', serviceTypes: [],
           city: 'İstanbul', district: 'Tuzla', streetAddress: '',
@@ -353,9 +379,13 @@ export default function ProfilePage() {
 
       if (res.ok) {
         const data = await res.json();
-        setExistingId(data._id || (data.provider && data.provider._id) || targetId);
+        const persistedId = data._id || (data.provider && data.provider._id) || targetId;
+        setExistingId(persistedId);
         setLastAddressKey(currentAddressKey);
         setLastCoords({ lat: coords.lat, lng: coords.lng });
+        setProfileDisplayName(formData.businessName);
+        localStorage.setItem(PROVIDER_PHONE_KEY, normalizePhone(formData.phoneNumber));
+        if (persistedId) localStorage.setItem(PROVIDER_ID_KEY, String(persistedId));
         setIsSaved(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else { alert("Kaydedilemedi."); }
@@ -377,7 +407,15 @@ export default function ProfilePage() {
   return (
     <div className="fixed inset-0 w-full h-full bg-[#8ccde6] overflow-y-auto p-6 text-gray-900">
       <div className="w-full max-w-5xl mx-auto space-y-10 pb-32">
-        <header><div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase w-fit mb-3 shadow-md">Transport 245</div><h1 className="text-4xl font-black uppercase italic text-gray-900 drop-shadow-sm">{existingId ? 'GÜNCELLE' : 'KAYIT PANELİ'}</h1></header>
+        <header>
+          <div className="bg-black text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase w-fit mb-3 shadow-md">Transport 245</div>
+          <h1 className="text-4xl font-black uppercase italic text-gray-900 drop-shadow-sm">{existingId ? 'GÜNCELLE' : 'KAYIT PANELİ'}</h1>
+          {(profileDisplayName || formData.businessName) && (
+            <p className="mt-3 inline-flex items-center gap-2 bg-white/70 border border-white/50 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-[#3d686b]">
+              Kayıtlı Profil: {profileDisplayName || formData.businessName}
+            </p>
+          )}
+        </header>
 
         <section className="bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/50 grid grid-cols-1 md:grid-cols-2 gap-6">
            <input value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors" placeholder="İşletme veya Şahıs Adı"/>
@@ -394,7 +432,7 @@ export default function ProfilePage() {
                onClick={handlePhoneLookup}
                className="px-4 rounded-2xl bg-black text-white text-[10px] font-black uppercase"
              >
-               {checkingPhone ? '...' : 'Sorgula'}
+               {checkingPhone ? '...' : 'Giriş Yap'}
              </button>
            </div>
            <input value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-sm outline-none placeholder-[#00c5c0] text-[#3d686b] focus:bg-white/80 transition-colors md:col-span-2" placeholder="E-Posta"/>
@@ -459,6 +497,7 @@ export default function ProfilePage() {
             <div className="space-y-3">
               {formData.vehicleItems.map((vehicle, idx) => (
                 <div key={idx} className="border border-white/40 rounded-2xl p-3 bg-white/50">
+                  <div className="text-[9px] font-black uppercase text-[#3d686b] mb-2">Araç {idx + 1}</div>
                   <div className="flex gap-2">
                     <input
                       type="text"

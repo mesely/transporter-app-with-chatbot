@@ -319,38 +319,68 @@ export default function ActionPanel({
     return list;
   }, [drivers, sortMode, selectedCity, actionType, activeTransportFilter]);
 
-  const findMyLocation = () => {
+  const getCurrentPosition = (opts?: PositionOptions) =>
+    new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+    });
+
+  const findMyLocation = useCallback(async (silent = false) => {
     setIsLocating(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          onSearchLocation(lat, lng);
-          setIsLocating(false);
-        },
-        (err) => {
-          // Kullanıcı izin vermediyse bir kez daha istemeyi deneriz.
-          if (err?.code === 1) {
-            navigator.geolocation.getCurrentPosition(
-              (pos2) => {
-                onSearchLocation(pos2.coords.latitude, pos2.coords.longitude);
-                setIsLocating(false);
-              },
-              () => { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
-            );
-            return;
-          }
-          onSearchLocation(39.9334, 32.8597);
-          setIsLocating(false);
+    try {
+      if (!navigator.geolocation) {
+        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+        return;
+      }
+
+      const permissions = (navigator as any).permissions;
+      let permissionState: 'granted' | 'prompt' | 'denied' | null = null;
+      if (permissions?.query) {
+        try {
+          const status = await permissions.query({ name: 'geolocation' as PermissionName });
+          permissionState = status?.state || null;
+        } catch {
+          permissionState = null;
         }
-      );
-    } else { onSearchLocation(39.9334, 32.8597); setIsLocating(false); }
-  };
+      }
+
+      try {
+        const pos = await getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 0,
+        });
+        onSearchLocation(pos.coords.latitude, pos.coords.longitude);
+        return;
+      } catch (firstErr: any) {
+        if (firstErr?.code === 1) {
+          try {
+            const retryPos = await getCurrentPosition({
+              enableHighAccuracy: true,
+              timeout: 12000,
+              maximumAge: 0,
+            });
+            onSearchLocation(retryPos.coords.latitude, retryPos.coords.longitude);
+            return;
+          } catch {
+            // ikinci denemede de izin yoksa altta fallback
+          }
+        }
+      }
+
+      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+      if (!silent && permissionState === 'denied') {
+        alert('Konum izni kapalı. Lütfen tarayıcı/telefon ayarlarından konum iznini açıp tekrar deneyin.');
+      }
+    } catch {
+      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+    } finally {
+      setIsLocating(false);
+    }
+  }, [onSearchLocation]);
 
   useEffect(() => {
-    findMyLocation();
-  }, []);
+    findMyLocation(true);
+  }, [findMyLocation]);
 
   const handleDragEnd = (y: number) => {
     if (dragStartY.current === null) return;
