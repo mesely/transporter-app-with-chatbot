@@ -1,4 +1,4 @@
-package com.transporter.app;
+package com.trasport245.app;
 
 import com.getcapacitor.BridgeActivity;
 

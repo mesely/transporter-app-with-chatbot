@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Transport 245</string>
     <string name="title_activity_main">Transport 245</string>
-    <string name="package_name">com.transporter.app</string>
-    <string name="custom_url_scheme">com.transporter.app</string>
+    <string name="package_name">com.trasport245.app</string>
+    <string name="custom_url_scheme">com.trasport245.app</string>
 </resources>
