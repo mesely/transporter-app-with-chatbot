@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCbbq8XeceIkg99CEQui1-_09zMnDtglrk';
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'OTO KURTARMA', icon: CarFront, color: 'red', subs: [] },
@@ -151,6 +151,7 @@ export default function ProfilePage() {
   }, [formData.city, availableDistricts]);
 
   const getCoordinatesFromAddress = async (addr: string) => {
+    if (!GOOGLE_MAPS_API_KEY) return null;
     try {
       const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
       const data = await res.json();

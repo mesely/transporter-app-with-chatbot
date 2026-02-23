@@ -56,6 +56,14 @@ const CONTENT: any = {
       {
         h: "9. Başvuru ve Yürürlük",
         p: "Taleplerinizi uygulama içi kanallardan iletebilirsiniz. Bu metin yayımlandığı tarihte yürürlüğe girer ve uygulamayı kullanarak bu metni kabul etmiş sayılırsınız."
+      },
+      {
+        h: "10. Google Play Data Safety Beyanı",
+        p: "Google Play Data Safety formunda; toplanan veri türleri (konum, iletişim bilgisi, profil verileri, kullanım verisi), veri işleme amacı (hizmet sunumu, güvenlik, destek), verinin üçüncü taraflarla paylaşım durumu ve verinin silinme talebi kapsamı açıkça beyan edilir. Platform, beyan ettiği kapsam dışında veri satışı yapmaz."
+      },
+      {
+        h: "11. Konum İzni ve Arka Plan Kullanımı",
+        p: "Konum verisi, kullanıcıya en yakın hizmet sağlayıcıların listelenmesi ve harita üzerinde doğru eşleştirme için işlenir. Uygulama konum iznini yalnızca gerekli fonksiyonlarda ister; izin verilmezse temel hizmetler sınırlı çalışabilir. Kullanıcı, cihaz ayarlarından konum iznini dilediği zaman değiştirebilir veya kaldırabilir."
       }
     ],
 
@@ -109,7 +117,10 @@ const CONTENT: any = {
     kvkkSections: [
       { h: "1. Data Controller", p: "Your personal data is processed by the Platform operator (Transport 245) in accordance with relevant laws." },
       { h: "2. Processed Data", p: "We process User Data (ID, Contact, Location) and Service Provider Data (Business Name, Address). Financial data is handled by App Stores." },
-      // ... (English Summary for brevity, fully expandable if needed)
+      { h: "3. Purposes", p: "Data is processed to provide services, improve matching quality, ensure account/security operations, and fulfill legal obligations." },
+      { h: "4. Storage and Deletion", p: "Data is retained only for the required legal/business duration. Users may request deletion; non-mandatory records are deleted or anonymized." },
+      { h: "5. Google Play Data Safety", p: "Our Google Play Data Safety declaration states what data is collected, why it is used, whether it is shared, and how deletion requests are handled. We do not sell personal data." },
+      { h: "6. Location Permission", p: "Location is used to show nearby providers and accurate map matching. If location permission is denied, some functions may be limited. Permission can be changed anytime from device settings." },
     ],
     agreementTitle: "PART 2: USER AGREEMENT",
     agreementSections: [
