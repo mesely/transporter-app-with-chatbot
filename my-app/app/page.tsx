@@ -54,14 +54,16 @@ export default function Home() {
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
+  const actionTypeRef = useRef(actionType);
 
-  const renderCount = useRef(0);
-  useEffect(() => {
-    renderCount.current++;
-    console.log(`[Transport 245] Render: ${renderCount.current}`);
-  });
+  const lastFetchKeyRef = useRef<string>('');
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   // 🔥 YENİ LOADER İÇİN ZAMANLAYICI (7.5 Saniye sonra gizler)
+  useEffect(() => {
+    actionTypeRef.current = actionType;
+  }, [actionType]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowLoader(false);
@@ -70,20 +72,36 @@ export default function Home() {
   }, []);
 
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
+    const key = `${type}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
+    if (lastFetchKeyRef.current === key) return;
+    lastFetchKeyRef.current = key;
+
+    if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
     setLoading(true);
     try {
       const url =
         type === 'seyyar_sarj'
           ? `${API_URL}/users/all?type=seyyar_sarj`
           : `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=9`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Fetch Error:', err);
+      if ((err as any)?.name !== 'AbortError') {
+        console.error('Fetch Error:', err);
+      }
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -108,6 +126,41 @@ export default function Home() {
     });
   }, [drivers, actionType, activeTags]);
 
+  const handleCreateOrder = useCallback(async (driver: any, method: 'call' | 'message') => {
+    try {
+      const deviceId = getOrCreateDeviceId();
+      const coords = searchCoords;
+      await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: deviceId,
+          driverId: driver?._id,
+          serviceType: driver?.service?.subType || driver?.serviceType || 'genel',
+          pickupLocation: { lat: coords?.[0] ?? 0, lng: coords?.[1] ?? 0 },
+          contactMethod: method,
+          customerOutcome: 'PENDING',
+        })
+      });
+    } catch (_) {}
+  }, [searchCoords]);
+
+  const handleSearchLocation = useCallback((lat: number, lng: number) => {
+    setSearchCoords(prev => {
+      if (prev && Math.abs(prev[0] - lat) < 0.00001 && Math.abs(prev[1] - lng) < 0.00001) {
+        return prev;
+      }
+      return [lat, lng];
+    });
+    fetchDrivers(lat, lng, actionTypeRef.current);
+  }, [fetchDrivers]);
+
+  const handleFilterApply = useCallback((type: string) => {
+    setActionType(type);
+    setActiveTags([]);
+    fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type);
+  }, [fetchDrivers, searchCoords]);
+
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
       {/* YENİ LOADER ÇAĞRILIYOR */}
@@ -125,37 +178,13 @@ export default function Home() {
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId}
           onMapClick={() => setActiveDriverId(null)}
-          onStartOrder={async (driver: any, method: 'call' | 'message') => {
-            try {
-              const deviceId = getOrCreateDeviceId();
-              const coords = searchCoords;
-              await fetch(`${API_URL}/orders`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  customerId: deviceId,
-                  driverId: driver?._id,
-                  serviceType: driver?.service?.subType || driver?.serviceType || 'genel',
-                  pickupLocation: { lat: coords?.[0] ?? 0, lng: coords?.[1] ?? 0 },
-                  contactMethod: method,
-                  customerOutcome: 'PENDING',
-                })
-              });
-            } catch (_) {}
-          }}
+          onStartOrder={handleCreateOrder}
         />
       </div>
 
       <ActionPanel
-        onSearchLocation={(lat, lng) => {
-          setSearchCoords([lat, lng]);
-          fetchDrivers(lat, lng, actionType);
-        }}
-        onFilterApply={(type) => {
-          setActionType(type);
-          setActiveTags([]);
-          fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type);
-        }}
+        onSearchLocation={handleSearchLocation}
+        onFilterApply={handleFilterApply}
         actionType={actionType}
         onActionChange={setActionType}
         activeTags={activeTags}
@@ -164,24 +193,7 @@ export default function Home() {
         loading={loading}
         activeDriverId={activeDriverId}
         onSelectDriver={setActiveDriverId}
-        onStartOrder={async (driver: any, method: 'call' | 'message') => {
-          try {
-            const deviceId = getOrCreateDeviceId();
-            const coords = searchCoords;
-            await fetch(`${API_URL}/orders`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                customerId: deviceId,
-                driverId: driver?._id,
-                serviceType: driver?.service?.subType || driver?.serviceType || 'genel',
-                pickupLocation: { lat: coords?.[0] ?? 0, lng: coords?.[1] ?? 0 },
-                contactMethod: method,
-                customerOutcome: 'PENDING',
-              })
-            });
-          } catch (_) {}
-        }}
+        onStartOrder={handleCreateOrder}
         isSidebarOpen={false}
       />
 
