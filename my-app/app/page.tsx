@@ -45,6 +45,12 @@ function getOrCreateDeviceId(): string {
 }
 
 export default function Home() {
+  const SPLASH_DURATION_MS = 1200;
+  const LOADER_DURATION_MS = 7500;
+  const DRIVERS_CACHE_TTL_MS = 120000;
+  const DRIVERS_CACHE_REVALIDATE_MS = 15000;
+
+  const [showSplash, setShowSplash] = useState(true);
   const [showLoader, setShowLoader] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -55,32 +61,53 @@ export default function Home() {
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const actionTypeRef = useRef(actionType);
-  const FETCH_CACHE_TTL_MS = 15000;
+  const activeTagsRef = useRef(activeTags);
+  const searchCoordsRef = useRef(searchCoords);
+  const driversCacheRef = useRef<Record<string, { data: any[]; ts: number }>>({});
 
-  const lastAppliedFetchRef = useRef<{ key: string; ts: number } | null>(null);
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
 
-  // 🔥 YENİ LOADER İÇİN ZAMANLAYICI (7.5 Saniye sonra gizler)
+  // 🔥 YENİ LOADER İÇİN ZAMANLAYICI
   useEffect(() => {
     actionTypeRef.current = actionType;
   }, [actionType]);
 
   useEffect(() => {
+    activeTagsRef.current = activeTags;
+  }, [activeTags]);
+
+  useEffect(() => {
+    searchCoordsRef.current = searchCoords;
+  }, [searchCoords]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, SPLASH_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [SPLASH_DURATION_MS]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setShowLoader(false);
-    }, 7500); 
+    }, LOADER_DURATION_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [LOADER_DURATION_MS]);
 
   const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
     const key = `${type}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
     if (inflightFetchKeyRef.current === key) return;
-    if (
-      lastAppliedFetchRef.current?.key === key &&
-      Date.now() - lastAppliedFetchRef.current.ts < FETCH_CACHE_TTL_MS
-    ) {
-      return;
+
+    const now = Date.now();
+    const cached = driversCacheRef.current[key];
+    if (cached) {
+      setDrivers(cached.data);
+      setLoading(false);
+      if (now - cached.ts < DRIVERS_CACHE_REVALIDATE_MS) return;
+      if (now - cached.ts > DRIVERS_CACHE_TTL_MS) {
+        delete driversCacheRef.current[key];
+      }
     }
 
     if (fetchAbortRef.current) fetchAbortRef.current.abort();
@@ -88,7 +115,7 @@ export default function Home() {
     fetchAbortRef.current = controller;
     inflightFetchKeyRef.current = key;
 
-    setLoading(true);
+    if (!cached) setLoading(true);
     try {
       const url =
         type === 'seyyar_sarj'
@@ -96,8 +123,9 @@ export default function Home() {
           : `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=9`;
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
-      setDrivers(Array.isArray(data) ? data : []);
-      lastAppliedFetchRef.current = { key, ts: Date.now() };
+      const normalizedData = Array.isArray(data) ? data : [];
+      driversCacheRef.current[key] = { data: normalizedData, ts: Date.now() };
+      setDrivers(normalizedData);
     } catch (err) {
       if ((err as any)?.name !== 'AbortError') {
         console.error('Fetch Error:', err);
@@ -158,16 +186,14 @@ export default function Home() {
   }, [searchCoords]);
 
   const handleSearchLocation = useCallback((lat: number, lng: number) => {
-    setSearchCoords(prev => {
-      if (prev && Math.abs(prev[0] - lat) < 0.00001 && Math.abs(prev[1] - lng) < 0.00001) {
-        return prev;
-      }
-      return [lat, lng];
-    });
+    const prev = searchCoordsRef.current;
+    if (prev && Math.abs(prev[0] - lat) < 0.00001 && Math.abs(prev[1] - lng) < 0.00001) return;
+    setSearchCoords([lat, lng]);
     fetchDrivers(lat, lng, actionTypeRef.current);
   }, [fetchDrivers]);
 
   const handleFilterApply = useCallback((type: string) => {
+    if (type === actionTypeRef.current && activeTagsRef.current.length === 0) return;
     setActionType(type);
     setActiveTags([]);
     fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type);
@@ -175,6 +201,15 @@ export default function Home() {
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
+      {showSplash && (
+        <div className="fixed inset-0 z-[100000] flex flex-col items-center justify-center bg-white">
+          <img src="/favicon.ico" alt="Transport 245 logo" className="w-20 h-20 rounded-2xl" />
+          <p className="mt-4 text-[12px] font-black uppercase tracking-[0.12em] text-gray-900">
+            Gelecegin lojistik agi
+          </p>
+        </div>
+      )}
+
       {/* YENİ LOADER ÇAĞRILIYOR */}
       {showLoader && <ScanningLoader />}
 
