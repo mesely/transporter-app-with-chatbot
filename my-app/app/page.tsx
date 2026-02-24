@@ -59,6 +59,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
   const [mapFocusToken, setMapFocusToken] = useState(0);
+  const [mapFocusZoom, setMapFocusZoom] = useState<number | undefined>(undefined);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -187,7 +188,11 @@ export default function Home() {
     } catch (_) {}
   }, [searchCoords]);
 
-  const handleSearchLocation = useCallback((lat: number, lng: number, opts?: { forceFocus?: boolean }) => {
+  const handleSearchLocation = useCallback((
+    lat: number,
+    lng: number,
+    opts?: { forceFocus?: boolean; targetZoom?: number; clearActiveDriver?: boolean }
+  ) => {
     const prev = searchCoordsRef.current;
     const sameCoords =
       !!prev &&
@@ -195,12 +200,20 @@ export default function Home() {
       Math.abs(prev[1] - lng) < 0.00001;
 
     if (sameCoords) {
-      if (opts?.forceFocus) setMapFocusToken((v) => v + 1);
+      if (opts?.clearActiveDriver) setActiveDriverId(null);
+      if (opts?.forceFocus) {
+        setMapFocusZoom(opts?.targetZoom);
+        setMapFocusToken((v) => v + 1);
+      }
       return;
     }
 
+    if (opts?.clearActiveDriver) setActiveDriverId(null);
     setSearchCoords([lat, lng]);
-    if (opts?.forceFocus) setMapFocusToken((v) => v + 1);
+    if (opts?.forceFocus) {
+      setMapFocusZoom(opts?.targetZoom);
+      setMapFocusToken((v) => v + 1);
+    }
     fetchDrivers(lat, lng, actionTypeRef.current);
   }, [fetchDrivers]);
 
@@ -227,6 +240,7 @@ export default function Home() {
         <Map
           searchCoords={searchCoords}
           focusRequestToken={mapFocusToken}
+          focusRequestZoom={mapFocusZoom}
           drivers={filteredDrivers}
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId}
@@ -237,6 +251,7 @@ export default function Home() {
 
       <ActionPanel
         onSearchLocation={handleSearchLocation}
+        currentCoords={searchCoords}
         onFilterApply={handleFilterApply}
         actionType={actionType}
         onActionChange={setActionType}

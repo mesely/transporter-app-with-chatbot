@@ -185,7 +185,12 @@ const PANEL_TEXT: Record<AppLang, Record<string, string>> = {
 
 // TİP TANIMLAMASI
 interface ActionPanelProps {
-  onSearchLocation: (lat: number, lng: number, opts?: { forceFocus?: boolean }) => void;
+  onSearchLocation: (
+    lat: number,
+    lng: number,
+    opts?: { forceFocus?: boolean; targetZoom?: number; clearActiveDriver?: boolean }
+  ) => void;
+  currentCoords: [number, number] | null;
   onFilterApply: (type: string) => void;
   onStartOrder: (driver: any, method: 'call' | 'message') => void;
   actionType: string;
@@ -200,7 +205,7 @@ interface ActionPanelProps {
 }
 
 function ActionPanel({
-  onSearchLocation, onFilterApply, onStartOrder, actionType, onActionChange,
+  onSearchLocation, currentCoords, onFilterApply, onStartOrder, actionType, onActionChange,
   drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen
 }: ActionPanelProps) {
   const [lang, setLang] = useState<AppLang>('tr');
@@ -208,7 +213,6 @@ function ActionPanel({
   const [panelState, setPanelState] = useState<0 | 1 | 2 | 3>(1);
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
 
-  const [isLocating, setIsLocating] = useState(false);
   const [selectedCity, setSelectedCity] = useState('');
   const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance');
 
@@ -344,18 +348,20 @@ function ActionPanel({
     } catch {}
   };
 
-  const findMyLocation = useCallback(async (silent = false) => {
+  const findMyLocation = useCallback(async (silent = false, showLoading = false) => {
     if (locatingRef.current) return;
     locatingRef.current = true;
-    setIsLocating(true);
+    if (showLoading) {
+      // no-op: legacy visual loading intentionally disabled
+    }
     try {
       if (!navigator.geolocation) {
         const cached = getCachedLocation();
         if (cached) {
-          onSearchLocation(cached[0], cached[1], { forceFocus: true });
+          onSearchLocation(cached[0], cached[1], { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
           return;
         }
-        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true });
+        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true, targetZoom: 11, clearActiveDriver: true });
         return;
       }
 
@@ -382,7 +388,7 @@ function ActionPanel({
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           saveCachedLocation(lat, lng);
-          onSearchLocation(lat, lng, { forceFocus: true });
+          onSearchLocation(lat, lng, { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
           return;
         } catch (err: any) {
           if (err?.code === 1) break;
@@ -391,26 +397,38 @@ function ActionPanel({
 
       const cached = getCachedLocation();
       if (cached) {
-        onSearchLocation(cached[0], cached[1], { forceFocus: true });
+        onSearchLocation(cached[0], cached[1], { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
         return;
       }
 
-      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true });
+      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true, targetZoom: 11, clearActiveDriver: true });
       if (!silent && permissionState === 'denied') {
         alert('Konum izni kapalı. Lütfen tarayıcı/telefon ayarlarından konum iznini açıp tekrar deneyin.');
       }
     } catch {
       const cached = getCachedLocation();
       if (cached) {
-        onSearchLocation(cached[0], cached[1], { forceFocus: true });
+        onSearchLocation(cached[0], cached[1], { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
       } else {
-        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true });
+        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true, targetZoom: 11, clearActiveDriver: true });
       }
     } finally {
       locatingRef.current = false;
-      setIsLocating(false);
     }
   }, [onSearchLocation]);
+
+  const handleLocateClick = useCallback(() => {
+    if (currentCoords) {
+      onSearchLocation(currentCoords[0], currentCoords[1], {
+        forceFocus: true,
+        targetZoom: 16,
+        clearActiveDriver: true,
+      });
+      void findMyLocation(true, false);
+      return;
+    }
+    void findMyLocation(true, false);
+  }, [currentCoords, findMyLocation, onSearchLocation]);
 
   useEffect(() => {
     findMyLocation(true);
@@ -547,7 +565,7 @@ function ActionPanel({
                 <button onClick={() => setSortMode(m => m === 'rating' ? 'distance' : 'rating')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-colors flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500`}`}><ThumbsUp size={12}/> {tx.score}</button>
               </div>
 
-              <button onClick={findMyLocation} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${isLocating ? 'bg-yellow-500' : activeThemeColor}`}>{isLocating ? <Loader2 size={16} className="animate-spin"/> : <LocateFixed size={16} />}</button>
+              <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
           </div>
         )}
 

@@ -56,6 +56,7 @@ interface Driver {
 interface MapProps {
   searchCoords: [number, number] | null;
   focusRequestToken?: number;
+  focusRequestZoom?: number;
   drivers: Driver[];
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   activeDriverId: string | null;
@@ -198,19 +199,33 @@ function MapController({
   coords,
   activeDriverCoords,
   focusRequestToken,
+  focusRequestZoom,
 }: {
   coords: [number, number] | null;
   activeDriverCoords: [number, number] | null;
   focusRequestToken?: number;
+  focusRequestZoom?: number;
 }) {
   const map = useMap();
+  const lastFocusTokenRef = useRef<number | undefined>(undefined);
+
   useEffect(() => {
+    const hasNewFocusRequest =
+      typeof focusRequestToken === 'number' &&
+      focusRequestToken !== lastFocusTokenRef.current;
+
+    if (hasNewFocusRequest && coords) {
+      lastFocusTokenRef.current = focusRequestToken;
+      map.flyTo(coords, focusRequestZoom ?? 15, { duration: 0.9, easeLinearity: 0.25 });
+      return;
+    }
+
     if (activeDriverCoords) {
       map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
     } else if (coords) {
       map.flyTo(coords, 12, { duration: 1.5 });
     }
-  }, [coords, activeDriverCoords, focusRequestToken, map]);
+  }, [coords, activeDriverCoords, focusRequestToken, focusRequestZoom, map]);
   return null;
 }
 
@@ -218,6 +233,7 @@ function MapController({
 function Map({
   searchCoords,
   focusRequestToken,
+  focusRequestZoom,
   drivers,
   onStartOrder,
   activeDriverId,
@@ -304,6 +320,7 @@ function Map({
           coords={searchCoords}
           activeDriverCoords={activeDriverCoords}
           focusRequestToken={focusRequestToken}
+          focusRequestZoom={focusRequestZoom}
         />
 
         {searchCoords && (
