@@ -58,6 +58,7 @@ export default function Home() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
+  const [mapFocusToken, setMapFocusToken] = useState(0);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -186,10 +187,20 @@ export default function Home() {
     } catch (_) {}
   }, [searchCoords]);
 
-  const handleSearchLocation = useCallback((lat: number, lng: number) => {
+  const handleSearchLocation = useCallback((lat: number, lng: number, opts?: { forceFocus?: boolean }) => {
     const prev = searchCoordsRef.current;
-    if (prev && Math.abs(prev[0] - lat) < 0.00001 && Math.abs(prev[1] - lng) < 0.00001) return;
+    const sameCoords =
+      !!prev &&
+      Math.abs(prev[0] - lat) < 0.00001 &&
+      Math.abs(prev[1] - lng) < 0.00001;
+
+    if (sameCoords) {
+      if (opts?.forceFocus) setMapFocusToken((v) => v + 1);
+      return;
+    }
+
     setSearchCoords([lat, lng]);
+    if (opts?.forceFocus) setMapFocusToken((v) => v + 1);
     fetchDrivers(lat, lng, actionTypeRef.current);
   }, [fetchDrivers]);
 
@@ -215,6 +226,7 @@ export default function Home() {
       <div className="absolute inset-0 z-0">
         <Map
           searchCoords={searchCoords}
+          focusRequestToken={mapFocusToken}
           drivers={filteredDrivers}
           activeDriverId={activeDriverId}
           onSelectDriver={setActiveDriverId}

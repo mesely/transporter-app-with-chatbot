@@ -55,6 +55,7 @@ interface Driver {
 
 interface MapProps {
   searchCoords: [number, number] | null;
+  focusRequestToken?: number;
   drivers: Driver[];
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   activeDriverId: string | null;
@@ -193,7 +194,15 @@ function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
   return null;
 }
 
-function MapController({ coords, activeDriverCoords }: { coords: [number, number] | null, activeDriverCoords: [number, number] | null }) {
+function MapController({
+  coords,
+  activeDriverCoords,
+  focusRequestToken,
+}: {
+  coords: [number, number] | null;
+  activeDriverCoords: [number, number] | null;
+  focusRequestToken?: number;
+}) {
   const map = useMap();
   useEffect(() => {
     if (activeDriverCoords) {
@@ -201,12 +210,21 @@ function MapController({ coords, activeDriverCoords }: { coords: [number, number
     } else if (coords) {
       map.flyTo(coords, 12, { duration: 1.5 });
     }
-  }, [coords, activeDriverCoords, map]);
+  }, [coords, activeDriverCoords, focusRequestToken, map]);
   return null;
 }
 
 // --- ANA BİLEŞEN ---
-function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriver, onMapMove, onMapClick }: MapProps) {
+function Map({
+  searchCoords,
+  focusRequestToken,
+  drivers,
+  onStartOrder,
+  activeDriverId,
+  onSelectDriver,
+  onMapMove,
+  onMapClick,
+}: MapProps) {
   const [lang, setLang] = useState<AppLang>('tr');
   const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
   const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
@@ -282,7 +300,11 @@ function Map({ searchCoords, drivers, onStartOrder, activeDriverId, onSelectDriv
         <TileLayer attribution='© CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
         
         <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
-        <MapController coords={searchCoords} activeDriverCoords={activeDriverCoords} />
+        <MapController
+          coords={searchCoords}
+          activeDriverCoords={activeDriverCoords}
+          focusRequestToken={focusRequestToken}
+        />
 
         {searchCoords && (
           <Marker position={searchCoords} icon={L.divIcon({

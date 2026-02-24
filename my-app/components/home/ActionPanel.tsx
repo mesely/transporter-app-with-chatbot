@@ -62,6 +62,7 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
 
 const DEFAULT_LAT = 39.9334;
 const DEFAULT_LNG = 32.8597;
+const LAST_LOCATION_KEY = 'Transport_last_location';
 
 // --- SERVICE_OPTIONS VE ALT SEÇENEKLER ---
 const SERVICE_OPTIONS = [
@@ -184,7 +185,7 @@ const PANEL_TEXT: Record<AppLang, Record<string, string>> = {
 
 // TİP TANIMLAMASI
 interface ActionPanelProps {
-  onSearchLocation: (lat: number, lng: number) => void;
+  onSearchLocation: (lat: number, lng: number, opts?: { forceFocus?: boolean }) => void;
   onFilterApply: (type: string) => void;
   onStartOrder: (driver: any, method: 'call' | 'message') => void;
   actionType: string;
@@ -295,7 +296,7 @@ function ActionPanel({
     setSelectedCity(city);
     if (city && CITY_COORDINATES[city]) {
       const [lat, lng] = CITY_COORDINATES[city];
-      onSearchLocation(lat, lng);
+      onSearchLocation(lat, lng, { forceFocus: true });
     }
   };
 
@@ -325,13 +326,36 @@ function ActionPanel({
       navigator.geolocation.getCurrentPosition(resolve, reject, opts);
     });
 
+  const getCachedLocation = (): [number, number] | null => {
+    try {
+      const raw = localStorage.getItem(LAST_LOCATION_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { lat?: number; lng?: number };
+      if (typeof parsed?.lat !== 'number' || typeof parsed?.lng !== 'number') return null;
+      return [parsed.lat, parsed.lng];
+    } catch {
+      return null;
+    }
+  };
+
+  const saveCachedLocation = (lat: number, lng: number) => {
+    try {
+      localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({ lat, lng, ts: Date.now() }));
+    } catch {}
+  };
+
   const findMyLocation = useCallback(async (silent = false) => {
     if (locatingRef.current) return;
     locatingRef.current = true;
     setIsLocating(true);
     try {
       if (!navigator.geolocation) {
-        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+        const cached = getCachedLocation();
+        if (cached) {
+          onSearchLocation(cached[0], cached[1], { forceFocus: true });
+          return;
+        }
+        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true });
         return;
       }
 
@@ -346,36 +370,42 @@ function ActionPanel({
         }
       }
 
-      try {
-        const pos = await getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 12000,
-          maximumAge: 0,
-        });
-        onSearchLocation(pos.coords.latitude, pos.coords.longitude);
-        return;
-      } catch (firstErr: any) {
-        if (firstErr?.code === 1) {
-          try {
-            const retryPos = await getCurrentPosition({
-              enableHighAccuracy: true,
-              timeout: 12000,
-              maximumAge: 0,
-            });
-            onSearchLocation(retryPos.coords.latitude, retryPos.coords.longitude);
-            return;
-          } catch {
-            // ikinci denemede de izin yoksa altta fallback
-          }
+      const attempts: PositionOptions[] = [
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+        { enableHighAccuracy: false, timeout: 18000, maximumAge: 60000 },
+        { enableHighAccuracy: false, timeout: 22000, maximumAge: 300000 },
+      ];
+
+      for (const opts of attempts) {
+        try {
+          const pos = await getCurrentPosition(opts);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          saveCachedLocation(lat, lng);
+          onSearchLocation(lat, lng, { forceFocus: true });
+          return;
+        } catch (err: any) {
+          if (err?.code === 1) break;
         }
       }
 
-      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+      const cached = getCachedLocation();
+      if (cached) {
+        onSearchLocation(cached[0], cached[1], { forceFocus: true });
+        return;
+      }
+
+      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true });
       if (!silent && permissionState === 'denied') {
         alert('Konum izni kapalı. Lütfen tarayıcı/telefon ayarlarından konum iznini açıp tekrar deneyin.');
       }
     } catch {
-      onSearchLocation(DEFAULT_LAT, DEFAULT_LNG);
+      const cached = getCachedLocation();
+      if (cached) {
+        onSearchLocation(cached[0], cached[1], { forceFocus: true });
+      } else {
+        onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true });
+      }
     } finally {
       locatingRef.current = false;
       setIsLocating(false);
