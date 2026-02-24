@@ -45,7 +45,7 @@ function getOrCreateDeviceId(): string {
 }
 
 export default function Home() {
-  const SPLASH_DURATION_MS = 1200;
+  const SPLASH_DURATION_MS = 3750;
   const LOADER_DURATION_MS = 7500;
   const DRIVERS_CACHE_TTL_MS = 120000;
   const DRIVERS_CACHE_REVALIDATE_MS = 15000;
@@ -203,10 +203,23 @@ export default function Home() {
     <main className="relative w-full h-screen overflow-hidden bg-white">
       {showSplash && (
         <div className="fixed inset-0 z-[100000] flex flex-col items-center justify-center bg-white">
-          <img src="/favicon.ico" alt="Transport 245 logo" className="w-20 h-20 rounded-2xl" />
-          <p className="mt-4 text-[12px] font-black uppercase tracking-[0.12em] text-gray-900">
-            Gelecegin lojistik agi
-          </p>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(59,130,246,0.14),transparent_55%)]" />
+          <div className="absolute -top-20 -left-20 h-72 w-72 rounded-full bg-sky-100/70 blur-3xl" />
+          <div className="absolute -bottom-24 -right-20 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
+
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="rounded-[2.5rem] border border-gray-200/70 bg-white/95 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.16)]">
+              <img
+                src="/favicon.ico"
+                alt="Transport 245 logo"
+                className="h-28 w-28 sm:h-32 sm:w-32 rounded-3xl object-contain"
+              />
+            </div>
+
+            <p className="mt-6 text-center text-[11px] sm:text-xs font-black uppercase tracking-[0.18em] text-gray-900">
+              Gelecegin lojistik agi
+            </p>
+          </div>
         </div>
       )}
 
