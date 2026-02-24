@@ -22,6 +22,7 @@ const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-50" />,
 });
+const SplashScreen = dynamic(() => import('../components/SplashScreen'), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
@@ -201,27 +202,7 @@ export default function Home() {
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
-      {showSplash && (
-        <div className="fixed inset-0 z-[100000] flex flex-col items-center justify-center bg-white">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(59,130,246,0.14),transparent_55%)]" />
-          <div className="absolute -top-20 -left-20 h-72 w-72 rounded-full bg-sky-100/70 blur-3xl" />
-          <div className="absolute -bottom-24 -right-20 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
-
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="rounded-[2.5rem] border border-gray-200/70 bg-white/95 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.16)]">
-              <img
-                src="/favicon.ico"
-                alt="Transport 245 logo"
-                className="h-28 w-28 sm:h-32 sm:w-32 rounded-3xl object-contain"
-              />
-            </div>
-
-            <p className="mt-6 text-center text-[11px] sm:text-xs font-black uppercase tracking-[0.18em] text-gray-900">
-              Gelecegin lojistik agi
-            </p>
-          </div>
-        </div>
-      )}
+      <SplashScreen visible={showSplash} />
 
       {/* YENİ LOADER ÇAĞRILIYOR */}
       {showLoader && <ScanningLoader />}
