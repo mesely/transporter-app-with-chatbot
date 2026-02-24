@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Truck, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { AppLang, getPreferredLang } from '../utils/language';
 
 export default function ScanningLoader() {
@@ -135,14 +135,17 @@ export default function ScanningLoader() {
       {/* BEYAZ ÖRTÜ */}
       <div className="absolute inset-0 z-[-1] bg-white/20"></div>
 
-      {/* MERKEZ İKON */}
-      <div className="relative z-10 flex items-center justify-center mb-16">
-        <div className="bg-white/50 border border-white/70 backdrop-blur-xl p-10 rounded-[3rem] shadow-[0_20px_40px_rgba(0,0,0,0.08)]">
-          <Truck className="w-16 h-16 text-gray-900" strokeWidth={1.2} />
+      {/* MERKEZ LOGO */}
+      <div className="relative z-10 flex flex-col items-center justify-center mb-12">
+        <div className="bg-white/50 border border-white/70 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.08)]">
+          <img src="/favicon.ico" alt="Transport 245 logo" className="w-20 h-20 object-contain rounded-2xl" />
+        </div>
+        <div className="mt-3 text-[12px] sm:text-sm font-black uppercase tracking-wide text-gray-900 bg-white/70 border border-white/80 px-4 py-2 rounded-xl shadow-sm">
+          Gelecegin lojistik agi
         </div>
       </div>
 
-      <div className="relative z-10 -mt-10 mb-8 px-5 py-3 rounded-2xl bg-white/75 border border-white/80 shadow-lg max-w-[85vw]">
+      <div className="relative z-10 mb-8 px-5 py-3 rounded-2xl bg-white/75 border border-white/80 shadow-lg max-w-[85vw]">
         <div className="text-[11px] sm:text-xs font-black uppercase tracking-wide text-gray-900 text-center">
           {messages[messageIndex]}
         </div>
