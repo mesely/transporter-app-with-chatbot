@@ -21,12 +21,27 @@ export class UsersController {
     @Query('lat') lat: string,
     @Query('lng') lng: string,
     @Query('type') type: string,
-    @Query('zoom') zoom: string
+    @Query('zoom') zoom: string,
+    @Query('minLat') minLat?: string,
+    @Query('minLng') minLng?: string,
+    @Query('maxLat') maxLat?: string,
+    @Query('maxLng') maxLng?: string,
+    @Query('limit') limit?: string
   ) {
     const latitude = parseFloat(lat) || 38.4237;
     const longitude = parseFloat(lng) || 27.1428;
     const zoomLevel = parseInt(zoom) || 9;
-    return this.usersService.findNearby(latitude, longitude, type, zoomLevel);
+    const viewport =
+      minLat !== undefined && minLng !== undefined && maxLat !== undefined && maxLng !== undefined
+        ? {
+            minLat: Number(minLat),
+            minLng: Number(minLng),
+            maxLat: Number(maxLat),
+            maxLng: Number(maxLng),
+          }
+        : undefined;
+    const safeLimit = limit ? Number(limit) : undefined;
+    return this.usersService.findNearby(latitude, longitude, type, zoomLevel, viewport, safeLimit);
   }
 
   // --- 3. TELEFONA GÖRE ARA (by-phone ÖNCE gelmeli, :id endpoint'inden önce) ---
@@ -49,6 +64,26 @@ export class UsersController {
   @Get('types')
   async getTypes() {
     return this.usersService.getServiceTypes();
+  }
+
+  @Get('search')
+  async searchProviders(
+    @Query('q') q: string,
+    @Query('type') type?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string
+  ) {
+    const parsedLat = lat !== undefined ? Number(lat) : undefined;
+    const parsedLng = lng !== undefined ? Number(lng) : undefined;
+    const parsedLimit = limit !== undefined ? Number(limit) : undefined;
+    return this.usersService.searchByText(
+      q || '',
+      type || '',
+      Number.isFinite(parsedLat) ? parsedLat : undefined,
+      Number.isFinite(parsedLng) ? parsedLng : undefined,
+      Number.isFinite(parsedLimit) ? parsedLimit : undefined
+    );
   }
 
   // --- 6. RATING ENDPOINTS ---

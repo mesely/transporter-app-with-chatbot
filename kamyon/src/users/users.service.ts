@@ -8,6 +8,11 @@ import { NewProvider, NewProviderDocument } from '../data/schemas/new-provider.s
 @Injectable()
 export class UsersService implements OnModuleInit {
   private readonly logger = new Logger(UsersService.name);
+  private readonly STOP_WORDS = new Set([
+    've', 'veya', 'ile', 'icin', 'için', 'gibi', 'olan', 'olanlar', 'en', 'yakın', 'yakin',
+    'var', 'mi', 'mı', 'mu', 'mü', 'km', 'kac', 'kaç', 'bana', 'bir', 'bu', 'su', 'şu',
+    'oto', 'arac', 'araç', 'cekici', 'çekici', 'fiyat', 'hesapla'
+  ]);
 
   constructor(
     @InjectModel(NewUser.name) private userModel: Model<NewUserDocument>,
@@ -22,6 +27,46 @@ export class UsersService implements OnModuleInit {
     } catch (e) {
       this.logger.error('Index hatası (zaten varsa sorun yok):', e);
     }
+  }
+
+  private buildServiceFilter(rawType: string) {
+    const filterQuery: any = {};
+    if (!rawType) return filterQuery;
+
+    const type = rawType.toLowerCase().trim();
+    if (!type) return filterQuery;
+
+    if (type === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
+    else if (type === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
+    else if (type === 'sarj') filterQuery['service.mainType'] = 'SARJ';
+    else if (type === 'yolcu') filterQuery['service.mainType'] = 'YOLCU';
+    else if (type === 'sarj_istasyonu') filterQuery['service.subType'] = 'istasyon';
+    else if (type === 'seyyar_sarj') filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
+    else filterQuery['service.subType'] = type;
+
+    return filterQuery;
+  }
+
+  private distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const earth = 6371000;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earth * c;
+  }
+
+  private normalize(value: string): string {
+    return (value || '')
+      .toLocaleLowerCase('tr')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   // --- 1. CREATE VEYA UPDATE ---
@@ -119,25 +164,53 @@ export class UsersService implements OnModuleInit {
   }
 
   // --- 2. FIND NEARBY ---
-  async findNearby(lat: number, lng: number, rawType: string, zoom: number) {
+  async findNearby(
+    lat: number,
+    lng: number,
+    rawType: string,
+    zoom: number,
+    viewport?: { minLat: number; minLng: number; maxLat: number; maxLng: number },
+    requestedLimit?: number
+  ) {
     const safeZoom = zoom ? Number(zoom) : 15;
     let maxDist = 500000;
     let limit = 200;
 
-    if (safeZoom < 8) { maxDist = 20000000; limit = 3000; }
-    else if (safeZoom < 11) { maxDist = 2000000; limit = 1000; }
-    else { maxDist = 100000; limit = 200; }
+    if (safeZoom < 8) { maxDist = 20000000; limit = 1800; }
+    else if (safeZoom < 11) { maxDist = 2000000; limit = 800; }
+    else { maxDist = 150000; limit = 300; }
 
-    const filterQuery: any = {};
-    if (rawType && rawType !== '') {
-      const type = rawType.toLowerCase().trim();
-      if (type === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
-      else if (type === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
-      else if (type === 'sarj') filterQuery['service.mainType'] = 'SARJ';
-      else if (type === 'yolcu') filterQuery['service.mainType'] = 'YOLCU';
-      else if (type === 'sarj_istasyonu') filterQuery['service.subType'] = 'istasyon';
-      else if (type === 'seyyar_sarj') filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
-      else filterQuery['service.subType'] = type;
+    if (typeof requestedLimit === 'number' && Number.isFinite(requestedLimit)) {
+      const normalizedLimit = Math.max(20, Math.min(2000, Math.floor(requestedLimit)));
+      limit = Math.min(limit, normalizedLimit);
+    }
+
+    const filterQuery: any = this.buildServiceFilter(rawType);
+    if (
+      viewport &&
+      Number.isFinite(viewport.minLat) &&
+      Number.isFinite(viewport.minLng) &&
+      Number.isFinite(viewport.maxLat) &&
+      Number.isFinite(viewport.maxLng)
+    ) {
+      const minLat = Math.min(viewport.minLat, viewport.maxLat);
+      const maxLat = Math.max(viewport.minLat, viewport.maxLat);
+      const minLng = Math.min(viewport.minLng, viewport.maxLng);
+      const maxLng = Math.max(viewport.minLng, viewport.maxLng);
+
+      filterQuery.location = {
+        $geoWithin: {
+          $box: [
+            [minLng, minLat],
+            [maxLng, maxLat],
+          ],
+        },
+      };
+
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+      const cornerDistance = this.distanceMeters(centerLat, centerLng, maxLat, maxLng);
+      maxDist = Math.max(8000, Math.min(Math.ceil(cornerDistance * 1.2), 20000000));
     }
 
     return this.providerModel.aggregate([
@@ -151,15 +224,6 @@ export class UsersService implements OnModuleInit {
           query: filterQuery
         }
       },
-      {
-        $lookup: {
-          from: 'newusers',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userData'
-        }
-      },
-      { $unwind: { path: '$userData', preserveNullAndEmptyArrays: true } },
       { $limit: limit },
       {
         $project: {
@@ -180,8 +244,8 @@ export class UsersService implements OnModuleInit {
           vehicleItems: 1,
           taxNumber: 1,
           distance: 1,
-          link: { $ifNull: ["$userData.link", "$link"] },
-          website: { $ifNull: ["$userData.link", "$website"] }
+          link: 1,
+          website: 1
         }
       }
     ]).exec();
@@ -251,6 +315,62 @@ export class UsersService implements OnModuleInit {
       else query['service.subType'] = type;
     }
     return this.providerModel.find(query).sort({ _id: -1 }).limit(500).exec();
+  }
+
+  async searchByText(
+    rawQuery: string,
+    rawType: string,
+    lat?: number,
+    lng?: number,
+    requestedLimit?: number
+  ) {
+    const query = this.normalize(rawQuery);
+    const tokens = query
+      .split(' ')
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 3 && !this.STOP_WORDS.has(t))
+      .slice(0, 6);
+
+    const serviceFilter = this.buildServiceFilter(rawType);
+    const regexes = tokens.map((t) => new RegExp(t, 'i'));
+
+    const textFilter: any = regexes.length > 0
+      ? {
+          $or: [
+            { businessName: { $in: regexes } },
+            { 'address.city': { $in: regexes } },
+            { 'address.district': { $in: regexes } },
+            { 'address.fullText': { $in: regexes } },
+            { 'service.subType': { $in: regexes } },
+            { 'service.tags': { $in: regexes } },
+          ],
+        }
+      : {};
+
+    const filter = { ...serviceFilter, ...textFilter };
+    const limit = Math.max(5, Math.min(Number(requestedLimit || 50), 200));
+    const results = await this.providerModel
+      .find(filter)
+      .sort({ rating: -1, updatedAt: -1 })
+      .limit(limit)
+      .lean()
+      .exec();
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return results;
+    }
+
+    return results
+      .map((provider: any) => {
+        const pLat = provider?.location?.coordinates?.[1];
+        const pLng = provider?.location?.coordinates?.[0];
+        const distance =
+          Number.isFinite(pLat) && Number.isFinite(pLng)
+            ? this.distanceMeters(lat as number, lng as number, Number(pLat), Number(pLng))
+            : Number.MAX_SAFE_INTEGER;
+        return { ...provider, distance };
+      })
+      .sort((a, b) => Number(a.distance || 0) - Number(b.distance || 0));
   }
 
   async updateOne(id: string, data: any) {
