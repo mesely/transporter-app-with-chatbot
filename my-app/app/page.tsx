@@ -9,14 +9,11 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Mic, Search, X } from 'lucide-react';
 
 import TopBar from '../components/home/TopBar';
 import ActionPanel from '../components/home/ActionPanel';
 import ProfileModal from '../components/ProfileModal';
-
-// 🔥 YENİ LOADER'I BURAYA IMPORT EDİYORUZ
-// Not: Dosya yolunu (path) kendi proje yapına göre düzenlemeyi unutma!
-import ScanningLoader from '../components/ScanningLoader'; 
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -25,6 +22,10 @@ const Map = dynamic(() => import('../components/Map'), {
 const SplashScreen = dynamic(() => import('../components/SplashScreen'), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const DEFAULT_LAT = 41.0082;
+const DEFAULT_LNG = 28.9784;
+const LAST_RESULTS_KEY = 'Transport_last_results_v1';
+const RATE_REMINDERS_KEY = 'Transport_rate_reminders_v1';
 
 const CATEGORY_MAP: Record<string, string[]> = {
   tir: ['tenteli', 'frigorifik', 'lowbed', 'konteyner', 'acik_kasa'],
@@ -45,14 +46,26 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
+function normalizeText(v: string) {
+  return (v || '')
+    .toLocaleLowerCase('tr')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default function Home() {
-  const SPLASH_DURATION_MS = 3750;
-  const LOADER_DURATION_MS = 7500;
+  const SPLASH_DURATION_MS = 6800;
   const DRIVERS_CACHE_TTL_MS = 120000;
   const DRIVERS_CACHE_REVALIDATE_MS = 15000;
+  const DRIVERS_CACHE_MAX_ENTRIES = 80;
+  const MAP_MOVE_FETCH_DEBOUNCE_MS = 350;
+  const MIN_MOVE_DISTANCE_DEG = 0.015;
+  const MIN_ZOOM_DELTA = 0.6;
 
   const [showSplash, setShowSplash] = useState(true);
-  const [showLoader, setShowLoader] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
 
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -61,12 +74,18 @@ export default function Home() {
   const [mapFocusToken, setMapFocusToken] = useState(0);
   const [mapFocusZoom, setMapFocusZoom] = useState<number | undefined>(undefined);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
+  const [reminderNotice, setReminderNotice] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const actionTypeRef = useRef(actionType);
   const activeTagsRef = useRef(activeTags);
   const searchCoordsRef = useRef(searchCoords);
   const driversCacheRef = useRef<Record<string, { data: any[]; ts: number }>>({});
+  const mapMoveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMapFetchRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
 
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -91,15 +110,19 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [SPLASH_DURATION_MS]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowLoader(false);
-    }, LOADER_DURATION_MS);
-    return () => clearTimeout(timer);
-  }, [LOADER_DURATION_MS]);
-
-  const fetchDrivers = useCallback(async (lat: number, lng: number, type: string) => {
-    const key = `${type}:${lat.toFixed(5)}:${lng.toFixed(5)}`;
+  const fetchDrivers = useCallback(async (
+    lat: number,
+    lng: number,
+    type: string,
+    opts?: { zoom?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number } }
+  ) => {
+    const key = [
+      type,
+      lat.toFixed(4),
+      lng.toFixed(4),
+      String(opts?.zoom ? Math.round(opts.zoom * 10) / 10 : ''),
+      String(opts?.bbox ? `${opts.bbox.minLat.toFixed(3)}:${opts.bbox.minLng.toFixed(3)}:${opts.bbox.maxLat.toFixed(3)}:${opts.bbox.maxLng.toFixed(3)}` : ''),
+    ].join(':');
     if (inflightFetchKeyRef.current === key) return;
 
     const now = Date.now();
@@ -120,18 +143,51 @@ export default function Home() {
 
     if (!cached) setLoading(true);
     try {
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lng: String(lng),
+        type,
+        zoom: String(Math.round((opts?.zoom ?? 9) * 10) / 10),
+      });
+      if (opts?.bbox) {
+        params.set('minLat', String(opts.bbox.minLat));
+        params.set('minLng', String(opts.bbox.minLng));
+        params.set('maxLat', String(opts.bbox.maxLat));
+        params.set('maxLng', String(opts.bbox.maxLng));
+      }
       const url =
         type === 'seyyar_sarj'
           ? `${API_URL}/users/all?type=seyyar_sarj`
-          : `${API_URL}/users/nearby?lat=${lat}&lng=${lng}&type=${type}&zoom=9`;
+          : `${API_URL}/users/nearby?${params.toString()}`;
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
       const normalizedData = Array.isArray(data) ? data : [];
       driversCacheRef.current[key] = { data: normalizedData, ts: Date.now() };
+      try {
+        localStorage.setItem(LAST_RESULTS_KEY, JSON.stringify({ ts: Date.now(), data: normalizedData }));
+      } catch {}
+      const keys = Object.keys(driversCacheRef.current);
+      if (keys.length > DRIVERS_CACHE_MAX_ENTRIES) {
+        const sorted = keys
+          .map((k) => ({ k, ts: driversCacheRef.current[k].ts }))
+          .sort((a, b) => a.ts - b.ts);
+        const purge = sorted.slice(0, keys.length - DRIVERS_CACHE_MAX_ENTRIES);
+        for (const item of purge) delete driversCacheRef.current[item.k];
+      }
       setDrivers(normalizedData);
     } catch (err) {
       if ((err as any)?.name !== 'AbortError') {
         console.error('Fetch Error:', err);
+        try {
+          const raw = localStorage.getItem(LAST_RESULTS_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) as { data?: any[] };
+            if (Array.isArray(parsed?.data) && parsed.data.length > 0) {
+              setDrivers(parsed.data);
+              setOfflineNotice('Internet yok. Son sonuclar yukleniyor.');
+            }
+          }
+        } catch {}
       }
     } finally {
       if (inflightFetchKeyRef.current === key) {
@@ -139,16 +195,29 @@ export default function Home() {
       }
       setLoading(false);
     }
-  }, []);
+  }, [DRIVERS_CACHE_MAX_ENTRIES]);
 
   useEffect(() => {
     return () => {
       if (fetchAbortRef.current) fetchAbortRef.current.abort();
+      if (mapMoveDebounceRef.current) clearTimeout(mapMoveDebounceRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (!searchCoords) fetchDrivers(39.9334, 32.8597, 'kurtarici');
+    const onOnline = () => setOfflineNotice(null);
+    const onOffline = () => setOfflineNotice('Internet yok. Son sonuclar yukleniyor.');
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    if (typeof navigator !== 'undefined' && !navigator.onLine) onOffline();
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!searchCoords) fetchDrivers(DEFAULT_LAT, DEFAULT_LNG, 'kurtarici');
   }, [fetchDrivers, searchCoords]);
 
   const filteredDrivers = useMemo(() => {
@@ -185,6 +254,18 @@ export default function Home() {
           customerOutcome: 'PENDING',
         })
       });
+      try {
+        const remindersRaw = localStorage.getItem(RATE_REMINDERS_KEY);
+        const reminders = remindersRaw ? JSON.parse(remindersRaw) : [];
+        reminders.push({
+          id: `${driver?._id || 'x'}-${Date.now()}`,
+          driverId: driver?._id,
+          driverName: driver?.businessName || 'Hizmet Saglayici',
+          dueAt: Date.now() + 24 * 60 * 60 * 1000,
+          notified: false,
+        });
+        localStorage.setItem(RATE_REMINDERS_KEY, JSON.stringify(reminders));
+      } catch {}
     } catch (_) {}
   }, [searchCoords]);
 
@@ -217,24 +298,197 @@ export default function Home() {
     fetchDrivers(lat, lng, actionTypeRef.current);
   }, [fetchDrivers]);
 
+  useEffect(() => {
+    if (searchCoords) return;
+    if (typeof window === 'undefined' || !navigator?.geolocation) return;
+
+    const timer = setTimeout(() => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          handleSearchLocation(pos.coords.latitude, pos.coords.longitude, {
+            forceFocus: true,
+            targetZoom: 15,
+            clearActiveDriver: true,
+          });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 }
+      );
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [handleSearchLocation, searchCoords]);
+
   const handleFilterApply = useCallback((type: string) => {
     if (type === actionTypeRef.current && activeTagsRef.current.length === 0) return;
     setActionType(type);
     setActiveTags([]);
-    fetchDrivers(searchCoords?.[0] ?? 39.9, searchCoords?.[1] ?? 32.8, type);
+    fetchDrivers(searchCoords?.[0] ?? DEFAULT_LAT, searchCoords?.[1] ?? DEFAULT_LNG, type, {
+      zoom: lastMapFetchRef.current?.zoom ?? 9,
+    });
   }, [fetchDrivers, searchCoords]);
+
+  const handleSelectDriver = useCallback((id: string | null) => {
+    setActiveDriverId(id);
+    if (id) {
+      setMapFocusZoom(12.8);
+      setMapFocusToken((v) => v + 1);
+    }
+  }, []);
+
+  const suggestions = useMemo(() => {
+    const q = normalizeText(mapSearchQuery);
+    if (!q) return [];
+    const tokens = q.split(' ').filter(Boolean);
+    const serviceLabel = (subType: string) => {
+      const s = (subType || '').toLocaleLowerCase('tr');
+      if (s.includes('kurtar')) return 'oto cekici kurtarici';
+      if (s.includes('vinc')) return 'vinc';
+      if (s.includes('sarj') || s.includes('istasyon')) return 'sarj istasyon';
+      if (s.includes('nakliye') || s.includes('kamyon') || s.includes('tir')) return 'nakliye tasima';
+      return s;
+    };
+    return filteredDrivers
+      .filter((d) => {
+        const hay = normalizeText([
+          d.businessName,
+          d.address?.city,
+          d.address?.district,
+          d.address?.fullText,
+          serviceLabel(d.service?.subType || ''),
+        ].filter(Boolean).join(' '));
+        return tokens.every((t) => hay.includes(t));
+      })
+      .slice(0, 6);
+  }, [filteredDrivers, mapSearchQuery]);
+
+  const handleSearchPick = useCallback((driver: any) => {
+    setMapSearchQuery(driver?.businessName || '');
+    handleSelectDriver(driver?._id || null);
+  }, [handleSelectDriver]);
+
+  const handleVoiceSearch = useCallback(() => {
+    const SpeechCtor: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechCtor) return;
+    const recognition = new SpeechCtor();
+    recognition.lang = 'tr-TR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const text = event?.results?.[0]?.[0]?.transcript || '';
+      setMapSearchQuery(text);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      try {
+        const raw = localStorage.getItem(RATE_REMINDERS_KEY);
+        if (!raw) return;
+        const list = JSON.parse(raw) as Array<any>;
+        let changed = false;
+        const now = Date.now();
+        const next = list.map((item) => {
+          if (!item.notified && Number(item.dueAt) <= now) {
+            changed = true;
+            const title = 'Hizmeti degerlendir';
+            const body = `${item.driverName} icin puanlama yapabilirsiniz.`;
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              new Notification(title, { body });
+            } else {
+              setReminderNotice(body);
+            }
+            return { ...item, notified: true };
+          }
+          return item;
+        });
+        if (changed) localStorage.setItem(RATE_REMINDERS_KEY, JSON.stringify(next));
+      } catch {}
+    };
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleMapMove = useCallback((
+    lat: number,
+    lng: number,
+    zoom: number,
+    bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }
+  ) => {
+    const prev = lastMapFetchRef.current;
+    if (prev) {
+      const movedLat = Math.abs(prev.lat - lat);
+      const movedLng = Math.abs(prev.lng - lng);
+      const zoomDelta = Math.abs(prev.zoom - zoom);
+      if (movedLat < MIN_MOVE_DISTANCE_DEG && movedLng < MIN_MOVE_DISTANCE_DEG && zoomDelta < MIN_ZOOM_DELTA) {
+        return;
+      }
+    }
+
+    if (mapMoveDebounceRef.current) clearTimeout(mapMoveDebounceRef.current);
+    mapMoveDebounceRef.current = setTimeout(() => {
+      lastMapFetchRef.current = { lat, lng, zoom };
+      const anchor = searchCoordsRef.current;
+      const baseLat = anchor?.[0] ?? lat;
+      const baseLng = anchor?.[1] ?? lng;
+      fetchDrivers(baseLat, baseLng, actionTypeRef.current, { zoom, bbox });
+    }, MAP_MOVE_FETCH_DEBOUNCE_MS);
+  }, [fetchDrivers, MAP_MOVE_FETCH_DEBOUNCE_MS, MIN_MOVE_DISTANCE_DEG, MIN_ZOOM_DELTA]);
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
       <SplashScreen visible={showSplash} />
 
-      {/* YENİ LOADER ÇAĞRILIYOR */}
-      {showLoader && <ScanningLoader />}
-
       {/* TopBar artık Settings butonu gösteriyor (Sidebar yerine) */}
       <TopBar
         onProfileClick={() => setShowProfile(true)}
       />
+
+      <div className="absolute top-11 left-1/2 z-[900] -translate-x-1/2 w-[min(92vw,540px)] pointer-events-auto">
+        <div className="relative rounded-2xl border border-white/60 bg-white/95 shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Search size={16} className="text-slate-500" />
+            <input
+              value={mapSearchQuery}
+              onChange={(e) => setMapSearchQuery(e.target.value)}
+              placeholder="Firma veya hizmet ara (mikrofon destekli)"
+              className="flex-1 bg-transparent text-[13px] font-semibold text-slate-800 outline-none"
+            />
+            {mapSearchQuery && (
+              <button onClick={() => setMapSearchQuery('')} className="p-1 text-slate-500">
+                <X size={16} />
+              </button>
+            )}
+            <button
+              onClick={handleVoiceSearch}
+              className={`rounded-xl px-2.5 py-1.5 text-white ${isListening ? 'bg-rose-600' : 'bg-sky-600'}`}
+            >
+              <Mic size={14} />
+            </button>
+          </div>
+          {suggestions.length > 0 && (
+            <div className="max-h-56 overflow-y-auto border-t border-slate-100">
+              {suggestions.map((d) => (
+                <button
+                  key={d._id}
+                  onClick={() => handleSearchPick(d)}
+                  className="w-full px-3 py-2 text-left hover:bg-slate-50"
+                >
+                  <div className="text-[12px] font-black uppercase text-slate-800">{d.businessName}</div>
+                  <div className="text-[10px] font-semibold text-slate-500">
+                    {(d.address?.city || '')} {(d.address?.district || '')}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="absolute inset-0 z-0">
         <Map
@@ -243,7 +497,8 @@ export default function Home() {
           focusRequestZoom={mapFocusZoom}
           drivers={filteredDrivers}
           activeDriverId={activeDriverId}
-          onSelectDriver={setActiveDriverId}
+          onSelectDriver={handleSelectDriver}
+          onMapMove={handleMapMove}
           onMapClick={() => setActiveDriverId(null)}
           onStartOrder={handleCreateOrder}
         />
@@ -260,12 +515,20 @@ export default function Home() {
         drivers={filteredDrivers}
         loading={loading}
         activeDriverId={activeDriverId}
-        onSelectDriver={setActiveDriverId}
+        onSelectDriver={handleSelectDriver}
         onStartOrder={handleCreateOrder}
         isSidebarOpen={false}
       />
 
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
+
+      {(offlineNotice || reminderNotice) && (
+        <div className="fixed inset-x-0 bottom-3 z-[2600] flex justify-center pointer-events-none">
+          <div className="max-w-[92vw] rounded-2xl bg-black/80 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white shadow-xl">
+            {offlineNotice || reminderNotice}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

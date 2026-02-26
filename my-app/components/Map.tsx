@@ -74,7 +74,7 @@ const SERVICE_ICONS: Record<string, string> = {
 };
 
 const RENDER_SERVICE_TYPES = Object.keys(SERVICE_COLORS) as string[];
-const FOCUS_UP_OFFSET_PX = 300;
+const FOCUS_PADDING_BASE = { top: 72, right: 36, left: 36 };
 
 const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Depannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Ewakuator', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
@@ -140,16 +140,37 @@ function createEmptyFeatureCollection() {
   return { type: 'FeatureCollection', features: [] as any[] };
 }
 
-function createDriversGeoJsonByType(drivers: Driver[]) {
+function createDriversGeoJsonByType(drivers: Driver[], zoomLevel = 12) {
   const grouped: Record<string, any> = {};
   for (const type of RENDER_SERVICE_TYPES) {
     grouped[type] = createEmptyFeatureCollection();
   }
 
+  const lowZoomAggregation = zoomLevel < 8.5;
+  const cellSize = zoomLevel < 6.5 ? 0.18 : 0.08;
+  const buckets = new Map<string, { count: number; sumLng: number; sumLat: number; driver: Driver; subType: string }>();
+
   for (const d of drivers) {
     if (!Array.isArray(d.location?.coordinates)) continue;
     const subType = normalizeServiceType(d.service?.subType);
     if (HIDDEN_CATEGORIES.has(subType)) continue;
+
+    if (lowZoomAggregation) {
+      const lng = d.location.coordinates[0];
+      const lat = d.location.coordinates[1];
+      const gridLng = Math.round(lng / cellSize) * cellSize;
+      const gridLat = Math.round(lat / cellSize) * cellSize;
+      const bucketKey = `${subType}:${gridLng.toFixed(3)}:${gridLat.toFixed(3)}`;
+      const existing = buckets.get(bucketKey);
+      if (existing) {
+        existing.count += 1;
+        existing.sumLng += lng;
+        existing.sumLat += lat;
+      } else {
+        buckets.set(bucketKey, { count: 1, sumLng: lng, sumLat: lat, driver: d, subType });
+      }
+      continue;
+    }
 
     grouped[subType].features.push({
       type: 'Feature',
@@ -169,6 +190,31 @@ function createDriversGeoJsonByType(drivers: Driver[]) {
         icon: SERVICE_ICONS[subType] || SERVICE_ICONS.other,
       },
     });
+  }
+
+  if (lowZoomAggregation) {
+    for (const entry of buckets.values()) {
+      const rep = entry.driver;
+      const subType = entry.subType;
+      grouped[subType].features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [entry.sumLng / entry.count, entry.sumLat / entry.count],
+        },
+        properties: {
+          driverId: rep._id,
+          businessName: rep.businessName || 'Isimsiz Isletme',
+          distance: Number(rep.distance || 0),
+          phoneNumber: rep.phoneNumber || '',
+          rating: Number(rep.rating || 5),
+          website: rep.website || rep.link || '',
+          subType,
+          color: getServiceColor(subType),
+          icon: SERVICE_ICONS[subType] || SERVICE_ICONS.other,
+        },
+      });
+    }
   }
 
   return grouped;
@@ -211,6 +257,15 @@ function createUserPointGeoJson(coords: [number, number] | null) {
   };
 }
 
+function getFocusPadding() {
+  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 520 };
+  const vh = window.innerHeight || 900;
+  return {
+    ...FOCUS_PADDING_BASE,
+    bottom: Math.max(460, Math.round(vh * 0.5)),
+  };
+}
+
 function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver, method: 'call' | 'message') => void) {
   const subType = driver.service?.subType || 'other';
   const color = getServiceColor(subType);
@@ -219,10 +274,18 @@ function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver
 
   const wrap = document.createElement('div');
   wrap.className = 'p-2 text-gray-900';
-  wrap.style.minWidth = '250px';
+  wrap.style.minWidth = '380px';
+  wrap.style.width = 'min(380px, calc(100vw - 48px))';
+  wrap.style.maxWidth = '100%';
+  wrap.style.boxSizing = 'border-box';
+  wrap.style.transform = 'scale(0.975)';
+  wrap.style.transformOrigin = 'top left';
 
   const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';
-  const rating = (driver.rating || 5).toFixed(1);
+  const ratingValue = Number(driver.rating || 5);
+  const rating = ratingValue.toFixed(1);
+  const filledStars = Math.max(0, Math.min(5, Math.round(ratingValue)));
+  const emptyStars = 5 - filledStars;
   const phone = driver.phoneNumber || '';
 
   wrap.innerHTML = `
@@ -232,12 +295,15 @@ function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver
         ${distance ? `<span style="font-size:10px;font-weight:800;color:#9ca3af;">${distance}</span>` : ''}
       </div>
       <h4 style="font-size:13px;font-weight:900;margin:0 0 6px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
-      <div style="font-size:11px;font-weight:800;color:#6b7280;margin-bottom:12px;">⭐ ${rating}</div>
-      <div style="display:flex;gap:8px;">
-        <button data-action="call" style="flex:1;border:0;border-radius:14px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.call}</button>
-        <button data-action="message" style="flex:1;border:0;border-radius:14px;padding:10px 8px;color:white;background:#374151;font-size:10px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+      <div style="font-size:11px;font-weight:800;color:#6b7280;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+        <span style="color:#dc2626;letter-spacing:1px;">${'★'.repeat(filledStars)}${'☆'.repeat(emptyStars)}</span>
+        <span>${rating}</span>
       </div>
-      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:10px;padding:9px 8px;color:white;background:#111827;font-size:10px;font-weight:900;cursor:pointer;">${uiText.show}</button>
+      <div style="display:flex;gap:8px;">
+        <button data-action="call" style="flex:1;border:0;border-radius:13px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.call}</button>
+        <button data-action="message" style="flex:1;border:0;border-radius:13px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+      </div>
+      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:11px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.show}</button>
     </div>
   `;
 
@@ -276,6 +342,7 @@ function MapView({
   onMapClick,
 }: MapProps) {
   const [lang, setLang] = useState<AppLang>('tr');
+  const [mapZoomLevel, setMapZoomLevel] = useState<number>(12);
   const mapNodeRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
@@ -312,10 +379,11 @@ function MapView({
     });
 
     mapRef.current = map;
+    setMapZoomLevel(searchCoords ? 12 : 5.8);
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', () => {
-      const grouped = createDriversGeoJsonByType(drivers);
+      const grouped = createDriversGeoJsonByType(drivers, map.getZoom());
       for (const type of RENDER_SERVICE_TYPES) {
         const sourceId = `drivers-${type}`;
         map.addSource(sourceId, {
@@ -359,7 +427,7 @@ function MapView({
           filter: ['!', ['has', 'point_count']],
           paint: {
             'circle-color': getServiceColor(type),
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 10, 12, 12.5, 16, 14.5],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15, 12, 18.75, 16, 21.75],
             'circle-opacity': 0.95,
             'circle-stroke-width': 2.5,
             'circle-stroke-color': '#ffffff',
@@ -378,8 +446,8 @@ function MapView({
         source: 'active-driver',
         paint: {
           'circle-color': ['coalesce', ['get', 'color'], '#111827'],
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 14, 12, 18, 16, 22],
-          'circle-stroke-width': 4,
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15, 12, 18.75, 16, 21.75],
+          'circle-stroke-width': 3,
           'circle-stroke-color': ['coalesce', ['get', 'color'], '#111827'],
           'circle-opacity': 0.96,
         },
@@ -454,6 +522,7 @@ function MapView({
       map.on('moveend', () => {
         const c = map.getCenter();
         const b = map.getBounds();
+        setMapZoomLevel(map.getZoom());
         onMapMove?.(c.lat, c.lng, map.getZoom(), {
           minLat: b.getSouth(),
           minLng: b.getWest(),
@@ -473,7 +542,7 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const grouped = createDriversGeoJsonByType(drivers);
+    const grouped = createDriversGeoJsonByType(drivers, mapZoomLevel);
     for (const type of RENDER_SERVICE_TYPES) {
       const source = map.getSource(`drivers-${type}`) as maplibregl.GeoJSONSource | undefined;
       if (source) source.setData(grouped[type] as any);
@@ -482,7 +551,7 @@ function MapView({
     if (activeSource) {
       activeSource.setData(createActiveDriverGeoJson(activeDriverId ? driverById.get(activeDriverId) : undefined) as any);
     }
-  }, [drivers, activeDriverId, driverById]);
+  }, [drivers, activeDriverId, driverById, mapZoomLevel]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -500,12 +569,12 @@ function MapView({
       lastFocusTokenRef.current = focusRequestToken;
       lastActiveFocusIdRef.current = activeDriverId ?? null;
       map.stop();
-      map.easeTo({
-        center: [searchCoords[1], searchCoords[0]],
-        zoom: focusRequestZoom ?? 15,
-        duration: 900,
-        offset: [0, FOCUS_UP_OFFSET_PX],
-      });
+        map.easeTo({
+          center: [searchCoords[1], searchCoords[0]],
+          zoom: focusRequestZoom ?? 13.2,
+          duration: 900,
+          padding: getFocusPadding(),
+        });
       return;
     }
 
@@ -517,9 +586,9 @@ function MapView({
         map.stop();
         map.easeTo({
           center: [coords[0], coords[1]],
-          zoom: 16,
+          zoom: 12.8,
           duration: 900,
-          offset: [0, FOCUS_UP_OFFSET_PX],
+          padding: getFocusPadding(),
         });
       }
     } else if (!activeDriverId) {
@@ -538,7 +607,13 @@ function MapView({
     if (!driver?.location?.coordinates) return;
 
     const popupNode = buildPopup(driver, lang, onStartOrder);
-    const popup = new maplibregl.Popup({ closeButton: false, closeOnMove: true, offset: 20 })
+    const popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnMove: false,
+      anchor: 'bottom',
+      offset: 18,
+      maxWidth: 'min(420px, calc(100vw - 24px))'
+    })
       .setLngLat([driver.location.coordinates[0], driver.location.coordinates[1]])
       .setDOMContent(popupNode)
       .addTo(map);

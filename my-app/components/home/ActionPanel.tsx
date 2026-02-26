@@ -19,6 +19,7 @@ import {
   Package, Container, ArrowUpDown, Map as MapIcon,
   Check, Phone, MessageCircle, Info, Users, Bus, Crown,
   ThumbsUp,
+  Heart,
   Layers,
   Box,
   Archive,
@@ -60,9 +61,10 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
   "Yalova": [40.6500, 29.2667], "Yozgat": [39.8181, 34.8147], "Zonguldak": [41.4564, 31.7987]
 };
 
-const DEFAULT_LAT = 39.9334;
-const DEFAULT_LNG = 32.8597;
+const DEFAULT_LAT = 41.0082;
+const DEFAULT_LNG = 28.9784;
 const LAST_LOCATION_KEY = 'Transport_last_location';
+const FAVORITES_KEY = 'Transport_favorites_v1';
 
 // --- SERVICE_OPTIONS VE ALT SEÇENEKLER ---
 const SERVICE_OPTIONS = [
@@ -235,6 +237,8 @@ function ActionPanel({
   const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
   const [activePhotoCardId, setActivePhotoCardId] = useState<string | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [showFavorites, setShowFavorites] = useState(false);
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
   const activeThemeColor = useMemo(() => {
@@ -264,6 +268,49 @@ function ActionPanel({
   useEffect(() => {
     setLang(getPreferredLang());
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      setFavorites(raw ? JSON.parse(raw) : []);
+    } catch {
+      setFavorites([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    } catch {}
+  }, [favorites]);
+
+  const isFavorite = useCallback((id: string) => favorites.some((f) => f._id === id), [favorites]);
+
+  const toggleFavorite = useCallback((driver: any) => {
+    setFavorites((prev) => {
+      const exists = prev.some((f) => f._id === driver._id);
+      if (exists) return prev.filter((f) => f._id !== driver._id);
+      return [...prev, {
+        _id: driver._id,
+        businessName: driver.businessName,
+        phoneNumber: driver.phoneNumber,
+        rating: driver.rating,
+        service: driver.service,
+        address: driver.address,
+        location: driver.location,
+      }];
+    });
+  }, []);
+
+  const focusFavorite = useCallback((f: any) => {
+    const lat = f?.location?.coordinates?.[1];
+    const lng = f?.location?.coordinates?.[0];
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      onSearchLocation(lat, lng, { forceFocus: true, targetZoom: 13, clearActiveDriver: false });
+    }
+    onSelectDriver(f?._id || null);
+    setShowFavorites(false);
+  }, [onSearchLocation, onSelectDriver]);
 
   const handleMainCategoryClick = (category: string) => {
     setPanelState(current => (current <= 1 ? 2 : current));
@@ -565,7 +612,37 @@ function ActionPanel({
                 <button onClick={() => setSortMode(m => m === 'rating' ? 'distance' : 'rating')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-colors flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500`}`}><ThumbsUp size={12}/> {tx.score}</button>
               </div>
 
-              <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 ml-auto transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setShowFavorites((v) => !v)}
+                  className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 transition-colors ${activeThemeColor}`}
+                >
+                  <Heart size={16} />
+                </button>
+                <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
+              </div>
+          </div>
+        )}
+
+        {showFavorites && (
+          <div className="mb-3 rounded-2xl border border-white/40 bg-white/90 p-3 shadow-lg">
+            <div className="mb-2 text-[10px] font-black uppercase text-slate-600">Kaydedilenler</div>
+            {favorites.length === 0 ? (
+              <div className="text-[10px] font-bold text-slate-400">Henüz favori yok.</div>
+            ) : (
+              <div className="space-y-2 max-h-44 overflow-y-auto">
+                {favorites.map((f) => (
+                  <button
+                    key={f._id}
+                    onClick={() => focusFavorite(f)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left"
+                  >
+                    <div className="text-[11px] font-black uppercase text-slate-800">{f.businessName}</div>
+                    <div className="text-[9px] font-semibold text-slate-500">{f.address?.city || ''} {f.address?.district || ''}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -822,6 +899,17 @@ function ActionPanel({
                             <MapIcon size={16} /> {tx.mapsOpen}
                           </button>
                         )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
+                            className="w-full py-3 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40"
+                            style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
+                          >
+                            <Heart size={14} className={isFavorite(driver._id) ? 'fill-white' : ''} />
+                            {isFavorite(driver._id) ? 'FAVORILERDEN CIKAR' : 'FAVORILERE EKLE'}
+                          </button>
+                        </div>
+
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }}
