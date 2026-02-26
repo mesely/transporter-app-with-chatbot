@@ -1,56 +1,39 @@
-/**
- * @file Map.tsx
- * @description Transport 245 Akıllı Harita Motoru.
- * FIX: Kümeleme mantığı sadece aynı subType içindekileri gruplayacak şekilde özelleştirildi.
- * FIX: Yolcu Taşıma ve Gezici Şarj kategorisindeki sürücüler haritada (marker olarak) gizlendi.
- * FIX: İl seçimi yapıldığında harita otomatik olarak o koordinata odaklanır.
- */
-
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { useEffect, useState, useMemo, useRef, memo } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { AppLang, getPreferredLang } from '../utils/language';
-
-// --- ICONS ---
-import { 
-  Truck, Zap, Anchor, Star, 
-  CarFront, Globe, Home, Navigation, Phone, MessageCircle, Package, MapPin,
-  Users, Bus, Crown
+import { renderToStaticMarkup } from 'react-dom/server';
+import {
+  Anchor,
+  Bus,
+  CarFront,
+  Container,
+  Crown,
+  Globe,
+  Home,
+  MapPin,
+  Navigation,
+  Package,
+  Truck,
+  Users
 } from 'lucide-react';
 
-// --- ÖZEL İKON: GEZİCİ ŞARJ ---
-const GeziciSarjIcon = ({ size = 24, color = "currentColor" }: { size?: number, color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
-    <path d="M29 36c4 0 4-10 10-10s6 10 10 10" strokeDasharray="3 2" />
-    <path d="M38 24l2 2-2 2" strokeWidth="1" />
-    <path d="M44 38h16v8H44z" /><path d="M44 38l2-5h10l2 5" /><circle cx="48" cy="48" r="2.5" /><circle cx="56" cy="48" r="2.5" />
-  </svg>
-);
-
-// --- TİPLER ---
 interface Driver {
   _id: string;
-  businessName: string; 
+  businessName: string;
   distance?: number;
   phoneNumber?: string;
   rating?: number;
   website?: string;
   link?: string;
   location: {
-    coordinates: [number, number]; // [lng, lat]
+    coordinates: [number, number];
   };
-  address?: { city?: string; district?: string; };
-  service?: { mainType: string; subType: string; tags: string[]; };
-  pricing?: { openingFee: number; pricePerUnit: number; };
-  isCluster?: boolean;
-  count?: number;
-  expansionZoom?: number;
-  clusterServiceType?: string;
+  address?: { city?: string; district?: string };
+  service?: { mainType: string; subType: string; tags: string[] };
+  pricing?: { openingFee: number; pricePerUnit: number };
 }
 
 interface MapProps {
@@ -61,176 +44,303 @@ interface MapProps {
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   activeDriverId: string | null;
   onSelectDriver: (id: string | null) => void;
-  onMapMove?: (lat: number, lng: number, zoom: number) => void;
+  onMapMove?: (lat: number, lng: number, zoom: number, bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }) => void;
   onMapClick?: () => void;
 }
 
-// --- SERVİS YAPILANDIRMASI ---
-const SERVICE_CONFIG: any = {
-  oto_kurtarma: { color: '#dc2626', Icon: CarFront, label: 'Oto Kurtarma' },
-  vinc:         { color: '#881337', Icon: Anchor, label: 'Vinç' },
-  kurtarici:    { color: '#ef4444', Icon: CarFront, label: 'Kurtarıcı' },
-  nakliye:      { color: '#9333ea', Icon: Truck, label: 'Nakliye' },
-  evden_eve:    { color: '#a855f7', Icon: Home, label: 'Evden Eve' },
-  tir:          { color: '#7e22ce', Icon: Truck, label: 'TIR' },
-  kamyon:       { color: '#6b21a8', Icon: Truck, label: 'Kamyon' },
-  kamyonet:     { color: '#581c87', Icon: Package, label: 'Kamyonet' },
-  yurt_disi_nakliye: { color: '#1e3a8a', Icon: Globe, label: 'Uluslararası' },
-  istasyon:     { color: '#2563eb', Icon: Zap, label: 'İstasyon' },
-  seyyar_sarj:  { color: '#0ea5e9', Icon: GeziciSarjIcon, label: 'Mobil Şarj' },
-  minibus:      { color: '#10b981', Icon: Users, label: 'Minibüs' },
-  otobus:       { color: '#059669', Icon: Bus, label: 'Otobüs' },
-  midibus:      { color: '#047857', Icon: Bus, label: 'Midibüs' },
-  vip_tasima:   { color: '#064e3b', Icon: Crown, label: 'VIP Transfer' },
-  yolcu:        { color: '#10b981', Icon: Users, label: 'Yolcu Taşıma' },
-  other:        { color: '#6b7280', Icon: MapPin, label: 'Hizmet' }
+const SERVICE_COLORS: Record<string, string> = {
+  oto_kurtarma: '#dc2626',
+  vinc: '#7f1d1d',
+  kurtarici: '#dc2626',
+  nakliye: '#7e22ce',
+  evden_eve: '#7e22ce',
+  tir: '#7e22ce',
+  kamyon: '#7e22ce',
+  kamyonet: '#7e22ce',
+  yurt_disi_nakliye: '#3730a3',
+  istasyon: '#2563eb',
+  seyyar_sarj: '#0891b2',
+  minibus: '#059669',
+  otobus: '#059669',
+  midibus: '#059669',
+  vip_tasima: '#059669',
+  yolcu: '#059669',
+  other: '#6b7280',
+};
+
+const SERVICE_ICONS: Record<string, string> = {
+  oto_kurtarma: '🚗',
+  vinc: '🏗',
+  kurtarici: '🚨',
+  nakliye: '🚚',
+  evden_eve: '🏠',
+  tir: '🚛',
+  kamyon: '🚚',
+  kamyonet: '📦',
+  yurt_disi_nakliye: '🌍',
+  istasyon: '⚡',
+  seyyar_sarj: '🔋',
+  minibus: '🚐',
+  otobus: '🚌',
+  midibus: '🚌',
+  vip_tasima: '👑',
+  yolcu: '👥',
+  other: '📍',
+};
+
+const RENDER_SERVICE_TYPES = Object.keys(SERVICE_COLORS) as string[];
+const FOCUS_UP_OFFSET_PX = 240;
+
+const GeziciSarjIcon = ({ size = 24, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
+    <path d="M29 36c4 0 4-10 10-10s6 10 10 10" strokeDasharray="3 2" />
+    <path d="M38 24l2 2-2 2" strokeWidth="1" />
+    <path d="M44 38h16v8H44z" /><path d="M44 38l2-5h10l2 5" /><circle cx="48" cy="48" r="2.5" /><circle cx="56" cy="48" r="2.5" />
+  </svg>
+);
+
+const SERVICE_ICON_COMPONENTS: Record<string, any> = {
+  oto_kurtarma: CarFront,
+  vinc: Anchor,
+  kurtarici: CarFront,
+  nakliye: Truck,
+  evden_eve: Home,
+  tir: Container,
+  kamyon: Truck,
+  kamyonet: Package,
+  yurt_disi_nakliye: Globe,
+  istasyon: Navigation,
+  seyyar_sarj: GeziciSarjIcon,
+  minibus: CarFront,
+  otobus: Bus,
+  midibus: Bus,
+  vip_tasima: Crown,
+  yolcu: Users,
+  other: MapPin,
 };
 
 const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
-  oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Dépannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Эвакуатор', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
-  vinc: { tr: 'Vinç', en: 'Crane', de: 'Kran', fr: 'Grue', it: 'Gru', es: 'Grúa', pt: 'Guindaste', ru: 'Кран', zh: '吊车', ja: 'クレーン', ko: '크레인', ar: 'رافعة' },
-  kurtarici: { tr: 'Kurtarıcı', en: 'Recovery', de: 'Bergung', fr: 'Remorquage', it: 'Recupero', es: 'Rescate', pt: 'Resgate', ru: 'Эвакуация', zh: '救援', ja: '救援', ko: '구난', ar: 'إنقاذ' },
-  nakliye: { tr: 'Nakliye', en: 'Transport', de: 'Transport', fr: 'Transport', it: 'Trasporto', es: 'Transporte', pt: 'Transporte', ru: 'Перевозка', zh: '运输', ja: '輸送', ko: '운송', ar: 'نقل' },
-  evden_eve: { tr: 'Evden Eve', en: 'Home Moving', de: 'Umzug', fr: 'Déménagement', it: 'Trasloco', es: 'Mudanza', pt: 'Mudança', ru: 'Переезд', zh: '搬家', ja: '引っ越し', ko: '이사', ar: 'نقل منزلي' },
-  tir: { tr: 'TIR', en: 'Trailer Truck', de: 'Sattelzug', fr: 'Semi-remorque', it: 'Autoarticolato', es: 'Tráiler', pt: 'Caminhão carreta', ru: 'Фура', zh: '半挂车', ja: 'トレーラー', ko: '트레일러', ar: 'شاحنة مقطورة' },
-  kamyon: { tr: 'Kamyon', en: 'Truck', de: 'LKW', fr: 'Camion', it: 'Camion', es: 'Camión', pt: 'Caminhão', ru: 'Грузовик', zh: '卡车', ja: 'トラック', ko: '트럭', ar: 'شاحنة' },
-  kamyonet: { tr: 'Kamyonet', en: 'Van', de: 'Transporter', fr: 'Fourgon', it: 'Furgone', es: 'Furgoneta', pt: 'Van', ru: 'Фургон', zh: '厢式车', ja: 'バン', ko: '밴', ar: 'فان' },
-  yurt_disi_nakliye: { tr: 'Uluslararası', en: 'International', de: 'International', fr: 'International', it: 'Internazionale', es: 'Internacional', pt: 'Internacional', ru: 'Международный', zh: '国际运输', ja: '国際輸送', ko: '국제 운송', ar: 'دولي' },
-  istasyon: { tr: 'İstasyon', en: 'Station', de: 'Station', fr: 'Station', it: 'Stazione', es: 'Estación', pt: 'Estação', ru: 'Станция', zh: '充电站', ja: 'ステーション', ko: '스테이션', ar: 'محطة' },
-  seyyar_sarj: { tr: 'Mobil Şarj', en: 'Mobile Charge', de: 'Mobiles Laden', fr: 'Charge mobile', it: 'Ricarica mobile', es: 'Carga móvil', pt: 'Carga móvel', ru: 'Мобильная зарядка', zh: '移动充电', ja: '移動充電', ko: '이동 충전', ar: 'شحن متنقل' },
-  minibus: { tr: 'Minibüs', en: 'Minibus', de: 'Minibus', fr: 'Minibus', it: 'Minibus', es: 'Minibús', pt: 'Micro-ônibus', ru: 'Микроавтобус', zh: '小巴', ja: 'ミニバス', ko: '미니버스', ar: 'ميني باص' },
-  otobus: { tr: 'Otobüs', en: 'Bus', de: 'Bus', fr: 'Bus', it: 'Autobus', es: 'Autobús', pt: 'Ônibus', ru: 'Автобус', zh: '公交车', ja: 'バス', ko: '버스', ar: 'حافلة' },
-  midibus: { tr: 'Midibüs', en: 'Midibus', de: 'Midibus', fr: 'Midibus', it: 'Midibus', es: 'Midibús', pt: 'Midi-ônibus', ru: 'Мидибус', zh: '中巴', ja: 'ミディバス', ko: '미디버스', ar: 'ميدي باص' },
-  vip_tasima: { tr: 'VIP Transfer', en: 'VIP Transfer', de: 'VIP Transfer', fr: 'Transfert VIP', it: 'Transfer VIP', es: 'Traslado VIP', pt: 'Transfer VIP', ru: 'VIP трансфер', zh: 'VIP接送', ja: 'VIP送迎', ko: 'VIP 이동', ar: 'نقل VIP' },
-  yolcu: { tr: 'Yolcu Taşıma', en: 'Passenger', de: 'Personentransport', fr: 'Transport passager', it: 'Trasporto passeggeri', es: 'Transporte de pasajeros', pt: 'Transporte de passageiros', ru: 'Пассажирский', zh: '客运', ja: '旅客輸送', ko: '승객 운송', ar: 'نقل ركاب' },
-  other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Serviço', ru: 'Сервис', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' }
+  oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Depannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Ewakuator', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
+  vinc: { tr: 'Vinc', en: 'Crane', de: 'Kran', fr: 'Grue', it: 'Gru', es: 'Grua', pt: 'Guindaste', ru: 'Kran', zh: '吊车', ja: 'クレーン', ko: '크레인', ar: 'رافعة' },
+  kurtarici: { tr: 'Kurtarici', en: 'Recovery', de: 'Bergung', fr: 'Remorquage', it: 'Recupero', es: 'Rescate', pt: 'Resgate', ru: 'Evakuaciya', zh: '救援', ja: '救援', ko: '구난', ar: 'إنقاذ' },
+  nakliye: { tr: 'Nakliye', en: 'Transport', de: 'Transport', fr: 'Transport', it: 'Trasporto', es: 'Transporte', pt: 'Transporte', ru: 'Perevozka', zh: '运输', ja: '輸送', ko: '운송', ar: 'نقل' },
+  evden_eve: { tr: 'Evden Eve', en: 'Home Moving', de: 'Umzug', fr: 'Demenagement', it: 'Trasloco', es: 'Mudanza', pt: 'Mudanca', ru: 'Pereezd', zh: '搬家', ja: '引っ越し', ko: '이사', ar: 'نقل منزلي' },
+  tir: { tr: 'TIR', en: 'Trailer Truck', de: 'Sattelzug', fr: 'Semi-remorque', it: 'Autoarticolato', es: 'Trailer', pt: 'Carreta', ru: 'Fura', zh: '半挂车', ja: 'トレーラー', ko: '트레일러', ar: 'شاحنة مقطورة' },
+  kamyon: { tr: 'Kamyon', en: 'Truck', de: 'LKW', fr: 'Camion', it: 'Camion', es: 'Camion', pt: 'Caminhao', ru: 'Gruzovik', zh: '卡车', ja: 'トラック', ko: '트럭', ar: 'شاحنة' },
+  kamyonet: { tr: 'Kamyonet', en: 'Van', de: 'Transporter', fr: 'Fourgon', it: 'Furgone', es: 'Furgoneta', pt: 'Van', ru: 'Furgon', zh: '厢式车', ja: 'バン', ko: '밴', ar: 'فان' },
+  yurt_disi_nakliye: { tr: 'Uluslararasi', en: 'International', de: 'International', fr: 'International', it: 'Internazionale', es: 'Internacional', pt: 'Internacional', ru: 'Mezhdunarodnyj', zh: '国际运输', ja: '国際輸送', ko: '국제 운송', ar: 'دولي' },
+  istasyon: { tr: 'Istasyon', en: 'Station', de: 'Station', fr: 'Station', it: 'Stazione', es: 'Estacion', pt: 'Estacao', ru: 'Stanciya', zh: '充电站', ja: 'ステーション', ko: '스테이션', ar: 'محطة' },
+  seyyar_sarj: { tr: 'Mobil Sarj', en: 'Mobile Charge', de: 'Mobiles Laden', fr: 'Charge mobile', it: 'Ricarica mobile', es: 'Carga movil', pt: 'Carga movel', ru: 'Mobilnaya zaryadka', zh: '移动充电', ja: '移動充電', ko: '이동 충전', ar: 'شحن متنقل' },
+  minibus: { tr: 'Minibus', en: 'Minibus', de: 'Minibus', fr: 'Minibus', it: 'Minibus', es: 'Minibus', pt: 'Micro-onibus', ru: 'Mikroavtobus', zh: '小巴', ja: 'ミニバス', ko: '미니버스', ar: 'ميني باص' },
+  otobus: { tr: 'Otobus', en: 'Bus', de: 'Bus', fr: 'Bus', it: 'Autobus', es: 'Autobus', pt: 'Onibus', ru: 'Avtobus', zh: '公交车', ja: 'バス', ko: '버스', ar: 'حافلة' },
+  midibus: { tr: 'Midibus', en: 'Midibus', de: 'Midibus', fr: 'Midibus', it: 'Midibus', es: 'Midibus', pt: 'Midi-onibus', ru: 'Midibus', zh: '中巴', ja: 'ミディバス', ko: '미디버스', ar: 'ميدي باص' },
+  vip_tasima: { tr: 'VIP Transfer', en: 'VIP Transfer', de: 'VIP Transfer', fr: 'Transfert VIP', it: 'Transfer VIP', es: 'Traslado VIP', pt: 'Transfer VIP', ru: 'VIP transfer', zh: 'VIP接送', ja: 'VIP送迎', ko: 'VIP 이동', ar: 'نقل VIP' },
+  yolcu: { tr: 'Yolcu Tasima', en: 'Passenger', de: 'Personentransport', fr: 'Transport passager', it: 'Trasporto passeggeri', es: 'Transporte de pasajeros', pt: 'Transporte de passageiros', ru: 'Passazhirskij', zh: '客运', ja: '旅客輸送', ko: '승객 운송', ar: 'نقل ركاب' },
+  other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Servico', ru: 'Servis', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' },
 };
+
 const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; show: string }> = {
-  tr: { call: 'ARA', message: 'MESAJ AT', show: 'HARİTADA GÖSTER' },
+  tr: { call: 'ARA', message: 'MESAJ AT', show: 'HARITADA GOSTER' },
   en: { call: 'CALL', message: 'MESSAGE', show: 'SHOW ON MAP' },
   de: { call: 'ANRUFEN', message: 'NACHRICHT', show: 'AUF KARTE ZEIGEN' },
   fr: { call: 'APPELER', message: 'MESSAGE', show: 'VOIR SUR LA CARTE' },
   it: { call: 'CHIAMA', message: 'MESSAGGIO', show: 'MOSTRA SULLA MAPPA' },
   es: { call: 'LLAMAR', message: 'MENSAJE', show: 'VER EN MAPA' },
   pt: { call: 'LIGAR', message: 'MENSAGEM', show: 'VER NO MAPA' },
-  ru: { call: 'ПОЗВОНИТЬ', message: 'СООБЩЕНИЕ', show: 'ПОКАЗАТЬ НА КАРТЕ' },
+  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', show: 'POKAZAT NA KARTE' },
   zh: { call: '拨打电话', message: '发送消息', show: '在地图中显示' },
   ja: { call: '電話する', message: 'メッセージ', show: '地図で表示' },
   ko: { call: '전화하기', message: '메시지', show: '지도에서 보기' },
-  ar: { call: 'اتصال', message: 'رسالة', show: 'عرض على الخريطة' }
+  ar: { call: 'اتصال', message: 'رسالة', show: 'عرض على الخريطة' },
 };
 
-const darkenHex = (hex: string, amount: number) => {
+const BASE_STYLE = {
+  version: 8,
+  sources: {
+    carto: {
+      type: 'raster',
+      tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', 'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'],
+      tileSize: 256,
+      attribution: 'OpenStreetMap contributors, CARTO',
+    },
+  },
+  layers: [{ id: 'carto-layer', type: 'raster', source: 'carto', minzoom: 0, maxzoom: 22 }],
+} as const;
+
+const HIDDEN_CATEGORIES = new Set(['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima']);
+const INITIAL_CENTER: [number, number] = [35.2433, 38.9637];
+
+function getServiceColor(subType: string) {
+  return SERVICE_COLORS[subType] || SERVICE_COLORS.other;
+}
+
+function normalizeServiceType(subType: string | undefined) {
+  if (!subType) return 'other';
+  return SERVICE_COLORS[subType] ? subType : 'other';
+}
+
+function darkenHex(hex: string, amount: number) {
   const raw = hex.replace('#', '');
   if (raw.length !== 6) return hex;
   const r = Math.max(0, Math.min(255, parseInt(raw.slice(0, 2), 16) - amount));
   const g = Math.max(0, Math.min(255, parseInt(raw.slice(2, 4), 16) - amount));
   const b = Math.max(0, Math.min(255, parseInt(raw.slice(4, 6), 16) - amount));
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-};
-
-// --- İKON GENERATORLARI ---
-const createCustomIcon = (type: string | undefined, zoom: number, isActive: boolean) => {
-  const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const activeColor = darkenHex(config.color, 55);
-  const baseSize = isActive ? 56 : Math.max(36, Math.min(48, zoom * 2.8)); 
-  const iconHtml = renderToStaticMarkup(<config.Icon size={baseSize * 0.55} color="white" strokeWidth={2.5} />);
-
-  return L.divIcon({
-    className: `custom-pin-marker ${isActive ? 'z-[2000]' : ''}`,
-    html: `
-      <div style="
-        background-color: ${isActive ? activeColor : config.color}; 
-        width: ${baseSize}px; height: ${baseSize}px; 
-        border-radius: 50% 50% 50% 0; transform: rotate(-45deg); 
-        border: ${isActive ? '4px' : '2px'} solid white; 
-        box-shadow: ${isActive ? '0 0 30px rgba(0,0,0,0.35)' : '0 4px 12px rgba(0,0,0,0.25)'}; 
-        display: flex; align-items: center; justify-content: center;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-        <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
-          ${iconHtml}
-        </div>
-      </div>
-    `,
-    iconSize: [baseSize, baseSize], 
-    iconAnchor: [baseSize / 2, baseSize],
-    popupAnchor: [0, -baseSize] 
-  });
-};
-
-const createClusterIcon = (count: number, type: string) => {
-  const config = SERVICE_CONFIG[type || ''] || SERVICE_CONFIG.other;
-  const size = 44 + (Math.min(count, 50) / 50) * 14;
-  const iconHtml = renderToStaticMarkup(<config.Icon size={size * 0.35} color="white" strokeWidth={3} />);
-
-  return L.divIcon({
-    className: 'custom-cluster-marker',
-    html: `
-      <div style="
-        background-color: ${config.color}; 
-        width: ${size}px; height: ${size}px; 
-        border-radius: 50%; border: 3px solid rgba(255,255,255,0.9);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <div style="margin-bottom: -2px;">${iconHtml}</div>
-        <div style="font-weight: 900; font-size: ${size * 0.28}px; color: white; line-height: 1; letter-spacing: -0.5px;">${count}</div>
-      </div>
-    `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2]
-  });
-};
-
-// --- HARİTA KONTROLLERİ ---
-function MapEvents({ onZoomChange, onMapMove, onMapClick }: any) {
-  const map = useMapEvents({
-    zoomend: () => onZoomChange(map.getZoom()),
-    moveend: () => onMapMove && onMapMove(map.getCenter().lat, map.getCenter().lng, map.getZoom()),
-    click: (e) => {
-      if ((e.originalEvent.target as HTMLElement).classList.contains('leaflet-container')) {
-        onMapClick && onMapClick();
-      }
-    }
-  });
-  return null;
 }
 
-function MapController({
-  coords,
-  activeDriverCoords,
-  focusRequestToken,
-  focusRequestZoom,
-}: {
-  coords: [number, number] | null;
-  activeDriverCoords: [number, number] | null;
-  focusRequestToken?: number;
-  focusRequestZoom?: number;
-}) {
-  const map = useMap();
-  const lastFocusTokenRef = useRef<number | undefined>(undefined);
+function createDomMarker(subType: string, active: boolean) {
+  const baseColor = getServiceColor(subType);
+  const color = active ? darkenHex(baseColor, 50) : baseColor;
 
-  useEffect(() => {
-    const hasNewFocusRequest =
-      typeof focusRequestToken === 'number' &&
-      focusRequestToken !== lastFocusTokenRef.current;
-
-    if (hasNewFocusRequest && coords) {
-      lastFocusTokenRef.current = focusRequestToken;
-      map.flyTo(coords, focusRequestZoom ?? 15, { duration: 0.9, easeLinearity: 0.25 });
-      return;
-    }
-
-    if (activeDriverCoords) {
-      map.flyTo(activeDriverCoords, 16, { duration: 1.2 });
-    } else if (coords) {
-      map.flyTo(coords, 12, { duration: 1.5 });
-    }
-  }, [coords, activeDriverCoords, focusRequestToken, focusRequestZoom, map]);
-  return null;
+  const el = document.createElement('div');
+  el.style.width = active ? '62px' : '54px';
+  el.style.height = active ? '62px' : '54px';
+  el.style.borderRadius = '9999px';
+  el.style.transform = 'scale(0.85)';
+  el.style.transformOrigin = 'bottom center';
+  el.style.background = color;
+  el.style.border = active ? '4px solid #fff' : '3px solid #fff';
+  el.style.boxShadow = active ? '0 0 20px rgba(0,0,0,0.28)' : '0 6px 14px rgba(0,0,0,0.2)';
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
+  el.style.cursor = 'pointer';
+  el.style.pointerEvents = 'auto';
+  el.style.transition = 'all .18s ease';
+  el.innerHTML = `<div style="width:34%;height:34%;border-radius:9999px;background:rgba(255,255,255,0.95);"></div>`;
+  return el;
 }
 
-// --- ANA BİLEŞEN ---
-function Map({
+function createEmptyFeatureCollection() {
+  return { type: 'FeatureCollection', features: [] as any[] };
+}
+
+function createDriversGeoJsonByType(drivers: Driver[]) {
+  const grouped: Record<string, any> = {};
+  for (const type of RENDER_SERVICE_TYPES) {
+    grouped[type] = createEmptyFeatureCollection();
+  }
+
+  for (const d of drivers) {
+    if (!Array.isArray(d.location?.coordinates)) continue;
+    const subType = normalizeServiceType(d.service?.subType);
+    if (HIDDEN_CATEGORIES.has(subType)) continue;
+
+    grouped[subType].features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: d.location.coordinates,
+      },
+      properties: {
+        driverId: d._id,
+        businessName: d.businessName || 'Isimsiz Isletme',
+        distance: Number(d.distance || 0),
+        phoneNumber: d.phoneNumber || '',
+        rating: Number(d.rating || 5),
+        website: d.website || d.link || '',
+        subType,
+        color: getServiceColor(subType),
+        icon: SERVICE_ICONS[subType] || SERVICE_ICONS.other,
+      },
+    });
+  }
+
+  return grouped;
+}
+
+function createActiveDriverGeoJson(driver: Driver | undefined) {
+  if (!driver?.location?.coordinates) return createEmptyFeatureCollection();
+  const subType = normalizeServiceType(driver.service?.subType);
+  if (HIDDEN_CATEGORIES.has(subType)) return createEmptyFeatureCollection();
+  return {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: driver.location.coordinates,
+      },
+      properties: {
+        driverId: driver._id,
+        color: getServiceColor(subType),
+        icon: SERVICE_ICONS[subType] || SERVICE_ICONS.other,
+      },
+    }],
+  };
+}
+
+function createUserPointGeoJson(coords: [number, number] | null) {
+  if (!coords) {
+    return { type: 'FeatureCollection', features: [] };
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [coords[1], coords[0]] },
+        properties: {},
+      },
+    ],
+  };
+}
+
+function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver, method: 'call' | 'message') => void) {
+  const subType = driver.service?.subType || 'other';
+  const color = getServiceColor(subType);
+  const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang] || SERVICE_LABELS.other.en;
+  const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'p-2 text-gray-900';
+  wrap.style.minWidth = '250px';
+
+  const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';
+  const rating = (driver.rating || 5).toFixed(1);
+  const phone = driver.phoneNumber || '';
+
+  wrap.innerHTML = `
+    <div style="font-family: ui-sans-serif, system-ui;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
+        <span style="font-size:10px;font-weight:900;color:white;padding:5px 8px;border-radius:10px;background:${color};text-transform:uppercase;">${label}</span>
+        ${distance ? `<span style="font-size:10px;font-weight:800;color:#9ca3af;">${distance}</span>` : ''}
+      </div>
+      <h4 style="font-size:13px;font-weight:900;margin:0 0 6px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
+      <div style="font-size:11px;font-weight:800;color:#6b7280;margin-bottom:12px;">⭐ ${rating}</div>
+      <div style="display:flex;gap:8px;">
+        <button data-action="call" style="flex:1;border:0;border-radius:14px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.call}</button>
+        <button data-action="message" style="flex:1;border:0;border-radius:14px;padding:10px 8px;color:white;background:#374151;font-size:10px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+      </div>
+      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:10px;padding:9px 8px;color:white;background:#111827;font-size:10px;font-weight:900;cursor:pointer;">${uiText.show}</button>
+    </div>
+  `;
+
+  const callBtn = wrap.querySelector('[data-action="call"]') as HTMLButtonElement | null;
+  const messageBtn = wrap.querySelector('[data-action="message"]') as HTMLButtonElement | null;
+  const showBtn = wrap.querySelector('[data-action="show"]') as HTMLButtonElement | null;
+
+  callBtn?.addEventListener('click', () => {
+    onStartOrder(driver, 'call');
+    if (phone) window.location.href = `tel:${phone}`;
+  });
+  messageBtn?.addEventListener('click', () => {
+    onStartOrder(driver, 'message');
+    if (phone) window.location.href = `sms:${phone}`;
+  });
+  showBtn?.addEventListener('click', () => {
+    const lat = driver.location?.coordinates?.[1];
+    const lng = driver.location?.coordinates?.[0];
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
+    }
+  });
+
+  return wrap;
+}
+
+function MapView({
   searchCoords,
   focusRequestToken,
   focusRequestZoom,
@@ -242,179 +352,374 @@ function Map({
   onMapClick,
 }: MapProps) {
   const [lang, setLang] = useState<AppLang>('tr');
-  const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
-  const [currentZoom, setCurrentZoom] = useState(searchCoords ? 12 : 6.5);
-  const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
-  const initialCenter: [number, number] = searchCoords || [39.9334, 32.8597];
+  const mapNodeRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const popupRef = useRef<Popup | null>(null);
+  const lastFocusTokenRef = useRef<number | undefined>(undefined);
+  const domMarkersRef = useRef<Record<string, { marker: maplibregl.Marker; subType: string; active: boolean }>>({});
+  const syncDomMarkersRef = useRef<(() => void) | null>(null);
+  const activeDriverIdRef = useRef<string | null>(activeDriverId);
+  const onSelectDriverRef = useRef(onSelectDriver);
 
-  const activeDriverCoords = useMemo(() => {
-    const d = drivers.find(d => d._id === activeDriverId);
-    return d ? [d.location.coordinates[1], d.location.coordinates[0]] as [number, number] : null;
-  }, [activeDriverId, drivers]);
+  const center = useMemo<[number, number]>(() => {
+    if (!searchCoords) return INITIAL_CENTER;
+    return [searchCoords[1], searchCoords[0]];
+  }, [searchCoords]);
 
-  const hiddenCategories = ['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'];
+  const driverById = useMemo(() => {
+    const m = new globalThis.Map<string, Driver>();
+    for (const d of drivers) m.set(d._id, d);
+    return m;
+  }, [drivers]);
 
   useEffect(() => {
     setLang(getPreferredLang());
   }, []);
 
-  const visibleMarkers = useMemo(() => {
-    const mapDrivers = drivers.filter(d => !hiddenCategories.includes(d.service?.subType || ''));
+  useEffect(() => {
+    activeDriverIdRef.current = activeDriverId;
+  }, [activeDriverId]);
 
-    if (!mapDrivers.length) return [];
-    if (currentZoom >= 12) return mapDrivers.map(d => ({ ...d, isCluster: false }));
+  useEffect(() => {
+    onSelectDriverRef.current = onSelectDriver;
+  }, [onSelectDriver]);
 
-    const result: Driver[] = [];
-    const processed = new Set<string>();
-    const threshold = 100 / Math.pow(2, currentZoom); 
+  useEffect(() => {
+    if (!mapNodeRef.current || mapRef.current) return;
 
-    mapDrivers.forEach((d) => {
-      if (processed.has(d._id) || d._id === activeDriverId) return;
-      
-      const currentSubType = d.service?.subType;
-
-      // 🔥 FIX: clusterGroup filtresine 'subType' kontrolü eklendi
-      const clusterGroup = mapDrivers.filter(other => {
-        if (processed.has(other._id) || other._id === activeDriverId) return false;
-        
-        // Sadece aynı subType olanları kümele
-        if (other.service?.subType !== currentSubType) return false;
-
-        const distLat = Math.abs(d.location.coordinates[1] - other.location.coordinates[1]);
-        const distLng = Math.abs(d.location.coordinates[0] - other.location.coordinates[0]);
-        return distLat < threshold && distLng < threshold;
-      });
-
-      if (clusterGroup.length > 1) {
-        clusterGroup.forEach(c => processed.add(c._id));
-        result.push({
-          _id: `cluster-${d._id}`,
-          businessName: 'Küme',
-          location: d.location,
-          isCluster: true,
-          count: clusterGroup.length,
-          clusterServiceType: currentSubType || 'other',
-          expansionZoom: currentZoom + 3
-        } as Driver);
-      } else {
-        result.push({ ...d, isCluster: false });
-        processed.add(d._id);
-      }
+    const map = new maplibregl.Map({
+      container: mapNodeRef.current,
+      style: BASE_STYLE as any,
+      center,
+      zoom: searchCoords ? 12 : 5.8,
+      minZoom: 5,
+      maxZoom: 18,
+      renderWorldCopies: false,
+      attributionControl: false,
     });
 
-    if (activeDriverId) {
-        const active = mapDrivers.find(d => d._id === activeDriverId);
-        if (active) result.push({ ...active, isCluster: false });
-    }
+    mapRef.current = map;
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
-    return result;
-  }, [drivers, currentZoom, activeDriverId]);
+    map.on('load', () => {
+      const grouped = createDriversGeoJsonByType(drivers);
+      for (const type of RENDER_SERVICE_TYPES) {
+        const sourceId = `drivers-${type}`;
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: grouped[type] as any,
+          cluster: true,
+          clusterMaxZoom: 11,
+          clusterRadius: 55,
+        });
 
-  return (
-    <div className="absolute inset-0 w-full h-full z-0 bg-[#f0f4f8]">
-      <MapContainer center={initialCenter} zoom={currentZoom} zoomControl={false} className="w-full h-full" minZoom={5} maxZoom={18}>
-        <TileLayer attribution='© CartoDB Voyager' url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
-        
-        <MapEvents onZoomChange={setCurrentZoom} onMapMove={onMapMove} onMapClick={onMapClick} />
-        <MapController
-          coords={searchCoords}
-          activeDriverCoords={activeDriverCoords}
-          focusRequestToken={focusRequestToken}
-          focusRequestZoom={focusRequestZoom}
-        />
+        map.addLayer({
+          id: `clusters-${type}`,
+          type: 'circle',
+          source: sourceId,
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': getServiceColor(type),
+            'circle-radius': ['step', ['get', 'point_count'], 20, 20, 25, 60, 31],
+            'circle-stroke-width': 2.5,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
 
-        {searchCoords && (
-          <Marker position={searchCoords} icon={L.divIcon({
-            className: 'user-loc',
-            html: `<div style="background-color:#2563eb; width:20px; height:20px; border-radius:50%; border:4px solid white; box-shadow:0 0 20px rgba(37,99,235,0.7); animation:pulse 2s infinite;"></div>`,
-            iconSize: [20, 20], iconAnchor: [10, 10]
-          })} />
-        )}
+        map.addLayer({
+          id: `cluster-count-${type}`,
+          type: 'symbol',
+          source: sourceId,
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-size': 13,
+            'text-font': ['Open Sans Bold'],
+          },
+          paint: { 'text-color': '#ffffff' },
+        });
 
-        {visibleMarkers.map((item: Driver) => {
-          const pos: [number, number] = [item.location.coordinates[1], item.location.coordinates[0]];
-          const subType = item.service?.subType || '';
-          
-          if (hiddenCategories.includes(subType)) return null;
+        map.addLayer({
+          id: `driver-points-${type}`,
+          type: 'circle',
+          source: sourceId,
+          filter: ['!', ['has', 'point_count']],
+          paint: {
+            'circle-color': getServiceColor(type),
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 12, 12, 14, 16, 16],
+            'circle-opacity': 0,
+            'circle-stroke-width': 0,
+            'circle-stroke-opacity': 0,
+          },
+        });
+      }
 
-          if (item.isCluster) {
-            return (
-              <Marker key={item._id} position={pos} 
-                icon={createClusterIcon(item.count || 0, item.clusterServiceType || 'other')}
-                eventHandlers={{ click: (e) => e.target._map.flyTo(pos, item.expansionZoom) }} />
-            );
+      map.addSource('active-driver', {
+        type: 'geojson',
+        data: createActiveDriverGeoJson(driverById.get(activeDriverId || '')) as any,
+      });
+
+      map.addLayer({
+        id: 'active-driver-point',
+        type: 'circle',
+        source: 'active-driver',
+        paint: {
+          'circle-color': ['coalesce', ['get', 'color'], '#111827'],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 16, 12, 20, 16, 24],
+          'circle-stroke-width': 4,
+          'circle-stroke-color': ['coalesce', ['get', 'color'], '#111827'],
+          'circle-opacity': 0.96,
+        },
+      });
+
+      map.addSource('search-point', {
+        type: 'geojson',
+        data: createUserPointGeoJson(searchCoords) as any,
+      });
+
+      map.addLayer({
+        id: 'search-point-dot',
+        type: 'circle',
+        source: 'search-point',
+        paint: {
+          'circle-color': '#2563eb',
+          'circle-radius': 8,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 3,
+        },
+      });
+
+      map.addLayer({
+        id: 'search-point-ring',
+        type: 'circle',
+        source: 'search-point',
+        paint: {
+          'circle-color': '#2563eb',
+          'circle-radius': 16,
+          'circle-opacity': 0.15,
+        },
+      });
+
+      const clusterLayers = RENDER_SERVICE_TYPES.map((type) => `clusters-${type}`);
+      const pointLayers = RENDER_SERVICE_TYPES.map((type) => `driver-points-${type}`);
+
+      const syncDomMarkers = () => {
+        const features = map.queryRenderedFeatures(undefined, { layers: pointLayers });
+        const seen = new Set<string>();
+        const activeId = activeDriverIdRef.current;
+        const canvas = map.getCanvas();
+
+        for (const feature of features) {
+          const props: any = feature.properties || {};
+          const id = String(props.driverId || '');
+          if (!id || seen.has(id)) continue;
+
+          const coords = (feature.geometry as any)?.coordinates as [number, number] | undefined;
+          if (!coords || coords.length !== 2) continue;
+
+          const subType = normalizeServiceType(String(props.subType || 'other'));
+          const isActive = id === activeId;
+          const screen = map.project({ lng: coords[0], lat: coords[1] });
+          const edgeMargin = isActive ? 42 : 36;
+          if (
+            screen.x < edgeMargin ||
+            screen.y < edgeMargin ||
+            screen.x > canvas.width - edgeMargin ||
+            screen.y > canvas.height - edgeMargin
+          ) {
+            continue;
+          }
+          seen.add(id);
+
+          const existing = domMarkersRef.current[id];
+          if (existing) {
+            const shouldRecreate = existing.subType !== subType || existing.active !== isActive;
+            if (shouldRecreate) {
+              existing.marker.remove();
+              const newEl = createDomMarker(subType, isActive);
+              newEl.onclick = (ev) => {
+                ev.stopPropagation();
+                onSelectDriverRef.current(id);
+              };
+              domMarkersRef.current[id] = {
+                marker: new maplibregl.Marker({ element: newEl, anchor: 'bottom' }).setLngLat(coords).addTo(map),
+                subType,
+                active: isActive,
+              };
+            } else {
+              existing.marker.setLngLat(coords);
+            }
+            continue;
           }
 
-          const isActive = activeDriverId === item._id;
-          const config = SERVICE_CONFIG[subType] || SERVICE_CONFIG.other;
-          const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang] || SERVICE_LABELS.other.en;
+          const el = createDomMarker(subType, isActive);
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            onSelectDriverRef.current(id);
+          };
 
-          return (
-            <Marker 
-              key={item._id} 
-              position={pos}
-              icon={createCustomIcon(subType, currentZoom, isActive)}
-              ref={(el) => { 
-                markerRefs.current[item._id] = el;
-                if (el && isActive) setTimeout(() => el.openPopup(), 200);
-              }}
-              eventHandlers={{ click: () => onSelectDriver(item._id) }}
-            >
-              <Popup className="custom-leaflet-popup" minWidth={280} closeButton={false}>
-                <div className="p-1 font-sans text-gray-900">
-                  <div className="flex justify-between items-start mb-2.5">
-                    <span className="text-[10px] font-black text-white px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm" style={{ backgroundColor: config.color }}>
-                      {label}
-                    </span>
-                    {item.distance && <span className="text-[10px] font-black text-gray-400">{(item.distance / 1000).toFixed(1)} KM</span>}
-                  </div>
-                  
-                  <h4 className="font-black text-slate-900 text-sm uppercase leading-tight mb-1">{item.businessName}</h4>
-                  
-                  <div className="flex items-center gap-0.5 mb-4">
-                    {[1,2,3,4,5].map(s => (
-                      <Star
-                        key={s}
-                        size={11}
-                        style={s <= (item.rating || 5) ? { color: config.color, fill: config.color } : { color: '#e5e7eb' }}
-                      />
-                    ))}
-                    <span className="text-[10px] font-bold text-gray-400 ml-1">({item.rating || 5}.0)</span>
-                  </div>
-                  
-                  <div className="flex gap-2 border-t border-gray-100 pt-3.5">
-                    <button
-                      onClick={() => { onStartOrder(item, 'call'); window.location.href=`tel:${item.phoneNumber}`; }}
-                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
-                      style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 45)})` }}
-                    >
-                      <Phone size={13} /> {uiText.call}
-                    </button>
-                    
-                    <button
-                      onClick={() => { onStartOrder(item, 'message'); window.location.href=`sms:${item.phoneNumber}`; }}
-                      className="flex-1 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg border border-white/30 backdrop-blur-md"
-                      style={{ background: `linear-gradient(135deg, ${darkenHex(config.color, 18)}, ${darkenHex(config.color, 65)})` }}
-                    >
-                      <MessageCircle size={13} /> {uiText.message}
-                    </button>
-                  </div>
-                  
-                  <button 
-                    onClick={() => window.open(`https://maps.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`, '_blank')}
-                    className="w-full mt-2 text-white py-2.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-white/30 backdrop-blur-md transition-all"
-                    style={{ background: `linear-gradient(135deg, ${config.color}, ${darkenHex(config.color, 55)})` }}
-                  >
-                    <MapPin size={12} /> {uiText.show}
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-    </div>
-  );
+          domMarkersRef.current[id] = {
+            marker: new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords).addTo(map),
+            subType,
+            active: isActive,
+          };
+        }
+
+        for (const [id, entry] of Object.entries(domMarkersRef.current)) {
+          if (!seen.has(id)) {
+            entry.marker.remove();
+            delete domMarkersRef.current[id];
+          }
+        }
+      };
+
+      syncDomMarkersRef.current = syncDomMarkers;
+      map.on('move', syncDomMarkers);
+      map.on('zoom', syncDomMarkers);
+      map.on('moveend', syncDomMarkers);
+      map.on('idle', syncDomMarkers);
+
+      for (const type of RENDER_SERVICE_TYPES) {
+        const clusterLayerId = `clusters-${type}`;
+        const sourceId = `drivers-${type}`;
+        map.on('click', clusterLayerId, async (e) => {
+          const feature = e.features?.[0];
+          if (!feature) return;
+          const clusterId = feature.properties?.cluster_id;
+          const source = map.getSource(sourceId) as any;
+          if (!source || clusterId === undefined) return;
+          const expansionZoom = await source.getClusterExpansionZoom(clusterId);
+          const coords = (feature.geometry as any).coordinates as [number, number];
+          map.stop();
+          map.easeTo({ center: coords, zoom: expansionZoom, duration: 500 });
+        });
+
+        const pointLayerId = `driver-points-${type}`;
+        map.on('click', pointLayerId, (e) => {
+          const feature = e.features?.[0];
+          if (!feature) return;
+          const id = String(feature.properties?.driverId || '');
+          if (!id) return;
+          onSelectDriver(id);
+        });
+
+        map.on('mouseenter', clusterLayerId, () => (map.getCanvas().style.cursor = 'pointer'));
+        map.on('mouseleave', clusterLayerId, () => (map.getCanvas().style.cursor = ''));
+        map.on('mouseenter', pointLayerId, () => (map.getCanvas().style.cursor = 'pointer'));
+        map.on('mouseleave', pointLayerId, () => (map.getCanvas().style.cursor = ''));
+      }
+
+      map.on('click', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: [...clusterLayers, ...pointLayers, 'active-driver-point'] });
+        if (features.length === 0) onMapClick?.();
+      });
+
+      map.on('moveend', () => {
+        const c = map.getCenter();
+        const b = map.getBounds();
+        onMapMove?.(c.lat, c.lng, map.getZoom(), {
+          minLat: b.getSouth(),
+          minLng: b.getWest(),
+          maxLat: b.getNorth(),
+          maxLng: b.getEast(),
+        });
+      });
+
+      syncDomMarkers();
+    });
+
+    return () => {
+      popupRef.current?.remove();
+      for (const entry of Object.values(domMarkersRef.current)) entry.marker.remove();
+      domMarkersRef.current = {};
+      syncDomMarkersRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const grouped = createDriversGeoJsonByType(drivers);
+    for (const type of RENDER_SERVICE_TYPES) {
+      const source = map.getSource(`drivers-${type}`) as maplibregl.GeoJSONSource | undefined;
+      if (source) source.setData(grouped[type] as any);
+    }
+    const activeSource = map.getSource('active-driver') as maplibregl.GeoJSONSource | undefined;
+    if (activeSource) {
+      activeSource.setData(createActiveDriverGeoJson(activeDriverId ? driverById.get(activeDriverId) : undefined) as any);
+    }
+    syncDomMarkersRef.current?.();
+  }, [drivers, activeDriverId, driverById]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getSource('search-point')) return;
+    const source = map.getSource('search-point') as maplibregl.GeoJSONSource;
+    source.setData(createUserPointGeoJson(searchCoords) as any);
+  }, [searchCoords]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const hasNewFocusRequest = typeof focusRequestToken === 'number' && focusRequestToken !== lastFocusTokenRef.current;
+    if (hasNewFocusRequest && searchCoords) {
+      lastFocusTokenRef.current = focusRequestToken;
+      map.stop();
+      map.easeTo({
+        center: [searchCoords[1], searchCoords[0]],
+        zoom: focusRequestZoom ?? 15,
+        duration: 900,
+        offset: [0, FOCUS_UP_OFFSET_PX],
+      });
+      return;
+    }
+
+    if (activeDriverId) {
+      const d = driverById.get(activeDriverId);
+      const coords = d?.location?.coordinates;
+      if (coords) {
+        map.stop();
+        map.easeTo({
+          center: [coords[0], coords[1]],
+          zoom: 16,
+          duration: 900,
+          offset: [0, FOCUS_UP_OFFSET_PX],
+        });
+      }
+    } else if (searchCoords) {
+      map.stop();
+      map.easeTo({
+        center: [searchCoords[1], searchCoords[0]],
+        zoom: 12,
+        duration: 900,
+        offset: [0, FOCUS_UP_OFFSET_PX],
+      });
+    }
+  }, [activeDriverId, driverById, focusRequestToken, focusRequestZoom, searchCoords]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    popupRef.current?.remove();
+    if (!activeDriverId) return;
+
+    const driver = driverById.get(activeDriverId);
+    if (!driver?.location?.coordinates) return;
+
+    const popupNode = buildPopup(driver, lang, onStartOrder);
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnMove: true, offset: 20 })
+      .setLngLat([driver.location.coordinates[0], driver.location.coordinates[1]])
+      .setDOMContent(popupNode)
+      .addTo(map);
+
+    popupRef.current = popup;
+  }, [activeDriverId, driverById, lang, onStartOrder]);
+
+  return <div ref={mapNodeRef} className="absolute inset-0 h-full w-full bg-[#f0f4f8]" />;
 }
 
-export default memo(Map);
+export default memo(MapView);
