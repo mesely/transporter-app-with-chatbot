@@ -4,21 +4,6 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AppLang, getPreferredLang } from '../utils/language';
-import { renderToStaticMarkup } from 'react-dom/server';
-import {
-  Anchor,
-  Bus,
-  CarFront,
-  Container,
-  Crown,
-  Globe,
-  Home,
-  MapPin,
-  Navigation,
-  Package,
-  Truck,
-  Users
-} from 'lucide-react';
 
 interface Driver {
   _id: string;
@@ -89,36 +74,7 @@ const SERVICE_ICONS: Record<string, string> = {
 };
 
 const RENDER_SERVICE_TYPES = Object.keys(SERVICE_COLORS) as string[];
-const FOCUS_UP_OFFSET_PX = 240;
-
-const GeziciSarjIcon = ({ size = 24, color = 'currentColor' }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 36h12v10H4z" /><path d="M16 36l3-6h7l3 6" /><circle cx="7" cy="48" r="2.5" /><circle cx="26" cy="48" r="2.5" />
-    <path d="M29 36c4 0 4-10 10-10s6 10 10 10" strokeDasharray="3 2" />
-    <path d="M38 24l2 2-2 2" strokeWidth="1" />
-    <path d="M44 38h16v8H44z" /><path d="M44 38l2-5h10l2 5" /><circle cx="48" cy="48" r="2.5" /><circle cx="56" cy="48" r="2.5" />
-  </svg>
-);
-
-const SERVICE_ICON_COMPONENTS: Record<string, any> = {
-  oto_kurtarma: CarFront,
-  vinc: Anchor,
-  kurtarici: CarFront,
-  nakliye: Truck,
-  evden_eve: Home,
-  tir: Container,
-  kamyon: Truck,
-  kamyonet: Package,
-  yurt_disi_nakliye: Globe,
-  istasyon: Navigation,
-  seyyar_sarj: GeziciSarjIcon,
-  minibus: CarFront,
-  otobus: Bus,
-  midibus: Bus,
-  vip_tasima: Crown,
-  yolcu: Users,
-  other: MapPin,
-};
+const FOCUS_UP_OFFSET_PX = 300;
 
 const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Depannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Ewakuator', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
@@ -178,38 +134,6 @@ function getServiceColor(subType: string) {
 function normalizeServiceType(subType: string | undefined) {
   if (!subType) return 'other';
   return SERVICE_COLORS[subType] ? subType : 'other';
-}
-
-function darkenHex(hex: string, amount: number) {
-  const raw = hex.replace('#', '');
-  if (raw.length !== 6) return hex;
-  const r = Math.max(0, Math.min(255, parseInt(raw.slice(0, 2), 16) - amount));
-  const g = Math.max(0, Math.min(255, parseInt(raw.slice(2, 4), 16) - amount));
-  const b = Math.max(0, Math.min(255, parseInt(raw.slice(4, 6), 16) - amount));
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-function createDomMarker(subType: string, active: boolean) {
-  const baseColor = getServiceColor(subType);
-  const color = active ? darkenHex(baseColor, 50) : baseColor;
-
-  const el = document.createElement('div');
-  el.style.width = active ? '62px' : '54px';
-  el.style.height = active ? '62px' : '54px';
-  el.style.borderRadius = '9999px';
-  el.style.transform = 'scale(0.85)';
-  el.style.transformOrigin = 'bottom center';
-  el.style.background = color;
-  el.style.border = active ? '4px solid #fff' : '3px solid #fff';
-  el.style.boxShadow = active ? '0 0 20px rgba(0,0,0,0.28)' : '0 6px 14px rgba(0,0,0,0.2)';
-  el.style.display = 'flex';
-  el.style.alignItems = 'center';
-  el.style.justifyContent = 'center';
-  el.style.cursor = 'pointer';
-  el.style.pointerEvents = 'auto';
-  el.style.transition = 'all .18s ease';
-  el.innerHTML = `<div style="width:34%;height:34%;border-radius:9999px;background:rgba(255,255,255,0.95);"></div>`;
-  return el;
 }
 
 function createEmptyFeatureCollection() {
@@ -356,10 +280,7 @@ function MapView({
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const lastFocusTokenRef = useRef<number | undefined>(undefined);
-  const domMarkersRef = useRef<Record<string, { marker: maplibregl.Marker; subType: string; active: boolean }>>({});
-  const syncDomMarkersRef = useRef<(() => void) | null>(null);
-  const activeDriverIdRef = useRef<string | null>(activeDriverId);
-  const onSelectDriverRef = useRef(onSelectDriver);
+  const lastActiveFocusIdRef = useRef<string | null>(null);
 
   const center = useMemo<[number, number]>(() => {
     if (!searchCoords) return INITIAL_CENTER;
@@ -375,14 +296,6 @@ function MapView({
   useEffect(() => {
     setLang(getPreferredLang());
   }, []);
-
-  useEffect(() => {
-    activeDriverIdRef.current = activeDriverId;
-  }, [activeDriverId]);
-
-  useEffect(() => {
-    onSelectDriverRef.current = onSelectDriver;
-  }, [onSelectDriver]);
 
   useEffect(() => {
     if (!mapNodeRef.current || mapRef.current) return;
@@ -446,10 +359,10 @@ function MapView({
           filter: ['!', ['has', 'point_count']],
           paint: {
             'circle-color': getServiceColor(type),
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 12, 12, 14, 16, 16],
-            'circle-opacity': 0,
-            'circle-stroke-width': 0,
-            'circle-stroke-opacity': 0,
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 10, 12, 12.5, 16, 14.5],
+            'circle-opacity': 0.95,
+            'circle-stroke-width': 2.5,
+            'circle-stroke-color': '#ffffff',
           },
         });
       }
@@ -465,7 +378,7 @@ function MapView({
         source: 'active-driver',
         paint: {
           'circle-color': ['coalesce', ['get', 'color'], '#111827'],
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 16, 12, 20, 16, 24],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 14, 12, 18, 16, 22],
           'circle-stroke-width': 4,
           'circle-stroke-color': ['coalesce', ['get', 'color'], '#111827'],
           'circle-opacity': 0.96,
@@ -483,9 +396,9 @@ function MapView({
         source: 'search-point',
         paint: {
           'circle-color': '#2563eb',
-          'circle-radius': 8,
+          'circle-radius': 9,
           'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 3,
+          'circle-stroke-width': 4,
         },
       });
 
@@ -495,89 +408,13 @@ function MapView({
         source: 'search-point',
         paint: {
           'circle-color': '#2563eb',
-          'circle-radius': 16,
-          'circle-opacity': 0.15,
+          'circle-radius': 20,
+          'circle-opacity': 0.22,
         },
       });
 
       const clusterLayers = RENDER_SERVICE_TYPES.map((type) => `clusters-${type}`);
       const pointLayers = RENDER_SERVICE_TYPES.map((type) => `driver-points-${type}`);
-
-      const syncDomMarkers = () => {
-        const features = map.queryRenderedFeatures(undefined, { layers: pointLayers });
-        const seen = new Set<string>();
-        const activeId = activeDriverIdRef.current;
-        const canvas = map.getCanvas();
-
-        for (const feature of features) {
-          const props: any = feature.properties || {};
-          const id = String(props.driverId || '');
-          if (!id || seen.has(id)) continue;
-
-          const coords = (feature.geometry as any)?.coordinates as [number, number] | undefined;
-          if (!coords || coords.length !== 2) continue;
-
-          const subType = normalizeServiceType(String(props.subType || 'other'));
-          const isActive = id === activeId;
-          const screen = map.project({ lng: coords[0], lat: coords[1] });
-          const edgeMargin = isActive ? 42 : 36;
-          if (
-            screen.x < edgeMargin ||
-            screen.y < edgeMargin ||
-            screen.x > canvas.width - edgeMargin ||
-            screen.y > canvas.height - edgeMargin
-          ) {
-            continue;
-          }
-          seen.add(id);
-
-          const existing = domMarkersRef.current[id];
-          if (existing) {
-            const shouldRecreate = existing.subType !== subType || existing.active !== isActive;
-            if (shouldRecreate) {
-              existing.marker.remove();
-              const newEl = createDomMarker(subType, isActive);
-              newEl.onclick = (ev) => {
-                ev.stopPropagation();
-                onSelectDriverRef.current(id);
-              };
-              domMarkersRef.current[id] = {
-                marker: new maplibregl.Marker({ element: newEl, anchor: 'bottom' }).setLngLat(coords).addTo(map),
-                subType,
-                active: isActive,
-              };
-            } else {
-              existing.marker.setLngLat(coords);
-            }
-            continue;
-          }
-
-          const el = createDomMarker(subType, isActive);
-          el.onclick = (ev) => {
-            ev.stopPropagation();
-            onSelectDriverRef.current(id);
-          };
-
-          domMarkersRef.current[id] = {
-            marker: new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords).addTo(map),
-            subType,
-            active: isActive,
-          };
-        }
-
-        for (const [id, entry] of Object.entries(domMarkersRef.current)) {
-          if (!seen.has(id)) {
-            entry.marker.remove();
-            delete domMarkersRef.current[id];
-          }
-        }
-      };
-
-      syncDomMarkersRef.current = syncDomMarkers;
-      map.on('move', syncDomMarkers);
-      map.on('zoom', syncDomMarkers);
-      map.on('moveend', syncDomMarkers);
-      map.on('idle', syncDomMarkers);
 
       for (const type of RENDER_SERVICE_TYPES) {
         const clusterLayerId = `clusters-${type}`;
@@ -624,15 +461,10 @@ function MapView({
           maxLng: b.getEast(),
         });
       });
-
-      syncDomMarkers();
     });
 
     return () => {
       popupRef.current?.remove();
-      for (const entry of Object.values(domMarkersRef.current)) entry.marker.remove();
-      domMarkersRef.current = {};
-      syncDomMarkersRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -650,7 +482,6 @@ function MapView({
     if (activeSource) {
       activeSource.setData(createActiveDriverGeoJson(activeDriverId ? driverById.get(activeDriverId) : undefined) as any);
     }
-    syncDomMarkersRef.current?.();
   }, [drivers, activeDriverId, driverById]);
 
   useEffect(() => {
@@ -667,6 +498,7 @@ function MapView({
     const hasNewFocusRequest = typeof focusRequestToken === 'number' && focusRequestToken !== lastFocusTokenRef.current;
     if (hasNewFocusRequest && searchCoords) {
       lastFocusTokenRef.current = focusRequestToken;
+      lastActiveFocusIdRef.current = activeDriverId ?? null;
       map.stop();
       map.easeTo({
         center: [searchCoords[1], searchCoords[0]],
@@ -677,10 +509,11 @@ function MapView({
       return;
     }
 
-    if (activeDriverId) {
+    if (activeDriverId && activeDriverId !== lastActiveFocusIdRef.current) {
       const d = driverById.get(activeDriverId);
       const coords = d?.location?.coordinates;
       if (coords) {
+        lastActiveFocusIdRef.current = activeDriverId;
         map.stop();
         map.easeTo({
           center: [coords[0], coords[1]],
@@ -689,14 +522,8 @@ function MapView({
           offset: [0, FOCUS_UP_OFFSET_PX],
         });
       }
-    } else if (searchCoords) {
-      map.stop();
-      map.easeTo({
-        center: [searchCoords[1], searchCoords[0]],
-        zoom: 12,
-        duration: 900,
-        offset: [0, FOCUS_UP_OFFSET_PX],
-      });
+    } else if (!activeDriverId) {
+      lastActiveFocusIdRef.current = null;
     }
   }, [activeDriverId, driverById, focusRequestToken, focusRequestZoom, searchCoords]);
 
