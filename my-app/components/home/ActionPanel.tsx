@@ -30,6 +30,8 @@ import ViewRatingsModal from '../ViewRatingsModal';
 import ViewReportsModal from '../ViewReportsModal';
 import { AppLang, getPreferredLang } from '../../utils/language';
 
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+
 // --- KOORDİNAT VERİTABANI ---
 const CITY_COORDINATES: Record<string, [number, number]> = {
   "Adana": [37.0000, 35.3213], "Adıyaman": [37.7648, 38.2786], "Afyonkarahisar": [38.7507, 30.5567],
@@ -239,6 +241,8 @@ function ActionPanel({
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [cityScopedDrivers, setCityScopedDrivers] = useState<any[]>([]);
+  const [cityScopedLoading, setCityScopedLoading] = useState(false);
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
   const activeThemeColor = useMemo(() => {
@@ -268,6 +272,62 @@ function ActionPanel({
   useEffect(() => {
     setLang(getPreferredLang());
   }, []);
+
+  useEffect(() => {
+    if (!selectedCity) {
+      setCityScopedDrivers([]);
+      setCityScopedLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const normalizeCity = (v?: string) => String(v || '').toLocaleLowerCase('tr').trim();
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const calcDistance = (a: [number, number], b: [number, number]) => {
+      const R = 6371000;
+      const dLat = toRad(b[0] - a[0]);
+      const dLng = toRad(b[1] - a[1]);
+      const lat1 = toRad(a[0]);
+      const lat2 = toRad(b[0]);
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(x));
+    };
+
+    const run = async () => {
+      setCityScopedLoading(true);
+      try {
+        let list: any[] = [];
+        try {
+          const res = await fetch(`${API_URL}/users/all?type=${encodeURIComponent(actionType)}`, { signal: controller.signal });
+          const data = await res.json();
+          list = Array.isArray(data) ? data : [];
+        } catch {
+          const res = await fetch(`${API_URL}/users/all`, { signal: controller.signal });
+          const data = await res.json();
+          list = Array.isArray(data) ? data : [];
+        }
+
+        const filtered = list.filter((d) => normalizeCity(d?.address?.city || d?.city) === normalizeCity(selectedCity));
+        const withDistance = filtered.map((d) => {
+          if (typeof d?.distance === 'number') return d;
+          const lat = d?.location?.coordinates?.[1];
+          const lng = d?.location?.coordinates?.[0];
+          if (typeof lat === 'number' && typeof lng === 'number' && currentCoords) {
+            return { ...d, distance: calcDistance([currentCoords[0], currentCoords[1]], [lat, lng]) };
+          }
+          return { ...d, distance: Number.MAX_SAFE_INTEGER };
+        });
+        setCityScopedDrivers(withDistance);
+      } catch {
+        setCityScopedDrivers([]);
+      } finally {
+        setCityScopedLoading(false);
+      }
+    };
+
+    run();
+    return () => controller.abort();
+  }, [selectedCity, actionType, currentCoords]);
 
   useEffect(() => {
     try {
@@ -348,13 +408,8 @@ function ActionPanel({
   };
 
   const displayDrivers = useMemo(() => {
-    let list = Array.isArray(drivers) ? [...drivers] : [];
-
-    const isSpecialAction = ['sarj', 'istasyon', 'seyyar_sarj', 'yolcu', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(actionType);
-
-    if (selectedCity && !isSpecialAction) {
-        list = list.filter(d => d.address?.city?.toLocaleLowerCase('tr') === selectedCity.toLocaleLowerCase('tr'));
-    }
+    const sourceList = selectedCity ? cityScopedDrivers : drivers;
+    let list = Array.isArray(sourceList) ? [...sourceList] : [];
 
     if (activeTransportFilter && SUB_FILTERS[activeTransportFilter]) {
         const allowedSubTypes = [activeTransportFilter, ...SUB_FILTERS[activeTransportFilter].map(s => s.id)];
@@ -366,7 +421,7 @@ function ActionPanel({
       return (a.distance || 0) - (b.distance || 0);
     });
     return list;
-  }, [drivers, sortMode, selectedCity, actionType, activeTransportFilter]);
+  }, [drivers, cityScopedDrivers, sortMode, selectedCity, actionType, activeTransportFilter]);
 
   const getCurrentPosition = (opts?: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
@@ -643,7 +698,7 @@ function ActionPanel({
         )}
 
         <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
-          {loading ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
+          {(loading || cityScopedLoading) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
             displayDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
