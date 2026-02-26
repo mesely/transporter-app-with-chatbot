@@ -517,7 +517,7 @@ export default function Home() {
 
       <div
         className="absolute left-1/2 z-[900] -translate-x-1/2 w-[min(92vw,540px)] pointer-events-auto"
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 18px)' }}
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 36px)' }}
       >
         <div className="relative rounded-2xl border border-white/70 bg-white/95 shadow-xl backdrop-blur-md">
           <div className="flex items-center gap-2 px-3 py-2">
