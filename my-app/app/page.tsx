@@ -470,7 +470,7 @@ export default function Home() {
       <div
         className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto scale-[0.94] sm:scale-100 origin-top"
         style={{
-          top: 'calc(env(safe-area-inset-top, 0px) + 30px)',
+          top: 'calc(env(safe-area-inset-top, 0px) + 40px)',
           width: 'min(540px, calc(100vw - 140px))'
         }}
       >
