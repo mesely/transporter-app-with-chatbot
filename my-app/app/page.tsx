@@ -9,7 +9,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Mic, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import TopBar from '../components/home/TopBar';
@@ -77,7 +77,6 @@ export default function Home() {
   const [mapFocusZoom, setMapFocusZoom] = useState<number | undefined>(undefined);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
   const [mapSearchQuery, setMapSearchQuery] = useState('');
-  const [isListening, setIsListening] = useState(false);
   const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
   const [reminderNotice, setReminderNotice] = useState<string | null>(null);
   const [actionType, setActionType] = useState('kurtarici');
@@ -91,7 +90,6 @@ export default function Home() {
 
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
-  const speechRecognitionRef = useRef<any>(null);
 
   // 🔥 YENİ LOADER İÇİN ZAMANLAYICI
   useEffect(() => {
@@ -404,52 +402,6 @@ export default function Home() {
     handleSelectDriver(driver?._id || null);
   }, [handleSelectDriver]);
 
-  const handleVoiceSearch = useCallback(() => {
-    const SpeechCtor: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechCtor) return;
-    if (isListening && speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop();
-      return;
-    }
-    const recognition = new SpeechCtor();
-    speechRecognitionRef.current = recognition;
-    recognition.lang = 'tr-TR';
-    recognition.interimResults = true;
-    recognition.continuous = true;
-    recognition.maxAlternatives = 1;
-    setIsListening(true);
-    let finalText = '';
-    recognition.onresult = (event: any) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const transcript = event.results[i][0]?.transcript || '';
-        if (event.results[i].isFinal) finalText += `${transcript} `;
-        else interim += transcript;
-      }
-      setMapSearchQuery(`${finalText}${interim}`.trim());
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => {
-      if (speechRecognitionRef.current === recognition) speechRecognitionRef.current = null;
-      setIsListening(false);
-    };
-    recognition.start();
-  }, [isListening]);
-
-  useEffect(() => () => {
-    try {
-      speechRecognitionRef.current?.stop();
-    } catch {}
-  }, []);
-
-  const mapSearchTheme = useMemo(() => {
-    if (actionType === 'seyyar_sarj') return { mic: 'bg-cyan-600', micLive: 'bg-cyan-800' };
-    if (actionType.includes('sarj') || actionType === 'istasyon') return { mic: 'bg-blue-600', micLive: 'bg-blue-800' };
-    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc') return { mic: 'bg-red-600', micLive: 'bg-rose-800' };
-    if (actionType.includes('yolcu') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(actionType)) return { mic: 'bg-emerald-600', micLive: 'bg-emerald-800' };
-    return { mic: 'bg-purple-600', micLive: 'bg-purple-800' };
-  }, [actionType]);
-
   useEffect(() => {
     const tick = () => {
       try {
@@ -516,8 +468,11 @@ export default function Home() {
       />
 
       <div
-        className="absolute left-1/2 z-[900] -translate-x-1/2 w-[min(92vw,540px)] pointer-events-auto"
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 36px)' }}
+        className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto scale-[0.94] sm:scale-100 origin-top"
+        style={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 92px)',
+          width: 'min(540px, calc(100vw - 140px))'
+        }}
       >
         <div className="relative rounded-2xl border border-white/70 bg-white/95 shadow-xl backdrop-blur-md">
           <div className="flex items-center gap-2 px-3 py-2">
@@ -533,12 +488,6 @@ export default function Home() {
                 <X size={16} />
               </button>
             )}
-            <button
-              onClick={handleVoiceSearch}
-              className={`rounded-xl px-2.5 py-1.5 text-white ${isListening ? mapSearchTheme.micLive : mapSearchTheme.mic}`}
-            >
-              <Mic size={14} />
-            </button>
           </div>
           {suggestions.length > 0 && (
             <div className="max-h-56 overflow-y-auto border-t border-slate-100">

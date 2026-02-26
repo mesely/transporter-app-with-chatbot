@@ -565,16 +565,31 @@ function MapView({
     if (!map) return;
 
     const hasNewFocusRequest = typeof focusRequestToken === 'number' && focusRequestToken !== lastFocusTokenRef.current;
-    if (hasNewFocusRequest && searchCoords) {
+    if (hasNewFocusRequest) {
       lastFocusTokenRef.current = focusRequestToken;
-      lastActiveFocusIdRef.current = activeDriverId ?? null;
-      map.stop();
+      const selected = activeDriverId ? driverById.get(activeDriverId) : undefined;
+      const selectedCoords = selected?.location?.coordinates;
+      if (selectedCoords) {
+        lastActiveFocusIdRef.current = activeDriverId;
+        map.stop();
+        map.easeTo({
+          center: [selectedCoords[0], selectedCoords[1]],
+          zoom: focusRequestZoom ?? 12.8,
+          duration: 900,
+          padding: getFocusPadding(),
+        });
+        return;
+      }
+      if (searchCoords) {
+        lastActiveFocusIdRef.current = null;
+        map.stop();
         map.easeTo({
           center: [searchCoords[1], searchCoords[0]],
           zoom: focusRequestZoom ?? 13.2,
           duration: 900,
           padding: getFocusPadding(),
         });
+      }
       return;
     }
 
