@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LocateFixed, Settings2, ShieldAlert } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 export default function LocationRequiredPage() {
   const router = useRouter();
@@ -54,29 +54,33 @@ export default function LocationRequiredPage() {
   }, [checkAndGo]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_15%,rgba(239,68,68,0.15),transparent_35%),radial-gradient(circle_at_80%_85%,rgba(124,58,237,0.16),transparent_40%),#f8fafc] p-6">
-      <div className="mx-auto mt-14 max-w-xl rounded-[2.4rem] border border-white/60 bg-white/90 p-8 shadow-2xl backdrop-blur-xl">
-        <div className="mb-5 inline-flex rounded-2xl bg-red-50 p-3 text-red-600">
-          <ShieldAlert size={26} />
+    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_15%,rgba(239,68,68,0.15),transparent_35%),radial-gradient(circle_at_80%_85%,rgba(124,58,237,0.16),transparent_40%),#f8fafc] p-6 flex items-center justify-center">
+      <div className="mx-auto w-full max-w-2xl rounded-[2.6rem] border border-white/70 bg-white/92 p-10 md:p-12 shadow-2xl backdrop-blur-xl text-center">
+        <div className="mx-auto mb-6 inline-flex rounded-3xl bg-gradient-to-br from-red-50 to-rose-100 p-4 text-red-600 shadow-sm">
+          <MapPin size={34} />
         </div>
-        <h1 className="text-2xl font-black uppercase tracking-wide text-slate-900">Konum Gerekli</h1>
-        <p className="mt-3 text-sm font-bold text-slate-600">{message}</p>
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-wide text-slate-900">Konum Iznini Acin</h1>
+        <p className="mt-4 text-lg md:text-xl font-extrabold text-slate-700">{message}</p>
 
-        <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold text-slate-600">
-          <div className="flex items-center gap-2">
-            <Settings2 size={14} className="text-slate-500" />
-            Ayarlar &gt; Uygulamalar &gt; Transport 245 &gt; Izinler &gt; Konum
+        <div className="mt-8 space-y-4 rounded-3xl border border-slate-200 bg-slate-50/90 p-6 text-left">
+          <div className="flex items-start gap-3 text-slate-700">
+            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-sm font-black text-red-700">1</span>
+            <p className="text-base font-black leading-snug">Ayarlar &gt; Uygulamalar &gt; Transport 245 &gt; Izinler &gt; Konum</p>
           </div>
-          <div className="flex items-center gap-2">
-            <LocateFixed size={14} className="text-slate-500" />
-            Konum acildiginda sayfa otomatik olarak ana ekrana donecek.
+          <div className="flex items-start gap-3 text-slate-700">
+            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-sm font-black text-blue-700">2</span>
+            <p className="text-base font-black leading-snug">Konum iznini "Izin Ver" olarak ayarlayin.</p>
+          </div>
+          <div className="flex items-start gap-3 text-slate-700">
+            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">3</span>
+            <p className="text-base font-black leading-snug">Asagidaki butona basin. Konum acildiginda ana ekrana otomatik donecek.</p>
           </div>
         </div>
 
         <button
           onClick={checkAndGo}
           disabled={checking}
-          className="mt-7 w-full rounded-[1.6rem] bg-gradient-to-r from-red-600 via-rose-600 to-purple-700 px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-xl disabled:opacity-70"
+          className="mt-9 w-full rounded-[1.8rem] bg-gradient-to-r from-red-600 via-rose-600 to-purple-700 px-6 py-5 text-base font-black uppercase tracking-wide text-white shadow-xl disabled:opacity-70"
         >
           {checking ? 'Kontrol Ediliyor...' : 'Tekrar Kontrol Et'}
         </button>
@@ -84,4 +88,3 @@ export default function LocationRequiredPage() {
     </main>
   );
 }
-
