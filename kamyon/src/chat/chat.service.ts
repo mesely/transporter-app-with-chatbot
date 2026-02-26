@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Mistral } from '@mistralai/mistralai';
 import { UsersService } from '../users/users.service';
 import { TariffsService } from '../tariffs/tariffs.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { ChatHistory, ChatHistoryDocument } from './schemas/chat-history.schema';
 
 interface AIThoughtProcess {
   thought: string;
@@ -32,11 +35,17 @@ export class ChatService {
   constructor(
     private readonly usersService: UsersService,
     private readonly tariffsService: TariffsService,
+    @InjectModel(ChatHistory.name) private readonly chatHistoryModel: Model<ChatHistoryDocument>,
   ) {
     this.client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY || '' });
   }
 
-  async chat(message: string, history: any[], location?: { lat: number; lng: number }) {
+  async chat(
+    message: string,
+    history: any[],
+    location?: { lat: number; lng: number },
+    customerId?: string
+  ) {
     const text = this.normalize(message);
     const safeHistory = Array.isArray(history) ? history : [];
 
@@ -51,26 +60,32 @@ export class ChatService {
             { id: 'profile_help', label: 'Profil Duzenleme', prompt: 'Profil bilgilerimi nasil duzenlerim?' },
           ]
         };
-        return {
+        const out = {
           response: `Asagidaki islemlerden birini secerek devam edebilirsiniz.||DATA||${JSON.stringify(payload)}||DATA||`,
           role: 'assistant'
         };
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       if (this.isPrivacyIntent(text)) {
-        return {
+        const out = {
           response:
             'KVKK ve gizlilik icin Ayarlar > Gizlilik ve Profil > KVKK bolumlerini acabilirsiniz. Kisisel verileriniz yalnizca hizmet eslestirme, fiyatlama ve destek kaydi icin islenir; talep halinde silme/duzeltme hakkiniz vardir.',
           role: 'assistant'
         };
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       if (this.isProfileIntent(text)) {
-        return {
+        const out = {
           response:
             'Profil duzenlemek icin Profil sayfasinda isim, telefon ve iletisim alanlarini guncelleyebilirsiniz. Sag ustteki profil ikonundan veya /profile adresinden ilerleyin.',
           role: 'assistant'
         };
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       if (this.isVehicleCallIntent(text)) {
@@ -86,36 +101,65 @@ export class ChatService {
             { id: 'kamyonet', label: 'Kamyonet', prompt: 'Bana en yakin kamyonet araclarini getir.' },
           ]
         };
-        return {
+        const out = {
           response: `Lutfen arac turunu secin.||DATA||${JSON.stringify(payload)}||DATA||`,
           role: 'assistant'
         };
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       if (this.isPriceIntent(text)) {
-        return this.handlePriceCalculation(message, safeHistory);
+        const out = await this.handlePriceCalculation(message, safeHistory);
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       if (this.isSearchIntent(text)) {
-        return this.handleProviderSearch(message, location, safeHistory);
+        const out = await this.handleProviderSearch(message, location, safeHistory);
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       const analysis = await this.analyzeIntentWithCoT(message, safeHistory);
       this.logger.log(`AI Thought: ${analysis.thought}`);
 
       if (analysis.intent === 'search_driver') {
-        return this.handleProviderSearch(message, location, safeHistory, analysis);
+        const out = await this.handleProviderSearch(message, location, safeHistory, analysis);
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
       if (analysis.intent === 'calculate_price') {
-        return this.handlePriceCalculation(message, safeHistory, analysis);
+        const out = await this.handlePriceCalculation(message, safeHistory, analysis);
+        await this.persistChat(customerId, message, out.response);
+        return out;
       }
 
       const fallback = await this.safeGeneralChat(message, safeHistory);
+      await this.persistChat(customerId, message, fallback);
       return { response: fallback, role: 'assistant' };
     } catch (error: any) {
       this.logger.error(`Chat error: ${error?.message || 'unknown'}`);
-      return { response: 'Su an baglanti kurulamadi. Lutfen tekrar deneyin.', role: 'assistant' };
+      const fallback = 'Su an baglanti kurulamadi. Lutfen tekrar deneyin.';
+      await this.persistChat(customerId, message, fallback);
+      return { response: fallback, role: 'assistant' };
     }
+  }
+
+  async getHistory(customerId?: string) {
+    if (!customerId) return { messages: [] };
+    const doc = await this.chatHistoryModel.findOne({ customerId }).lean().exec();
+    return { messages: Array.isArray(doc?.messages) ? doc.messages : [] };
+  }
+
+  async clearHistory(customerId?: string) {
+    if (!customerId) return { success: false };
+    await this.chatHistoryModel.findOneAndUpdate(
+      { customerId },
+      { $set: { messages: [] } },
+      { upsert: true, new: true }
+    ).exec();
+    return { success: true };
   }
 
   private async handleProviderSearch(
@@ -335,5 +379,36 @@ export class ChatService {
     if (normalizedMain === 'sarj') return 'sarj';
     if (normalizedMain === 'nakliye') return 'nakliye';
     return 'kurtarici';
+  }
+
+  private splitPacket(text: string): { cleanText: string; dataPacket: any | null } {
+    const match = text.match(/\|\|DATA\|\|([\s\S]*?)\|\|DATA\|\|/);
+    if (!match) return { cleanText: text, dataPacket: null };
+    try {
+      return { cleanText: text.replace(match[0], '').trim(), dataPacket: JSON.parse(match[1]) };
+    } catch {
+      return { cleanText: text.replace(match[0], '').trim(), dataPacket: null };
+    }
+  }
+
+  private async persistChat(customerId: string | undefined, userMessage: string, assistantRawResponse: string) {
+    if (!customerId) return;
+    const { cleanText, dataPacket } = this.splitPacket(assistantRawResponse || '');
+    const now = new Date();
+    await this.chatHistoryModel.findOneAndUpdate(
+      { customerId },
+      {
+        $push: {
+          messages: {
+            $each: [
+              { role: 'user', content: userMessage, createdAt: now, dataPacket: null },
+              { role: 'assistant', content: cleanText || assistantRawResponse, createdAt: now, dataPacket: dataPacket || null },
+            ],
+            $slice: -120,
+          },
+        },
+      },
+      { upsert: true, new: true }
+    ).exec();
   }
 }

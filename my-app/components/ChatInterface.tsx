@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Bot, Loader2, MapPin, Phone, Send, Shield, Trash2, UserCog, X, Zap } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, MapPin, Phone, Send, Shield, Trash2, User, UserCog, X, Zap } from 'lucide-react';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -16,6 +16,7 @@ interface ChatMessage {
 
 const STORAGE_KEY = 'Transport_chat_history_v1';
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const DEVICE_ID_KEY = 'Transport_device_id';
 
 function uid() {
   return (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -31,6 +32,18 @@ function splitPacket(text: string): { cleanText: string; dataPacket: any | null 
   } catch {
     return { cleanText: text.replace(match[0], '').trim(), dataPacket: null };
   }
+}
+
+function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
 }
 
 function greetingMessage(): ChatMessage {
@@ -60,10 +73,33 @@ function quickStyle(label: string) {
 }
 
 function vehicleOptionStyle(id: string) {
-  if (id === 'oto_kurtarma' || id === 'vinc') return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+  if (id === 'oto_kurtarma') return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+  if (id === 'vinc') return 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100';
   if (id === 'nakliye' || id === 'tir' || id === 'kamyon' || id === 'kamyonet') return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100';
   if (id === 'evden_eve') return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
   return 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
+}
+
+function actionButtonTheme(driver: any) {
+  const subType = String(driver?.service?.subType || '').toLowerCase();
+  const mainType = String(driver?.service?.mainType || '').toUpperCase();
+
+  if (subType === 'seyyar_sarj') {
+    return { solid: 'bg-cyan-500 hover:bg-cyan-600 text-white' };
+  }
+  if (subType === 'istasyon' || mainType === 'SARJ') {
+    return { solid: 'bg-blue-600 hover:bg-blue-700 text-white' };
+  }
+  if (subType === 'vinc') {
+    return { solid: 'bg-rose-800 hover:bg-rose-900 text-white' };
+  }
+  if (subType === 'oto_kurtarma' || mainType === 'KURTARICI') {
+    return { solid: 'bg-red-600 hover:bg-red-700 text-white' };
+  }
+  if (['nakliye', 'tir', 'kamyon', 'kamyonet', 'evden_eve', 'yurt_disi_nakliye'].includes(subType) || mainType === 'NAKLIYE') {
+    return { solid: 'bg-purple-600 hover:bg-purple-700 text-white' };
+  }
+  return { solid: 'bg-slate-900 hover:bg-slate-800 text-white' };
 }
 
 export default function ChatInterface({ onClose }: { onClose?: () => void }) {
@@ -71,21 +107,58 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [customerId, setCustomerId] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-          return;
+    const id = getOrCreateDeviceId();
+    setCustomerId(id);
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API_URL}/chat/history?customerId=${encodeURIComponent(id)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data?.messages) && data.messages.length > 0) {
+            const parsed = data.messages.map((m: any) => ({
+              id: uid(),
+              role: m.role === 'user' ? 'user' : 'assistant',
+              content: String(m.content || ''),
+              createdAt: m.createdAt || new Date().toISOString(),
+              dataPacket: m.dataPacket || null,
+            })) as ChatMessage[];
+            setMessages(parsed);
+            return;
+          }
         }
-      }
-    } catch {}
-    setMessages([greetingMessage()]);
+      } catch {}
+
+      try {
+        const raw = localStorage.getItem(`${STORAGE_KEY}:${id}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+            return;
+          }
+        }
+      } catch {}
+      setMessages([greetingMessage()]);
+    }
+
+    void loadHistory();
   }, []);
+
+  useEffect(() => {
+    if (!customerId) return;
+    if (messages.length > 0) {
+      localStorage.setItem(`${STORAGE_KEY}:${customerId}`, JSON.stringify(messages.slice(-60)));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-60)));
+      } catch {}
+    }
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages, customerId]);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -98,13 +171,6 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
       );
     }
   }, []);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-60)));
-    }
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
 
   const historyForApi = useMemo(() => messages.map((m) => ({ role: m.role, content: m.content })), [messages]);
 
@@ -132,6 +198,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
           message: question,
           history: [...historyForApi, { role: 'user', content: question }].slice(-12),
           location: userLocation || undefined,
+          customerId: customerId || undefined,
         }),
       });
       if (!res.ok) throw new Error(`Chat error ${res.status}`);
@@ -166,10 +233,19 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
     }
   }
 
-  function clearHistory() {
+  async function clearHistory() {
     const greet = greetingMessage();
     setMessages([greet]);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([greet]));
+    if (customerId) {
+      localStorage.setItem(`${STORAGE_KEY}:${customerId}`, JSON.stringify([greet]));
+      try {
+        await fetch(`${API_URL}/chat/history/clear`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerId }),
+        });
+      } catch {}
+    }
   }
 
   const quickButtons = [
@@ -187,6 +263,16 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
       </div>
 
       <header className="relative z-10 flex items-center justify-between border-b border-slate-200 bg-white/85 px-4 py-3 backdrop-blur-xl">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/profile"
+            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
+            aria-label="Profile git"
+          >
+            <User className="h-4 w-4" />
+          </Link>
+        </div>
+
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-cyan-50 p-2 ring-1 ring-cyan-200">
             <Bot className="h-5 w-5 text-cyan-700" />
@@ -240,7 +326,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      <div ref={listRef} className="relative z-10 h-[calc(100%-196px)] overflow-y-auto px-3 py-4 custom-scrollbar md:px-5">
+      <div ref={listRef} className="relative z-10 h-[calc(100%-196px)] overflow-y-auto bg-gradient-to-b from-cyan-50/90 via-sky-50/85 to-blue-50/90 px-3 py-4 custom-scrollbar md:px-5">
         <div className="flex w-full flex-col gap-3">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -292,6 +378,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
                         : null;
                       const distanceText = driver?.distance ? `${Math.round(Number(driver.distance) / 1000)} km` : 'Mesafe yok';
                       const badgeClass = badgeTheme(driver?.service?.mainType);
+                      const actionTheme = actionButtonTheme(driver);
 
                       return (
                         <div key={`${driver?._id || index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -306,18 +393,18 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {phone && (
-                              <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+                              <a href={`tel:${phone}`} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${actionTheme.solid}`}>
                                 <Phone className="h-3.5 w-3.5" />
                                 Ara
                               </a>
                             )}
                             {phone && (
-                              <a href={`https://wa.me/90${phone.replace(/^0/, '')}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-purple-700">
+                              <a href={`https://wa.me/90${phone.replace(/^0/, '')}`} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${actionTheme.solid}`}>
                                 Mesaj At
                               </a>
                             )}
                             {mapUrl && (
-                              <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                              <a href={mapUrl} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${actionTheme.solid}`}>
                                 Google Maps
                               </a>
                             )}
