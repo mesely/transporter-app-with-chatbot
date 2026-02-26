@@ -27,6 +27,12 @@ const DEFAULT_LAT = 41.0082;
 const DEFAULT_LNG = 28.9784;
 const LAST_RESULTS_KEY = 'Transport_last_results_v1';
 const RATE_REMINDERS_KEY = 'Transport_rate_reminders_v1';
+const TURKEY_BBOX = {
+  minLat: 35.45,
+  minLng: 25.4,
+  maxLat: 42.65,
+  maxLng: 45.2,
+};
 
 const CATEGORY_MAP: Record<string, string[]> = {
   tir: ['tenteli', 'frigorifik', 'lowbed', 'konteyner', 'acik_kasa'],
@@ -67,6 +73,8 @@ export default function Home() {
   const MIN_MOVE_DISTANCE_DEG = 0.015;
   const MIN_ZOOM_DELTA = 0.6;
   const BBOX_OVERSCAN_FACTOR = 0.22;
+  const COUNTRY_MODE_ZOOM_THRESHOLD = 6.35;
+  const COUNTRY_MODE_FETCH_LIMIT = 3200;
 
   const [showSplash, setShowSplash] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
@@ -116,13 +124,14 @@ export default function Home() {
     lat: number,
     lng: number,
     type: string,
-    opts?: { zoom?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number } }
+    opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number } }
   ) => {
     const key = [
       type,
       lat.toFixed(4),
       lng.toFixed(4),
       String(opts?.zoom ? Math.round(opts.zoom * 10) / 10 : ''),
+      String(opts?.limit ? Math.round(opts.limit) : ''),
       String(opts?.bbox ? `${opts.bbox.minLat.toFixed(3)}:${opts.bbox.minLng.toFixed(3)}:${opts.bbox.maxLat.toFixed(3)}:${opts.bbox.maxLng.toFixed(3)}` : ''),
     ].join(':');
     if (inflightFetchKeyRef.current === key) return;
@@ -151,6 +160,9 @@ export default function Home() {
         type,
         zoom: String(Math.round((opts?.zoom ?? 9) * 10) / 10),
       });
+      if (opts?.limit && Number.isFinite(opts.limit)) {
+        params.set('limit', String(Math.max(50, Math.floor(opts.limit))));
+      }
       if (opts?.bbox) {
         params.set('minLat', String(opts.bbox.minLat));
         params.set('minLng', String(opts.bbox.minLng));
@@ -456,6 +468,7 @@ export default function Home() {
       const baseLat = anchor?.[0] ?? lat;
       const baseLng = anchor?.[1] ?? lng;
       let expandedBbox = bbox;
+      let requestedLimit: number | undefined;
       if (bbox) {
         const latPad = Math.max(0.02, (bbox.maxLat - bbox.minLat) * BBOX_OVERSCAN_FACTOR);
         const lngPad = Math.max(0.02, (bbox.maxLng - bbox.minLng) * BBOX_OVERSCAN_FACTOR);
@@ -466,9 +479,25 @@ export default function Home() {
           maxLng: bbox.maxLng + lngPad,
         };
       }
-      fetchDrivers(baseLat, baseLng, actionTypeRef.current, { zoom, bbox: expandedBbox });
+      if (zoom <= COUNTRY_MODE_ZOOM_THRESHOLD) {
+        expandedBbox = TURKEY_BBOX;
+        requestedLimit = COUNTRY_MODE_FETCH_LIMIT;
+      }
+      fetchDrivers(baseLat, baseLng, actionTypeRef.current, {
+        zoom,
+        limit: requestedLimit,
+        bbox: expandedBbox,
+      });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
-  }, [BBOX_OVERSCAN_FACTOR, fetchDrivers, MAP_MOVE_FETCH_DEBOUNCE_MS, MIN_MOVE_DISTANCE_DEG, MIN_ZOOM_DELTA]);
+  }, [
+    BBOX_OVERSCAN_FACTOR,
+    COUNTRY_MODE_FETCH_LIMIT,
+    COUNTRY_MODE_ZOOM_THRESHOLD,
+    fetchDrivers,
+    MAP_MOVE_FETCH_DEBOUNCE_MS,
+    MIN_MOVE_DISTANCE_DEG,
+    MIN_ZOOM_DELTA,
+  ]);
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">

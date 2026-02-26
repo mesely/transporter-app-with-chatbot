@@ -176,12 +176,12 @@ export class UsersService implements OnModuleInit {
     let maxDist = 500000;
     let limit = 200;
 
-    if (safeZoom < 8) { maxDist = 20000000; limit = 1800; }
+    if (safeZoom < 8) { maxDist = 20000000; limit = 3200; }
     else if (safeZoom < 11) { maxDist = 2000000; limit = 800; }
     else { maxDist = 150000; limit = 300; }
 
     if (typeof requestedLimit === 'number' && Number.isFinite(requestedLimit)) {
-      const normalizedLimit = Math.max(20, Math.min(2000, Math.floor(requestedLimit)));
+      const normalizedLimit = Math.max(20, Math.min(5000, Math.floor(requestedLimit)));
       limit = Math.min(limit, normalizedLimit);
     }
 
@@ -210,7 +210,17 @@ export class UsersService implements OnModuleInit {
       const centerLat = (minLat + maxLat) / 2;
       const centerLng = (minLng + maxLng) / 2;
       const cornerDistance = this.distanceMeters(centerLat, centerLng, maxLat, maxLng);
-      maxDist = Math.max(8000, Math.min(Math.ceil(cornerDistance * 1.2), 20000000));
+      const latSpan = Math.abs(maxLat - minLat);
+      const lngSpan = Math.abs(maxLng - minLng);
+      const nationwideViewport = latSpan >= 6 || lngSpan >= 10 || safeZoom <= 6.5;
+
+      if (nationwideViewport) {
+        // Keep viewport filtering, but do not trim by distance to user location in country-wide mode.
+        maxDist = 20000000;
+        limit = Math.max(limit, 3200);
+      } else {
+        maxDist = Math.max(8000, Math.min(Math.ceil(cornerDistance * 1.2), 20000000));
+      }
     }
 
     return this.providerModel.aggregate([
