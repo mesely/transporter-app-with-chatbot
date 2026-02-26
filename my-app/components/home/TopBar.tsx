@@ -16,7 +16,10 @@ export default function TopBar({ onProfileClick }: TopBarProps) {
 
   return (
     <div className="absolute top-0 left-0 right-0 z-[500] pointer-events-none">
-      <div className="px-6 pt-11 flex items-center justify-between pointer-events-auto">
+      <div
+        className="px-6 flex items-center justify-between pointer-events-auto"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)' }}
+      >
         
         {/* Settings butonu (eski Menu yerine) */}
         <button

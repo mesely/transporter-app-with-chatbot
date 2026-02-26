@@ -515,7 +515,10 @@ export default function Home() {
         onProfileClick={() => setShowProfile(true)}
       />
 
-      <div className="absolute top-11 left-1/2 z-[900] -translate-x-1/2 w-[min(92vw,540px)] pointer-events-auto">
+      <div
+        className="absolute left-1/2 z-[900] -translate-x-1/2 w-[min(92vw,540px)] pointer-events-auto"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 18px)' }}
+      >
         <div className="relative rounded-2xl border border-white/70 bg-white/95 shadow-xl backdrop-blur-md">
           <div className="flex items-center gap-2 px-3 py-2">
             <Search size={16} className="text-slate-500" />
