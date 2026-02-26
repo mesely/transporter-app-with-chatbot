@@ -345,10 +345,6 @@ function ActionPanel({
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const city = e.target.value;
     setSelectedCity(city);
-    if (city && CITY_COORDINATES[city]) {
-      const [lat, lng] = CITY_COORDINATES[city];
-      onSearchLocation(lat, lng, { forceFocus: true });
-    }
   };
 
   const displayDrivers = useMemo(() => {
