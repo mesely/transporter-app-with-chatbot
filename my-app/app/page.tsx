@@ -10,6 +10,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Mic, Search, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import TopBar from '../components/home/TopBar';
 import ActionPanel from '../components/home/ActionPanel';
@@ -57,6 +58,7 @@ function normalizeText(v: string) {
 }
 
 export default function Home() {
+  const router = useRouter();
   const SPLASH_DURATION_MS = 6800;
   const DRIVERS_CACHE_TTL_MS = 120000;
   const DRIVERS_CACHE_REVALIDATE_MS = 15000;
@@ -89,6 +91,7 @@ export default function Home() {
 
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
 
   // 🔥 YENİ LOADER İÇİN ZAMANLAYICI
   useEffect(() => {
@@ -217,6 +220,36 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const goRequired = () => {
+      if (!cancelled) router.replace('/location-required');
+    };
+
+    const checkPermission = async () => {
+      if (typeof window === 'undefined') return;
+      if (!navigator?.geolocation) {
+        goRequired();
+        return;
+      }
+      try {
+        const permissions = (navigator as any).permissions;
+        if (permissions?.query) {
+          const status = await permissions.query({ name: 'geolocation' as PermissionName });
+          if (status?.state === 'denied') {
+            goRequired();
+            return;
+          }
+        }
+      } catch {}
+    };
+
+    checkPermission();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  useEffect(() => {
     if (!searchCoords) fetchDrivers(DEFAULT_LAT, DEFAULT_LNG, 'kurtarici');
   }, [fetchDrivers, searchCoords]);
 
@@ -311,13 +344,17 @@ export default function Home() {
             clearActiveDriver: true,
           });
         },
-        () => {},
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 }
+        (err) => {
+          if ((err as GeolocationPositionError)?.code === 1) {
+            router.replace('/location-required');
+          }
+        },
+        { enableHighAccuracy: true, timeout: 22000, maximumAge: 120000 }
       );
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [handleSearchLocation, searchCoords]);
+  }, [handleSearchLocation, router, searchCoords]);
 
   const handleFilterApply = useCallback((type: string) => {
     if (type === actionTypeRef.current && activeTagsRef.current.length === 0) return;
@@ -370,19 +407,48 @@ export default function Home() {
   const handleVoiceSearch = useCallback(() => {
     const SpeechCtor: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechCtor) return;
+    if (isListening && speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      return;
+    }
     const recognition = new SpeechCtor();
+    speechRecognitionRef.current = recognition;
     recognition.lang = 'tr-TR';
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+    recognition.continuous = true;
     recognition.maxAlternatives = 1;
     setIsListening(true);
+    let finalText = '';
     recognition.onresult = (event: any) => {
-      const text = event?.results?.[0]?.[0]?.transcript || '';
-      setMapSearchQuery(text);
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const transcript = event.results[i][0]?.transcript || '';
+        if (event.results[i].isFinal) finalText += `${transcript} `;
+        else interim += transcript;
+      }
+      setMapSearchQuery(`${finalText}${interim}`.trim());
     };
     recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      if (speechRecognitionRef.current === recognition) speechRecognitionRef.current = null;
+      setIsListening(false);
+    };
     recognition.start();
+  }, [isListening]);
+
+  useEffect(() => () => {
+    try {
+      speechRecognitionRef.current?.stop();
+    } catch {}
   }, []);
+
+  const mapSearchTheme = useMemo(() => {
+    if (actionType === 'seyyar_sarj') return { mic: 'bg-cyan-600', micLive: 'bg-cyan-800' };
+    if (actionType.includes('sarj') || actionType === 'istasyon') return { mic: 'bg-blue-600', micLive: 'bg-blue-800' };
+    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc') return { mic: 'bg-red-600', micLive: 'bg-rose-800' };
+    if (actionType.includes('yolcu') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(actionType)) return { mic: 'bg-emerald-600', micLive: 'bg-emerald-800' };
+    return { mic: 'bg-purple-600', micLive: 'bg-purple-800' };
+  }, [actionType]);
 
   useEffect(() => {
     const tick = () => {
@@ -450,13 +516,13 @@ export default function Home() {
       />
 
       <div className="absolute top-11 left-1/2 z-[900] -translate-x-1/2 w-[min(92vw,540px)] pointer-events-auto">
-        <div className="relative rounded-2xl border border-white/60 bg-white/95 shadow-xl backdrop-blur-md">
+        <div className="relative rounded-2xl border border-white/70 bg-white/95 shadow-xl backdrop-blur-md">
           <div className="flex items-center gap-2 px-3 py-2">
             <Search size={16} className="text-slate-500" />
             <input
               value={mapSearchQuery}
               onChange={(e) => setMapSearchQuery(e.target.value)}
-              placeholder="Firma veya hizmet ara (mikrofon destekli)"
+              placeholder="Firma veya hizmet ara"
               className="flex-1 bg-transparent text-[13px] font-semibold text-slate-800 outline-none"
             />
             {mapSearchQuery && (
@@ -466,7 +532,7 @@ export default function Home() {
             )}
             <button
               onClick={handleVoiceSearch}
-              className={`rounded-xl px-2.5 py-1.5 text-white ${isListening ? 'bg-rose-600' : 'bg-sky-600'}`}
+              className={`rounded-xl px-2.5 py-1.5 text-white ${isListening ? mapSearchTheme.micLive : mapSearchTheme.mic}`}
             >
               <Mic size={14} />
             </button>

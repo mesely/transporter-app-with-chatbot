@@ -96,6 +96,9 @@ const AGREEMENT_SECTIONS = [
 const normalizeString = (str: string) => str ? str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase().trim() : '';
 const PROVIDER_PHONE_KEY = 'Transport_provider_phone';
 const PROVIDER_ID_KEY = 'Transport_provider_id';
+const FALLBACK_CITY_DATA: Record<string, string[]> = {
+  'İstanbul': ['Adalar', 'Arnavutköy', 'Ataşehir', 'Avcılar', 'Bağcılar', 'Bahçelievler', 'Bakırköy', 'Başakşehir', 'Bayrampaşa', 'Beşiktaş', 'Beykoz', 'Beylikdüzü', 'Beyoğlu', 'Büyükçekmece', 'Çekmeköy', 'Esenler', 'Esenyurt', 'Eyüpsultan', 'Fatih', 'Gaziosmanpaşa', 'Güngören', 'Kadıköy', 'Kağıthane', 'Kartal', 'Küçükçekmece', 'Maltepe', 'Pendik', 'Sancaktepe', 'Sarıyer', 'Silivri', 'Sultanbeyli', 'Sultangazi', 'Şile', 'Şişli', 'Tuzla', 'Ümraniye', 'Üsküdar', 'Zeytinburnu']
+};
 
 export default function ProfilePage() {
   type VehicleEntry = { name: string; photoUrls: string[] };
@@ -127,19 +130,42 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    fetch('/il_ilce.csv').then(res => res.text()).then(text => {
-      const dataMap: any = {};
-      text.split(/\r?\n/).forEach((line, i) => {
-        if (i === 0 || !line.trim()) return;
-        const [il, ilce] = line.split(',');
-        if (il && ilce) {
-          const cleanIl = il.trim();
-          if (!dataMap[cleanIl]) dataMap[cleanIl] = [];
-          dataMap[cleanIl].push(ilce.trim());
+    let alive = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+    const loadCityData = async () => {
+      try {
+        const res = await fetch('/il_ilce.csv', { signal: controller.signal, cache: 'no-store' });
+        if (!res.ok) throw new Error('csv not found');
+        const text = await res.text();
+        const dataMap: Record<string, string[]> = {};
+        text.split(/\r?\n/).forEach((line, i) => {
+          if (i === 0 || !line.trim()) return;
+          const [il, ilce] = line.split(',');
+          if (il && ilce) {
+            const cleanIl = il.trim();
+            if (!dataMap[cleanIl]) dataMap[cleanIl] = [];
+            dataMap[cleanIl].push(ilce.trim());
+          }
+        });
+        if (alive) {
+          setCityData(Object.keys(dataMap).length > 0 ? dataMap : FALLBACK_CITY_DATA);
         }
-      });
-      setCityData(dataMap);
-    }).finally(() => setLoading(false));
+      } catch {
+        if (alive) setCityData(FALLBACK_CITY_DATA);
+      } finally {
+        clearTimeout(timeoutId);
+        if (alive) setLoading(false);
+      }
+    };
+
+    loadCityData();
+    return () => {
+      alive = false;
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, []);
 
   const availableDistricts = useMemo(() => cityData[formData.city] || [], [formData.city, cityData]);
@@ -201,7 +227,7 @@ export default function ProfilePage() {
     localStorage.setItem(PROVIDER_ID_KEY, found._id);
   }, []);
 
-  const handlePhoneLookup = useCallback(async (phoneInput?: string) => {
+  const handlePhoneLookup = useCallback(async (phoneInput?: string, redirectOnSuccess = false) => {
     const phone = normalizePhone(phoneInput ?? formData.phoneNumber);
     if (phone.length < 10) return false;
     setCheckingPhone(true);
@@ -211,6 +237,9 @@ export default function ProfilePage() {
       const found = await res.json();
       if (!found?._id) return false;
       hydrateProfileFromUser(found);
+      if (redirectOnSuccess) {
+        window.location.assign('/settings');
+      }
       return true;
     } catch {
       return false;
@@ -387,8 +416,7 @@ export default function ProfilePage() {
         setProfileDisplayName(formData.businessName);
         localStorage.setItem(PROVIDER_PHONE_KEY, normalizePhone(formData.phoneNumber));
         if (persistedId) localStorage.setItem(PROVIDER_ID_KEY, String(persistedId));
-        setIsSaved(true);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.location.assign('/settings');
       } else { alert("Kaydedilemedi."); }
     } catch { alert("Hata!"); } finally { setSaving(false); }
   };
@@ -430,7 +458,7 @@ export default function ProfilePage() {
              />
              <button
                type="button"
-               onClick={handlePhoneLookup}
+               onClick={() => handlePhoneLookup(undefined, true)}
                className="px-4 rounded-2xl bg-black text-white text-[10px] font-black uppercase"
              >
                {checkingPhone ? '...' : 'Giriş Yap'}
