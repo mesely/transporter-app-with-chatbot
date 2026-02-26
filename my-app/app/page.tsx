@@ -66,6 +66,7 @@ export default function Home() {
   const MAP_MOVE_FETCH_DEBOUNCE_MS = 350;
   const MIN_MOVE_DISTANCE_DEG = 0.015;
   const MIN_ZOOM_DELTA = 0.6;
+  const BBOX_OVERSCAN_FACTOR = 0.22;
 
   const [showSplash, setShowSplash] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
@@ -454,9 +455,20 @@ export default function Home() {
       const anchor = searchCoordsRef.current;
       const baseLat = anchor?.[0] ?? lat;
       const baseLng = anchor?.[1] ?? lng;
-      fetchDrivers(baseLat, baseLng, actionTypeRef.current, { zoom, bbox });
+      let expandedBbox = bbox;
+      if (bbox) {
+        const latPad = Math.max(0.02, (bbox.maxLat - bbox.minLat) * BBOX_OVERSCAN_FACTOR);
+        const lngPad = Math.max(0.02, (bbox.maxLng - bbox.minLng) * BBOX_OVERSCAN_FACTOR);
+        expandedBbox = {
+          minLat: bbox.minLat - latPad,
+          minLng: bbox.minLng - lngPad,
+          maxLat: bbox.maxLat + latPad,
+          maxLng: bbox.maxLng + lngPad,
+        };
+      }
+      fetchDrivers(baseLat, baseLng, actionTypeRef.current, { zoom, bbox: expandedBbox });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
-  }, [fetchDrivers, MAP_MOVE_FETCH_DEBOUNCE_MS, MIN_MOVE_DISTANCE_DEG, MIN_ZOOM_DELTA]);
+  }, [BBOX_OVERSCAN_FACTOR, fetchDrivers, MAP_MOVE_FETCH_DEBOUNCE_MS, MIN_MOVE_DISTANCE_DEG, MIN_ZOOM_DELTA]);
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">

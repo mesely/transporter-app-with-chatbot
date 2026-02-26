@@ -265,7 +265,7 @@ function ActionPanel({
     const targetId = activeDriverId || localSelectedId;
     if (targetId) {
       if (panelState < 2) setPanelState(2);
-      setTimeout(() => { itemRefs.current[targetId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
+      setTimeout(() => { itemRefs.current[targetId]?.scrollIntoView({ behavior: 'auto', block: 'center' }); }, 300);
     }
   }, [activeDriverId, localSelectedId]);
 
@@ -566,13 +566,13 @@ function ActionPanel({
         <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1 z-[2002]">
           <button
             onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.max(p - 1, 0) as 0|1|2|3); }}
-            className={`p-1.5 rounded-full bg-white shadow-md transition-all active:scale-90 ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
+            className={`p-1.5 rounded-full bg-white shadow-md transition-colors ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
           >
             <ChevronDown size={18} strokeWidth={3} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.min(p + 1, 3) as 0|1|2|3); }}
-            className={`p-1.5 rounded-full bg-white shadow-md transition-all active:scale-90 ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
+            className={`p-1.5 rounded-full bg-white shadow-md transition-colors ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
           >
             <ChevronUp size={18} strokeWidth={3} />
           </button>
@@ -581,16 +581,16 @@ function ActionPanel({
 
       <div onClick={(e) => e.stopPropagation()} className={`px-6 pb-6 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-4">
-          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
+          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
             <Wrench size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.kurtarici}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
+          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
             <Truck size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.nakliye}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
+          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
             <Zap size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.sarj}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
+          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
             <Users size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.yolcu}</span>
           </button>
         </div>
@@ -598,8 +598,8 @@ function ActionPanel({
         <div className="space-y-3 shrink-0 mb-2">
           {showTowRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> {tx.otoKurtarma}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> {tx.vinc}</button>
             </div>
           )}
           {(showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
@@ -619,7 +619,7 @@ function ActionPanel({
           {activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => (
-                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-3 rounded-xl text-[8px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-all ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
+                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-3 rounded-xl text-[8px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
                         {activeTags.includes(sub.id) && <Check size={10} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                     </button>
                 ))}
@@ -627,8 +627,8 @@ function ActionPanel({
           )}
           {showChargeRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> {tx.station}</button>
-              <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-all ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
+              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> {tx.station}</button>
+              <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
                 <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> {tx.geziciSarj}
               </button>
             </div>
@@ -636,7 +636,7 @@ function ActionPanel({
           {showPassengerRow && (
             <div className="grid grid-cols-4 gap-2">
                {SUB_FILTERS.yolcu.map((sub) => (
-                  <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                  <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-colors ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
                     {sub.id === 'minibus' && <CarFront size={14}/>} {sub.id === 'otobus' && <Bus size={14}/>} {sub.id === 'midibus' && <Bus size={14}/>} {sub.id === 'vip_tasima' && <Crown size={14}/>}
                     {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                   </button>
@@ -647,7 +647,7 @@ function ActionPanel({
 
         {panelState > 0 && (
           <div className="flex items-center gap-2 mb-4 py-2 shrink-0 overflow-x-auto no-scrollbar">
-              <div className="relative shrink-0 w-[130px] shadow-lg rounded-2xl active:scale-95 transition-transform">
+              <div className="relative shrink-0 w-[130px] shadow-lg rounded-2xl transition-transform">
                 <select
                   value={selectedCity}
                   onChange={handleCityChange}
@@ -666,11 +666,11 @@ function ActionPanel({
               <div className="ml-auto flex items-center gap-2">
                 <button
                   onClick={() => setShowFavorites((v) => !v)}
-                  className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 transition-colors ${activeThemeColor}`}
+                  className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg shrink-0 transition-colors ${activeThemeColor}`}
                 >
                   <Heart size={16} />
                 </button>
-                <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg active:scale-95 shrink-0 transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
+                <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg shrink-0 transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
               </div>
           </div>
         )}
@@ -869,7 +869,7 @@ function ActionPanel({
                             }
                         }
                     }}
-                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer active:scale-[0.98] relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
+                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >
                     {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
                       <div className="absolute top-4 right-4 text-right">
@@ -944,7 +944,7 @@ function ActionPanel({
                               const lng = driver.location?.coordinates?.[0];
                               if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
                             }}
-                            className="w-full py-4 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 transition-transform"
+                            className="w-full py-4 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 transition-transform"
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           >
                             <MapIcon size={16} /> {tx.mapsOpen}
@@ -953,7 +953,7 @@ function ActionPanel({
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
-                            className="w-full py-3 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40"
+                            className="w-full py-3 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40"
                             style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
                           >
                             <Heart size={14} className={isFavorite(driver._id) ? 'fill-white' : ''} />
@@ -964,7 +964,7 @@ function ActionPanel({
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }}
-                            className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40`}
+                            className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40`}
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           ><Phone size={14}/> {tx.call}</button>
 
@@ -972,13 +972,13 @@ function ActionPanel({
                             (isMobileCharge || isPassenger) ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); if (driver.website) window.open(driver.website, '_blank'); }}
-                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
+                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
                                 style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                               ><Globe size={14}/> {tx.site}</button>
                             ) : (
                               <button
                                 onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
-                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] active:scale-95 shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
+                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
                                 style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                               ><MessageCircle size={14}/> {tx.message}</button>
                             )
@@ -993,7 +993,7 @@ function ActionPanel({
                                   e.stopPropagation();
                                   setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
                                 }}
-                                className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all`}
+                                className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} transition-colors`}
                                 style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                               >
                                 {tx.listVehicles} ({vehicleCount})
@@ -1005,7 +1005,7 @@ function ActionPanel({
                                   e.stopPropagation();
                                   setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
                                 }}
-                                className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} active:scale-95 transition-all`}
+                                className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} transition-colors`}
                                 style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                               >
                                 {tx.viewPhotos} ({photoCount})
@@ -1063,7 +1063,7 @@ function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowRatingsModal(true);
                               }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-start justify-center gap-1 active:scale-95 transition-all`}
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-start justify-center gap-1 transition-colors`}
                               style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               <Star size={12} className="shrink-0 mt-px"/> {tx.viewRatings} ({driver.ratingCount || 0})
@@ -1075,7 +1075,7 @@ function ActionPanel({
                                 setModalDriverName(driver.businessName || '');
                                 setShowReportsModal(true);
                               }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-center justify-center gap-1 active:scale-95 transition-all`}
+                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-center justify-center gap-1 transition-colors`}
                               style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                             >
                               {tx.viewReports} ({driver.reportCount || 0})
