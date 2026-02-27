@@ -104,19 +104,19 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Servico', ru: 'Servis', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' },
 };
 
-const MAP_UI_TEXT: Record<AppLang, { showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
-  tr: { showGoogle: "MAPS'TE GORUNTULE", favoriteAdd: 'FAVORIYE EKLE', favoriteRemove: 'FAVORIDEN CIKAR', viewRatings: 'YORUMLARI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
-  en: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITE', favoriteRemove: 'UNFAVORITE', viewRatings: 'REVIEWS', viewReports: 'REPORTS' },
-  de: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE' },
-  fr: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES' },
-  it: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'PREFERITI', favoriteRemove: 'RIMUOVI', viewRatings: 'RECENSIONI', viewReports: 'RECLAMI' },
-  es: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'QUITAR', viewRatings: 'RESENAS', viewReports: 'QUEJAS' },
-  pt: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'REMOVER', viewRatings: 'AVALIACOES', viewReports: 'RECLAMACOES' },
-  ru: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'IZBRANNOE', favoriteRemove: 'UBRAT', viewRatings: 'OTZYVY', viewReports: 'ZHALOBY' },
-  zh: { showGoogle: 'GOOGLE MAPS', favoriteAdd: '收藏', favoriteRemove: '取消', viewRatings: '评价', viewReports: '投诉' },
-  ja: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'お気に入り', favoriteRemove: '解除', viewRatings: '評価', viewReports: '苦情' },
-  ko: { showGoogle: 'GOOGLE MAPS', favoriteAdd: '즐겨찾기', favoriteRemove: '해제', viewRatings: '리뷰', viewReports: '신고' },
-  ar: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'مفضلة', favoriteRemove: 'إزالة', viewRatings: 'تقييمات', viewReports: 'شكاوى' },
+const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
+  tr: { call: 'ARA', message: 'MESAJ AT', showGoogle: "MAPS'TE GORUNTULE", favoriteAdd: 'FAVORIYE EKLE', favoriteRemove: 'FAVORIDEN CIKAR', viewRatings: 'YORUMLARI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
+  en: { call: 'CALL', message: 'MESSAGE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITE', favoriteRemove: 'UNFAVORITE', viewRatings: 'REVIEWS', viewReports: 'REPORTS' },
+  de: { call: 'ANRUF', message: 'NACHRICHT', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE' },
+  fr: { call: 'APPELER', message: 'MESSAGE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES' },
+  it: { call: 'CHIAMA', message: 'MESSAGGIO', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'PREFERITI', favoriteRemove: 'RIMUOVI', viewRatings: 'RECENSIONI', viewReports: 'RECLAMI' },
+  es: { call: 'LLAMAR', message: 'MENSAJE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'QUITAR', viewRatings: 'RESENAS', viewReports: 'QUEJAS' },
+  pt: { call: 'LIGAR', message: 'MENSAGEM', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'REMOVER', viewRatings: 'AVALIACOES', viewReports: 'RECLAMACOES' },
+  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'IZBRANNOE', favoriteRemove: 'UBRAT', viewRatings: 'OTZYVY', viewReports: 'ZHALOBY' },
+  zh: { call: '拨打', message: '消息', showGoogle: 'GOOGLE MAPS', favoriteAdd: '收藏', favoriteRemove: '取消', viewRatings: '评价', viewReports: '投诉' },
+  ja: { call: '電話', message: 'メッセージ', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'お気に入り', favoriteRemove: '解除', viewRatings: '評価', viewReports: '苦情' },
+  ko: { call: '전화', message: '메시지', showGoogle: 'GOOGLE MAPS', favoriteAdd: '즐겨찾기', favoriteRemove: '해제', viewRatings: '리뷰', viewReports: '신고' },
+  ar: { call: 'اتصال', message: 'رسالة', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'مفضلة', favoriteRemove: 'إزالة', viewRatings: 'تقييمات', viewReports: 'شكاوى' },
 };
 
 const BASE_STYLE = {
@@ -276,20 +276,21 @@ function getFocusPadding() {
 function buildPopup(
   driver: Driver,
   lang: AppLang,
+  onStartOrder: (driver: Driver, method: 'call' | 'message') => void,
   isFavorite: boolean,
   onToggleFavorite?: (driver: Driver) => void,
   onViewRatings?: (driverId: string, driverName?: string) => void,
   onViewReports?: (driverId: string, driverName?: string) => void
 ) {
   const subType = driver.service?.subType || 'other';
-  const color = getServiceColor(subType);
+  const color = '#dc2626';
   const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang] || SERVICE_LABELS.other.en;
   const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
 
   const wrap = document.createElement('div');
   wrap.className = 'p-2 text-gray-900';
-  wrap.style.minWidth = '380px';
-  wrap.style.width = 'min(380px, calc(100vw - 48px))';
+  wrap.style.minWidth = '360px';
+  wrap.style.width = 'min(360px, calc(100vw - 48px))';
   wrap.style.maxWidth = '100%';
   wrap.style.boxSizing = 'border-box';
   wrap.style.transform = 'scale(0.75)';
@@ -300,22 +301,36 @@ function buildPopup(
     <div style="font-family: ui-sans-serif, system-ui;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
         <span style="font-size:10px;font-weight:900;color:white;padding:5px 8px;border-radius:10px;background:${color};text-transform:uppercase;">${label}</span>
-        ${distance ? `<span style="font-size:10px;font-weight:800;color:#9ca3af;">${distance}</span>` : ''}
+        <button data-action="favorite" style="border:1px solid #fecaca;border-radius:999px;width:28px;height:28px;color:${isFavorite ? '#ffffff' : '#dc2626'};background:${isFavorite ? color : '#ffffff'};font-size:14px;font-weight:900;cursor:pointer;line-height:1;">♡</button>
       </div>
       <h4 style="font-size:13px;font-weight:900;margin:0 0 6px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px;">
-        <button data-action="show" style="border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.showGoogle}</button>
-        <button data-action="favorite" style="border:1px solid #e5e7eb;border-radius:10px;padding:9px 6px;color:${isFavorite ? 'white' : '#374151'};background:${isFavorite ? color : '#ffffff'};font-size:9px;font-weight:900;cursor:pointer;">${isFavorite ? uiText.favoriteRemove : uiText.favoriteAdd}</button>
-        <button data-action="ratings" style="border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.viewRatings}</button>
-        <button data-action="reports" style="border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.viewReports}</button>
+      ${distance ? `<div style="font-size:10px;font-weight:800;color:#9ca3af;margin-bottom:8px;">${distance}</div>` : '<div style="margin-bottom:8px;"></div>'}
+      <div style="display:flex;gap:8px;">
+        <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.call}</button>
+        <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+      </div>
+      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.showGoogle}</button>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button data-action="ratings" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.viewRatings}</button>
+        <button data-action="reports" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.viewReports}</button>
       </div>
     </div>
   `;
 
+  const callBtn = wrap.querySelector('[data-action="call"]') as HTMLButtonElement | null;
+  const messageBtn = wrap.querySelector('[data-action="message"]') as HTMLButtonElement | null;
   const showBtn = wrap.querySelector('[data-action="show"]') as HTMLButtonElement | null;
   const favoriteBtn = wrap.querySelector('[data-action="favorite"]') as HTMLButtonElement | null;
   const ratingsBtn = wrap.querySelector('[data-action="ratings"]') as HTMLButtonElement | null;
   const reportsBtn = wrap.querySelector('[data-action="reports"]') as HTMLButtonElement | null;
+  callBtn?.addEventListener('click', () => {
+    onStartOrder(driver, 'call');
+    if (driver.phoneNumber) window.location.href = `tel:${driver.phoneNumber}`;
+  });
+  messageBtn?.addEventListener('click', () => {
+    onStartOrder(driver, 'message');
+    if (driver.phoneNumber) window.location.href = `sms:${driver.phoneNumber}`;
+  });
   favoriteBtn?.addEventListener('click', () => onToggleFavorite?.(driver));
   ratingsBtn?.addEventListener('click', () => onViewRatings?.(driver._id, driver.businessName));
   reportsBtn?.addEventListener('click', () => onViewReports?.(driver._id, driver.businessName));
@@ -651,6 +666,7 @@ function MapView({
     const popupNode = buildPopup(
       driver,
       lang,
+      onStartOrder,
       !!isFavorite?.(driver._id),
       onToggleFavorite,
       onViewRatings,

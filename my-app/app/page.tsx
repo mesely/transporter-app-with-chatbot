@@ -109,6 +109,7 @@ export default function Home() {
   const searchCoordsRef = useRef(searchCoords);
   const driversCacheRef = useRef<Record<string, { data: any[]; ts: number }>>({});
   const mapMoveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressNextMapMoveFetchRef = useRef(false);
   const lastMapFetchRef = useRef<{
     lat: number;
     lng: number;
@@ -505,6 +506,7 @@ export default function Home() {
     setActiveDriverId(id);
     setPopupDriverId(openPopup ? id : null);
     if (id) {
+      suppressNextMapMoveFetchRef.current = true;
       setMapFocusZoom(12.8);
       setMapFocusToken((v) => v + 1);
     }
@@ -613,6 +615,10 @@ export default function Home() {
     zoom: number,
     bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }
   ) => {
+    if (suppressNextMapMoveFetchRef.current) {
+      suppressNextMapMoveFetchRef.current = false;
+      return;
+    }
     const prev = lastMapFetchRef.current;
     if (prev) {
       const movedLat = Math.abs(prev.lat - lat);
