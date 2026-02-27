@@ -103,19 +103,19 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Servico', ru: 'Servis', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' },
 };
 
-const MAP_UI_TEXT: Record<AppLang, { showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
-  tr: { showGoogle: "GOOGLE MAPS'TE GOR", favoriteAdd: 'FAVORILERE EKLE', favoriteRemove: 'FAVORILERDEN CIKAR', viewRatings: 'DEGERLENDIRMELER', viewReports: 'SIKAYETLER' },
-  en: { showGoogle: 'OPEN IN GOOGLE MAPS', favoriteAdd: 'ADD TO FAVORITES', favoriteRemove: 'REMOVE FAVORITE', viewRatings: 'VIEW REVIEWS', viewReports: 'VIEW REPORTS' },
-  de: { showGoogle: 'IN GOOGLE MAPS OFFNEN', favoriteAdd: 'ZU FAVORITEN', favoriteRemove: 'FAVORIT ENTFERNEN', viewRatings: 'BEWERTUNGEN ANZEIGEN', viewReports: 'BESCHWERDEN ANZEIGEN' },
-  fr: { showGoogle: 'OUVRIR DANS GOOGLE MAPS', favoriteAdd: 'AJOUTER AUX FAVORIS', favoriteRemove: 'RETIRER DES FAVORIS', viewRatings: 'VOIR LES AVIS', viewReports: 'VOIR LES PLAINTES' },
-  it: { showGoogle: 'APRI IN GOOGLE MAPS', favoriteAdd: 'AGGIUNGI AI PREFERITI', favoriteRemove: 'RIMUOVI DAI PREFERITI', viewRatings: 'VEDI RECENSIONI', viewReports: 'VEDI RECLAMI' },
-  es: { showGoogle: 'ABRIR EN GOOGLE MAPS', favoriteAdd: 'ANADIR A FAVORITOS', favoriteRemove: 'QUITAR FAVORITO', viewRatings: 'VER RESENAS', viewReports: 'VER QUEJAS' },
-  pt: { showGoogle: 'ABRIR NO GOOGLE MAPS', favoriteAdd: 'ADICIONAR A FAVORITOS', favoriteRemove: 'REMOVER FAVORITO', viewRatings: 'VER AVALIACOES', viewReports: 'VER RECLAMACOES' },
-  ru: { showGoogle: 'OTKRYT V GOOGLE MAPS', favoriteAdd: 'DOBAVIT V IZBRANNOE', favoriteRemove: 'UBRAT IZBRANNOE', viewRatings: 'POKAZAT OTSENKI', viewReports: 'POKAZAT ZHALOBY' },
-  zh: { showGoogle: '在 GOOGLE MAPS 打开', favoriteAdd: '加入收藏', favoriteRemove: '取消收藏', viewRatings: '查看评价', viewReports: '查看投诉' },
-  ja: { showGoogle: 'GOOGLE MAPSで開く', favoriteAdd: 'お気に入り追加', favoriteRemove: 'お気に入り解除', viewRatings: '評価を見る', viewReports: '苦情を見る' },
-  ko: { showGoogle: 'GOOGLE MAPS에서 열기', favoriteAdd: '즐겨찾기 추가', favoriteRemove: '즐겨찾기 해제', viewRatings: '평가 보기', viewReports: '신고 보기' },
-  ar: { showGoogle: 'افتح في GOOGLE MAPS', favoriteAdd: 'اضف الى المفضلة', favoriteRemove: 'ازالة من المفضلة', viewRatings: 'عرض التقييمات', viewReports: 'عرض الشكاوى' },
+const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
+  tr: { call: 'ARA', message: 'MESAJ AT', showGoogle: "GOOGLE MAPS'TE GOR", favoriteAdd: 'FAVORILERE EKLE', favoriteRemove: 'FAVORILERDEN CIKAR', viewRatings: 'DEGERLENDIRMELER', viewReports: 'SIKAYETLER' },
+  en: { call: 'CALL', message: 'MESSAGE', showGoogle: 'OPEN IN GOOGLE MAPS', favoriteAdd: 'ADD TO FAVORITES', favoriteRemove: 'REMOVE FAVORITE', viewRatings: 'VIEW REVIEWS', viewReports: 'VIEW REPORTS' },
+  de: { call: 'ANRUFEN', message: 'NACHRICHT', showGoogle: 'IN GOOGLE MAPS OFFNEN', favoriteAdd: 'ZU FAVORITEN', favoriteRemove: 'FAVORIT ENTFERNEN', viewRatings: 'BEWERTUNGEN ANZEIGEN', viewReports: 'BESCHWERDEN ANZEIGEN' },
+  fr: { call: 'APPELER', message: 'MESSAGE', showGoogle: 'OUVRIR DANS GOOGLE MAPS', favoriteAdd: 'AJOUTER AUX FAVORIS', favoriteRemove: 'RETIRER DES FAVORIS', viewRatings: 'VOIR LES AVIS', viewReports: 'VOIR LES PLAINTES' },
+  it: { call: 'CHIAMA', message: 'MESSAGGIO', showGoogle: 'APRI IN GOOGLE MAPS', favoriteAdd: 'AGGIUNGI AI PREFERITI', favoriteRemove: 'RIMUOVI DAI PREFERITI', viewRatings: 'VEDI RECENSIONI', viewReports: 'VEDI RECLAMI' },
+  es: { call: 'LLAMAR', message: 'MENSAJE', showGoogle: 'ABRIR EN GOOGLE MAPS', favoriteAdd: 'ANADIR A FAVORITOS', favoriteRemove: 'QUITAR FAVORITO', viewRatings: 'VER RESENAS', viewReports: 'VER QUEJAS' },
+  pt: { call: 'LIGAR', message: 'MENSAGEM', showGoogle: 'ABRIR NO GOOGLE MAPS', favoriteAdd: 'ADICIONAR A FAVORITOS', favoriteRemove: 'REMOVER FAVORITO', viewRatings: 'VER AVALIACOES', viewReports: 'VER RECLAMACOES' },
+  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', showGoogle: 'OTKRYT V GOOGLE MAPS', favoriteAdd: 'DOBAVIT V IZBRANNOE', favoriteRemove: 'UBRAT IZBRANNOE', viewRatings: 'POKAZAT OTSENKI', viewReports: 'POKAZAT ZHALOBY' },
+  zh: { call: '拨打电话', message: '发送消息', showGoogle: '在 GOOGLE MAPS 打开', favoriteAdd: '加入收藏', favoriteRemove: '取消收藏', viewRatings: '查看评价', viewReports: '查看投诉' },
+  ja: { call: '電話する', message: 'メッセージ', showGoogle: 'GOOGLE MAPSで開く', favoriteAdd: 'お気に入り追加', favoriteRemove: 'お気に入り解除', viewRatings: '評価を見る', viewReports: '苦情を見る' },
+  ko: { call: '전화하기', message: '메시지', showGoogle: 'GOOGLE MAPS에서 열기', favoriteAdd: '즐겨찾기 추가', favoriteRemove: '즐겨찾기 해제', viewRatings: '평가 보기', viewReports: '신고 보기' },
+  ar: { call: 'اتصال', message: 'رسالة', showGoogle: 'افتح في GOOGLE MAPS', favoriteAdd: 'اضف الى المفضلة', favoriteRemove: 'ازالة من المفضلة', viewRatings: 'عرض التقييمات', viewReports: 'عرض الشكاوى' },
 };
 
 const BASE_STYLE = {
@@ -312,6 +312,10 @@ function buildPopup(
         <span>${rating}</span>
       </div>
       <div style="display:flex;gap:8px;">
+        <button data-action="call" style="flex:1;border:0;border-radius:13px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.call}</button>
+        <button data-action="message" style="flex:1;border:0;border-radius:13px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
         <button data-action="favorite" style="flex:1;border:1px solid #e5e7eb;border-radius:13px;padding:10px 8px;color:${isFavorite ? 'white' : '#374151'};background:${isFavorite ? color : '#ffffff'};font-size:10px;font-weight:900;cursor:pointer;">${isFavorite ? uiText.favoriteRemove : uiText.favoriteAdd}</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px;">
@@ -322,11 +326,21 @@ function buildPopup(
     </div>
   `;
 
+  const callBtn = wrap.querySelector('[data-action="call"]') as HTMLButtonElement | null;
+  const messageBtn = wrap.querySelector('[data-action="message"]') as HTMLButtonElement | null;
   const favoriteBtn = wrap.querySelector('[data-action="favorite"]') as HTMLButtonElement | null;
   const ratingsBtn = wrap.querySelector('[data-action="ratings"]') as HTMLButtonElement | null;
   const reportsBtn = wrap.querySelector('[data-action="reports"]') as HTMLButtonElement | null;
   const showBtn = wrap.querySelector('[data-action="show"]') as HTMLButtonElement | null;
 
+  callBtn?.addEventListener('click', () => {
+    onStartOrder(driver, 'call');
+    if (driver.phoneNumber) window.location.href = `tel:${driver.phoneNumber}`;
+  });
+  messageBtn?.addEventListener('click', () => {
+    onStartOrder(driver, 'message');
+    if (driver.phoneNumber) window.location.href = `sms:${driver.phoneNumber}`;
+  });
   favoriteBtn?.addEventListener('click', () => onToggleFavorite?.(driver));
   ratingsBtn?.addEventListener('click', () => onViewRatings?.(driver._id, driver.businessName));
   reportsBtn?.addEventListener('click', () => onViewReports?.(driver._id, driver.businessName));

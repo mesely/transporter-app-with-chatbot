@@ -224,6 +224,7 @@ function ActionPanel({
   onRemoveFavoriteExternal,
 }: ActionPanelProps) {
   const [lang, setLang] = useState<AppLang>('tr');
+  const lastCollapseTokenRef = useRef<number | undefined>(undefined);
 
   const [panelState, setPanelState] = useState<0 | 1 | 2 | 3>(1);
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
@@ -260,7 +261,13 @@ function ActionPanel({
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
   useEffect(() => {
-    if (typeof collapseRequestToken === 'number') {
+    if (typeof collapseRequestToken !== 'number') return;
+    if (typeof lastCollapseTokenRef.current !== 'number') {
+      lastCollapseTokenRef.current = collapseRequestToken;
+      return;
+    }
+    if (collapseRequestToken !== lastCollapseTokenRef.current) {
+      lastCollapseTokenRef.current = collapseRequestToken;
       setPanelState(0);
     }
   }, [collapseRequestToken]);
@@ -778,7 +785,7 @@ function ActionPanel({
         <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
           {(loading || cityScopedLoading) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
             visibleDrivers.map((driver) => {
-                const isSelected = localSelectedId === driver._id;
+                const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
 
                 const isMobileCharge = sub === 'seyyar_sarj';
@@ -935,7 +942,13 @@ function ActionPanel({
                     ref={el => { itemRefs.current[driver._id] = el; }}
                     onClick={(e) => {
                         e.stopPropagation();
-                        setLocalSelectedId(null);
+                        if (isSelected) {
+                          setLocalSelectedId(null);
+                          onSelectDriver(null);
+                          return;
+                        }
+                        if (panelState < 2) setPanelState(2);
+                        setLocalSelectedId(driver._id);
                         onSelectDriver(driver._id);
                     }}
                     className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
