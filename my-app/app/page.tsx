@@ -126,6 +126,7 @@ export default function Home() {
   const driversCacheRef = useRef<Record<string, { data: any[]; ts: number }>>({});
   const mapMoveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressNextMapMoveFetchRef = useRef(false);
+  const listEndFetchLimitRef = useRef(0);
   const lastMapFetchRef = useRef<{
     lat: number;
     lng: number;
@@ -558,6 +559,35 @@ export default function Home() {
     }
   }, []);
 
+  const handleReachListEnd = useCallback(() => {
+    const base = searchCoordsRef.current;
+    if (!base) return;
+    const zoom = lastMapFetchRef.current?.zoom ?? 10;
+    const prevLimit = listEndFetchLimitRef.current || (zoom >= 10 ? 1400 : 1000);
+    const nextLimit = Math.min(5200, prevLimit + 700);
+    listEndFetchLimitRef.current = nextLimit;
+
+    let expandedBbox = lastMapFetchRef.current?.bbox;
+    if (expandedBbox) {
+      const latSpan = Math.max(0.01, expandedBbox.maxLat - expandedBbox.minLat);
+      const lngSpan = Math.max(0.01, expandedBbox.maxLng - expandedBbox.minLng);
+      const latPad = Math.max(0.08, latSpan * 0.9);
+      const lngPad = Math.max(0.08, lngSpan * 0.9);
+      expandedBbox = {
+        minLat: expandedBbox.minLat - latPad,
+        minLng: expandedBbox.minLng - lngPad,
+        maxLat: expandedBbox.maxLat + latPad,
+        maxLng: expandedBbox.maxLng + lngPad,
+      };
+    }
+
+    fetchDrivers(base[0], base[1], actionTypeRef.current, {
+      zoom,
+      limit: nextLimit,
+      bbox: expandedBbox,
+    });
+  }, [fetchDrivers]);
+
   const suggestions = useMemo(() => {
     const q = normalizeText(mapSearchQuery);
     if (!q) return [];
@@ -583,6 +613,10 @@ export default function Home() {
       })
       .slice(0, 6);
   }, [filteredDrivers, mapSearchQuery]);
+
+  useEffect(() => {
+    listEndFetchLimitRef.current = 0;
+  }, [actionType, searchCoords?.[0], searchCoords?.[1]]);
 
   const handleSearchPick = useCallback((driver: any) => {
     setMapSearchQuery(driver?.businessName || '');
@@ -835,6 +869,7 @@ export default function Home() {
         isFavoriteExternal={isFavorite}
         onToggleFavoriteExternal={handleToggleFavorite}
         onRemoveFavoriteExternal={handleRemoveFavorite}
+        onReachListEnd={handleReachListEnd}
       />
 
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />

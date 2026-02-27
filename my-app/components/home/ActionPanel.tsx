@@ -212,6 +212,7 @@ interface ActionPanelProps {
   isFavoriteExternal?: (id: string) => boolean;
   onToggleFavoriteExternal?: (driver: any) => void;
   onRemoveFavoriteExternal?: (driverId: string) => void;
+  onReachListEnd?: () => void;
 }
 
 function ActionPanel({
@@ -222,6 +223,7 @@ function ActionPanel({
   isFavoriteExternal,
   onToggleFavoriteExternal,
   onRemoveFavoriteExternal,
+  onReachListEnd,
 }: ActionPanelProps) {
   const [lang, setLang] = useState<AppLang>('tr');
   const lastCollapseTokenRef = useRef<number | undefined>(undefined);
@@ -257,6 +259,7 @@ function ActionPanel({
   const [cityScopedDrivers, setCityScopedDrivers] = useState<any[]>([]);
   const [cityScopedLoading, setCityScopedLoading] = useState(false);
   const [renderedCount, setRenderedCount] = useState(28);
+  const lastReachListEndAtRef = useRef(0);
   const cityFetchSeqRef = useRef(0);
   const cityScopedCacheRef = useRef<Record<string, { ts: number; data: any[] }>>({});
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
@@ -492,12 +495,17 @@ function ActionPanel({
       const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 560;
       if (nearBottom) {
         setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
+        const now = Date.now();
+        if (renderedCount >= displayDrivers.length && onReachListEnd && now - lastReachListEndAtRef.current > 1400) {
+          lastReachListEndAtRef.current = now;
+          onReachListEnd();
+        }
       }
     };
     onScroll();
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [displayDrivers.length, panelState]);
+  }, [displayDrivers.length, panelState, renderedCount, onReachListEnd]);
 
   useEffect(() => {
     if (panelState <= 0) return;
@@ -509,6 +517,11 @@ function ActionPanel({
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
+          const now = Date.now();
+          if (renderedCount >= displayDrivers.length && onReachListEnd && now - lastReachListEndAtRef.current > 1400) {
+            lastReachListEndAtRef.current = now;
+            onReachListEnd();
+          }
         }
       },
       { root, rootMargin: '320px 0px 460px 0px', threshold: 0 }
@@ -516,7 +529,7 @@ function ActionPanel({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [displayDrivers.length, panelState]);
+  }, [displayDrivers.length, panelState, renderedCount, onReachListEnd]);
 
   const getCurrentPosition = (opts?: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
