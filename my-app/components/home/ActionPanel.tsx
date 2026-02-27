@@ -624,7 +624,7 @@ function ActionPanel({
     <>
     <div
       onClick={() => panelState > 1 && setPanelState(prev => prev === 3 ? 2 : 1)}
-      className={`fixed inset-x-0 bottom-0 z-[2000] transition-[height,transform,opacity] duration-300 will-change-transform rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-8px_24px_rgba(0,0,0,0.10)] overflow-hidden text-gray-900 scale-[0.75] origin-bottom`}
+      className={`fixed inset-x-0 bottom-0 z-[2000] transition-[height,transform,opacity] duration-300 will-change-transform rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-8px_24px_rgba(0,0,0,0.10)] overflow-hidden text-gray-900`}
     >
       <div
         onMouseDown={(e) => { e.stopPropagation(); dragStartY.current = e.clientY; }}
@@ -951,7 +951,7 @@ function ActionPanel({
                         setLocalSelectedId(driver._id);
                         onSelectDriver(driver._id);
                     }}
-                    className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
+                    className={`bg-white/90 rounded-[2.2rem] p-4 mb-3 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >
                     {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
                       <div className="absolute top-4 right-4 text-right">
@@ -971,8 +971,8 @@ function ActionPanel({
                     )}
                     <div className="flex justify-between items-start text-gray-900">
                         <div className="flex gap-4 flex-1 overflow-hidden">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
-                               {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={24} strokeWidth={2.5} /> )}
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
+                               {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-6 h-6 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={20} strokeWidth={2.5} /> )}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <h4 className="font-black text-[11px] sm:text-xs uppercase truncate leading-tight w-full" title={driver.businessName}>
@@ -1017,8 +1017,8 @@ function ActionPanel({
                         </div>
                     </div>
                     {isSelected && (
-                    <div className="mt-6 pt-6 border-t border-white/20 space-y-4">
-                        {(!isSpecialCategory || isStation) && (
+                    <div className="mt-4 pt-4 border-t border-white/20 space-y-3">
+                        <div className="grid grid-cols-4 gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1026,29 +1026,50 @@ function ActionPanel({
                               const lng = driver.location?.coordinates?.[0];
                               if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
                             }}
-                            className="w-full py-4 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40 transition-transform"
+                            className="py-2 rounded-xl text-[8px] font-black uppercase text-white border border-white/40 flex items-center justify-center"
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           >
-                            <MapIcon size={16} /> {tx.mapsOpen}
+                            MAPS
                           </button>
-                        )}
-                        <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
-                            className={`w-full py-3 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 border ${
+                            className={`py-2 rounded-xl text-[8px] font-black uppercase border flex items-center justify-center ${
                               favoriteFilled ? 'text-white border-white/40' : `${theme.text} border-slate-200 bg-white`
                             }`}
                             style={favoriteFilled ? { background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` } : undefined}
                           >
-                            {favoriteFilled ? <X size={14} /> : <Heart size={14} />}
-                            {favoriteFilled ? 'FAVORILERDEN CIKAR' : 'FAVORILERE EKLE'}
+                            {favoriteFilled ? 'CIKAR' : 'FAVORI'}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalDriverId(driver._id);
+                              setModalDriverName(driver.businessName || '');
+                              setShowRatingsModal(true);
+                            }}
+                            className={`py-2 rounded-xl text-[8px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
+                            style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
+                          >
+                            YORUM
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalDriverId(driver._id);
+                              setModalDriverName(driver.businessName || '');
+                              setShowReportsModal(true);
+                            }}
+                            className={`py-2 rounded-xl text-[8px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
+                            style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
+                          >
+                            SIKAYET
                           </button>
                         </div>
 
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }}
-                            className={`${isStation ? 'w-full' : 'flex-1'} py-5 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40`}
+                            className={`${isStation ? 'w-full' : 'flex-1'} py-3 rounded-[1.2rem] font-black text-[9px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40`}
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           ><Phone size={14}/> {tx.call}</button>
 
@@ -1056,13 +1077,13 @@ function ActionPanel({
                             (isMobileCharge || isPassenger) ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); if (driver.website) window.open(driver.website, '_blank'); }}
-                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
+                                className="flex-1 text-white py-3 rounded-[1.2rem] font-black text-[9px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
                                 style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                               ><Globe size={14}/> {tx.site}</button>
                             ) : (
                               <button
                                 onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
-                                className="flex-1 text-white py-5 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
+                                className="flex-1 text-white py-3 rounded-[1.2rem] font-black text-[9px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
                                 style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                               ><MessageCircle size={14}/> {tx.message}</button>
                             )
@@ -1130,42 +1151,6 @@ function ActionPanel({
                           </div>
                         )}
 
-                        {/* Değerlendirmeler & Şikayetler */}
-                        <div className="pt-4 border-t border-gray-100">
-                          <div className="text-[8px] font-black text-gray-400 uppercase mb-3 tracking-widest">{tx.reviewsAndReports}</div>
-                          <div className="flex items-center gap-1 mb-3">
-                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
-                            <span className="text-[9px] text-gray-500 font-bold ml-1">
-                              {driver.rating ? `${Number(driver.rating).toFixed(1)} ${tx.scoreText}` : tx.noRating}
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setModalDriverId(driver._id);
-                                setModalDriverName(driver.businessName || '');
-                                setShowRatingsModal(true);
-                              }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-start justify-center gap-1 transition-colors`}
-                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
-                            >
-                              <Star size={12} className="shrink-0 mt-px"/> {tx.viewRatings} ({driver.ratingCount || 0})
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setModalDriverId(driver._id);
-                                setModalDriverName(driver.businessName || '');
-                                setShowReportsModal(true);
-                              }}
-                              className={`flex-1 py-3 border border-white/50 rounded-2xl text-[9px] font-black uppercase ${theme.text} flex items-center justify-center gap-1 transition-colors`}
-                              style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
-                            >
-                              {tx.viewReports} ({driver.reportCount || 0})
-                            </button>
-                          </div>
-                        </div>
                     </div>)}
                 </div>
                 );
