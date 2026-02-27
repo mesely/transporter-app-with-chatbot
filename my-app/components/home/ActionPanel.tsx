@@ -20,6 +20,7 @@ import {
   Check, Phone, MessageCircle, Info, Users, Bus, Crown,
   ThumbsUp,
   Heart,
+  X,
   Layers,
   Box,
   Archive,
@@ -206,11 +207,21 @@ interface ActionPanelProps {
   activeTags: string[];
   onTagsChange: (tags: string[] | ((prev: string[]) => string[])) => void;
   isSidebarOpen: boolean;
+  collapseRequestToken?: number;
+  favoritesExternal?: any[];
+  isFavoriteExternal?: (id: string) => boolean;
+  onToggleFavoriteExternal?: (driver: any) => void;
+  onRemoveFavoriteExternal?: (driverId: string) => void;
 }
 
 function ActionPanel({
   onSearchLocation, currentCoords, onFilterApply, onStartOrder, actionType, onActionChange,
-  drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen
+  drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen,
+  collapseRequestToken,
+  favoritesExternal,
+  isFavoriteExternal,
+  onToggleFavoriteExternal,
+  onRemoveFavoriteExternal,
 }: ActionPanelProps) {
   const [lang, setLang] = useState<AppLang>('tr');
 
@@ -243,6 +254,9 @@ function ActionPanel({
   const [showFavorites, setShowFavorites] = useState(false);
   const [cityScopedDrivers, setCityScopedDrivers] = useState<any[]>([]);
   const [cityScopedLoading, setCityScopedLoading] = useState(false);
+  const [renderedCount, setRenderedCount] = useState(28);
+  const cityFetchSeqRef = useRef(0);
+  const cityScopedCacheRef = useRef<Record<string, { ts: number; data: any[] }>>({});
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
   const activeThemeColor = useMemo(() => {
@@ -280,48 +294,42 @@ function ActionPanel({
       return;
     }
 
-    const controller = new AbortController();
-    const normalizeCity = (v?: string) => String(v || '').toLocaleLowerCase('tr').trim();
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const calcDistance = (a: [number, number], b: [number, number]) => {
-      const R = 6371000;
-      const dLat = toRad(b[0] - a[0]);
-      const dLng = toRad(b[1] - a[1]);
-      const lat1 = toRad(a[0]);
-      const lat2 = toRad(b[0]);
-      const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-      return 2 * R * Math.asin(Math.sqrt(x));
-    };
+    const cacheKey = [selectedCity.toLocaleLowerCase('tr'), actionType, String(currentCoords?.[0] || ''), String(currentCoords?.[1] || '')].join(':');
+    const cached = cityScopedCacheRef.current[cacheKey];
+    if (cached && Date.now() - cached.ts < 60_000) {
+      setCityScopedDrivers(cached.data);
+      setCityScopedLoading(false);
+      return;
+    }
 
+    const seq = ++cityFetchSeqRef.current;
+    const controller = new AbortController();
     const run = async () => {
       setCityScopedLoading(true);
       try {
-        let list: any[] = [];
-        try {
-          const res = await fetch(`${API_URL}/users/all?type=${encodeURIComponent(actionType)}`, { signal: controller.signal });
-          const data = await res.json();
-          list = Array.isArray(data) ? data : [];
-        } catch {
-          const res = await fetch(`${API_URL}/users/all`, { signal: controller.signal });
-          const data = await res.json();
-          list = Array.isArray(data) ? data : [];
-        }
-
-        const filtered = list.filter((d) => normalizeCity(d?.address?.city || d?.city) === normalizeCity(selectedCity));
-        const withDistance = filtered.map((d) => {
-          if (typeof d?.distance === 'number') return d;
-          const lat = d?.location?.coordinates?.[1];
-          const lng = d?.location?.coordinates?.[0];
-          if (typeof lat === 'number' && typeof lng === 'number' && currentCoords) {
-            return { ...d, distance: calcDistance([currentCoords[0], currentCoords[1]], [lat, lng]) };
-          }
-          return { ...d, distance: Number.MAX_SAFE_INTEGER };
+        const params = new URLSearchParams({
+          city: selectedCity,
+          type: actionType,
+          limit: '420',
         });
-        setCityScopedDrivers(withDistance);
-      } catch {
+        if (currentCoords) {
+          params.set('lat', String(currentCoords[0]));
+          params.set('lng', String(currentCoords[1]));
+        }
+        const res = await fetch(`${API_URL}/users/city-scope?${params.toString()}`, { signal: controller.signal });
+        const data = await res.json();
+        if (seq !== cityFetchSeqRef.current) return;
+        const safeData = Array.isArray(data) ? data : [];
+        cityScopedCacheRef.current[cacheKey] = { ts: Date.now(), data: safeData };
+        setCityScopedDrivers(safeData);
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        if (seq !== cityFetchSeqRef.current) return;
         setCityScopedDrivers([]);
       } finally {
-        setCityScopedLoading(false);
+        if (seq === cityFetchSeqRef.current) {
+          setCityScopedLoading(false);
+        }
       }
     };
 
@@ -330,23 +338,34 @@ function ActionPanel({
   }, [selectedCity, actionType, currentCoords]);
 
   useEffect(() => {
+    if (favoritesExternal) return;
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
       setFavorites(raw ? JSON.parse(raw) : []);
     } catch {
       setFavorites([]);
     }
-  }, []);
+  }, [favoritesExternal]);
 
   useEffect(() => {
+    if (favoritesExternal) return;
     try {
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
     } catch {}
-  }, [favorites]);
+  }, [favorites, favoritesExternal]);
 
-  const isFavorite = useCallback((id: string) => favorites.some((f) => f._id === id), [favorites]);
+  const effectiveFavorites = favoritesExternal || favorites;
+
+  const isFavorite = useCallback((id: string) => {
+    if (isFavoriteExternal) return isFavoriteExternal(id);
+    return effectiveFavorites.some((f) => f._id === id);
+  }, [effectiveFavorites, isFavoriteExternal]);
 
   const toggleFavorite = useCallback((driver: any) => {
+    if (onToggleFavoriteExternal) {
+      onToggleFavoriteExternal(driver);
+      return;
+    }
     setFavorites((prev) => {
       const exists = prev.some((f) => f._id === driver._id);
       if (exists) return prev.filter((f) => f._id !== driver._id);
@@ -360,7 +379,15 @@ function ActionPanel({
         location: driver.location,
       }];
     });
-  }, []);
+  }, [onToggleFavoriteExternal]);
+
+  const removeFavorite = useCallback((id: string) => {
+    if (onRemoveFavoriteExternal) {
+      onRemoveFavoriteExternal(id);
+      return;
+    }
+    setFavorites((prev) => prev.filter((f) => f._id !== id));
+  }, [onRemoveFavoriteExternal]);
 
   const focusFavorite = useCallback((f: any) => {
     const lat = f?.location?.coordinates?.[1];
@@ -427,6 +454,37 @@ function ActionPanel({
     });
     return list;
   }, [drivers, cityScopedDrivers, sortMode, selectedCity, actionType, activeTransportFilter]);
+
+  useEffect(() => {
+    setRenderedCount(28);
+  }, [selectedCity, actionType, activeTransportFilter, sortMode, activeTags, drivers.length, cityScopedDrivers.length]);
+
+  const visibleDrivers = useMemo(
+    () => displayDrivers.slice(0, Math.max(1, renderedCount)),
+    [displayDrivers, renderedCount]
+  );
+
+  useEffect(() => {
+    const targetId = activeDriverId || localSelectedId;
+    if (!targetId) return;
+    const idx = displayDrivers.findIndex((d) => d?._id === targetId);
+    if (idx >= 0 && idx + 1 > renderedCount) {
+      setRenderedCount(Math.min(displayDrivers.length, idx + 12));
+    }
+  }, [activeDriverId, localSelectedId, displayDrivers, renderedCount]);
+
+  useEffect(() => {
+    const el = listContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 260;
+      if (nearBottom) {
+        setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [displayDrivers.length]);
 
   const getCurrentPosition = (opts?: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
@@ -687,19 +745,27 @@ function ActionPanel({
         {showFavorites && (
           <div className="mb-3 rounded-2xl border border-white/40 bg-white/90 p-3 shadow-lg">
             <div className="mb-2 text-[10px] font-black uppercase text-slate-600">Kaydedilenler</div>
-            {favorites.length === 0 ? (
+            {effectiveFavorites.length === 0 ? (
               <div className="text-[10px] font-bold text-slate-400">Henüz favori yok.</div>
             ) : (
               <div className="space-y-2 max-h-44 overflow-y-auto">
-                {favorites.map((f) => (
-                  <button
-                    key={f._id}
-                    onClick={() => focusFavorite(f)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left"
-                  >
-                    <div className="text-[11px] font-black uppercase text-slate-800">{f.businessName}</div>
-                    <div className="text-[9px] font-semibold text-slate-500">{f.address?.city || ''} {f.address?.district || ''}</div>
-                  </button>
+                {effectiveFavorites.map((f) => (
+                  <div key={f._id} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <div className="flex items-start gap-2">
+                      <button onClick={() => focusFavorite(f)} className="min-w-0 flex-1 text-left">
+                        <div className="truncate text-[11px] font-black uppercase text-slate-800">{f.businessName}</div>
+                        <div className="text-[9px] font-semibold text-slate-500">{f.address?.city || ''} {f.address?.district || ''}</div>
+                      </button>
+                      <button
+                        onClick={() => removeFavorite(f._id)}
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600"
+                        aria-label="Favorilerden kaldir"
+                        title="Favorilerden Kaldır"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -708,7 +774,7 @@ function ActionPanel({
 
         <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
           {(loading || cityScopedLoading) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
-            displayDrivers.map((driver) => {
+            visibleDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
 
@@ -968,7 +1034,7 @@ function ActionPanel({
                             }`}
                             style={favoriteFilled ? { background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` } : undefined}
                           >
-                            <Heart size={14} className={favoriteFilled ? 'fill-white' : ''} />
+                            {favoriteFilled ? <X size={14} /> : <Heart size={14} />}
                             {favoriteFilled ? 'FAVORILERDEN CIKAR' : 'FAVORILERE EKLE'}
                           </button>
                         </div>
@@ -1099,6 +1165,11 @@ function ActionPanel({
                 );
             })
           )}
+          {!loading && !cityScopedLoading && visibleDrivers.length < displayDrivers.length && (
+            <div className="py-3 text-center text-[9px] font-black uppercase tracking-wide text-slate-400">
+              Liste yükleniyor...
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1138,3 +1209,8 @@ function ActionPanel({
 }
 
 export default memo(ActionPanel);
+  useEffect(() => {
+    if (typeof collapseRequestToken === 'number') {
+      setPanelState(0);
+    }
+  }, [collapseRequestToken]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AppLang, getPreferredLang } from '../utils/language';
@@ -30,6 +30,11 @@ interface MapProps {
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   activeDriverId: string | null;
   onSelectDriver: (id: string | null) => void;
+  isFavorite?: (driverId: string) => boolean;
+  onToggleFavorite?: (driver: Driver) => void;
+  onViewRatings?: (driverId: string, driverName?: string) => void;
+  onViewReports?: (driverId: string, driverName?: string) => void;
+  onMapInteract?: () => void;
   onMapMove?: (lat: number, lng: number, zoom: number, bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }) => void;
   onMapClick?: () => void;
 }
@@ -76,6 +81,7 @@ const SERVICE_ICONS: Record<string, string> = {
 
 const RENDER_SERVICE_TYPES = Object.keys(SERVICE_COLORS) as string[];
 const FOCUS_PADDING_BASE = { top: 72, right: 36, left: 36 };
+const MARKER_SCALE = 0.75;
 
 const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Depannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Ewakuator', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
@@ -97,19 +103,19 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Servico', ru: 'Servis', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' },
 };
 
-const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; show: string }> = {
-  tr: { call: 'ARA', message: 'MESAJ AT', show: 'HARITADA GOSTER' },
-  en: { call: 'CALL', message: 'MESSAGE', show: 'SHOW ON MAP' },
-  de: { call: 'ANRUFEN', message: 'NACHRICHT', show: 'AUF KARTE ZEIGEN' },
-  fr: { call: 'APPELER', message: 'MESSAGE', show: 'VOIR SUR LA CARTE' },
-  it: { call: 'CHIAMA', message: 'MESSAGGIO', show: 'MOSTRA SULLA MAPPA' },
-  es: { call: 'LLAMAR', message: 'MENSAJE', show: 'VER EN MAPA' },
-  pt: { call: 'LIGAR', message: 'MENSAGEM', show: 'VER NO MAPA' },
-  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', show: 'POKAZAT NA KARTE' },
-  zh: { call: '拨打电话', message: '发送消息', show: '在地图中显示' },
-  ja: { call: '電話する', message: 'メッセージ', show: '地図で表示' },
-  ko: { call: '전화하기', message: '메시지', show: '지도에서 보기' },
-  ar: { call: 'اتصال', message: 'رسالة', show: 'عرض على الخريطة' },
+const MAP_UI_TEXT: Record<AppLang, { showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
+  tr: { showGoogle: "GOOGLE MAPS'TE GOR", favoriteAdd: 'FAVORILERE EKLE', favoriteRemove: 'FAVORILERDEN CIKAR', viewRatings: 'DEGERLENDIRMELERI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
+  en: { showGoogle: 'OPEN IN GOOGLE MAPS', favoriteAdd: 'ADD TO FAVORITES', favoriteRemove: 'REMOVE FAVORITE', viewRatings: 'VIEW REVIEWS', viewReports: 'VIEW REPORTS' },
+  de: { showGoogle: 'IN GOOGLE MAPS OFFNEN', favoriteAdd: 'ZU FAVORITEN', favoriteRemove: 'FAVORIT ENTFERNEN', viewRatings: 'BEWERTUNGEN ANZEIGEN', viewReports: 'BESCHWERDEN ANZEIGEN' },
+  fr: { showGoogle: 'OUVRIR DANS GOOGLE MAPS', favoriteAdd: 'AJOUTER AUX FAVORIS', favoriteRemove: 'RETIRER DES FAVORIS', viewRatings: 'VOIR LES AVIS', viewReports: 'VOIR LES PLAINTES' },
+  it: { showGoogle: 'APRI IN GOOGLE MAPS', favoriteAdd: 'AGGIUNGI AI PREFERITI', favoriteRemove: 'RIMUOVI DAI PREFERITI', viewRatings: 'VEDI RECENSIONI', viewReports: 'VEDI RECLAMI' },
+  es: { showGoogle: 'ABRIR EN GOOGLE MAPS', favoriteAdd: 'ANADIR A FAVORITOS', favoriteRemove: 'QUITAR FAVORITO', viewRatings: 'VER RESENAS', viewReports: 'VER QUEJAS' },
+  pt: { showGoogle: 'ABRIR NO GOOGLE MAPS', favoriteAdd: 'ADICIONAR A FAVORITOS', favoriteRemove: 'REMOVER FAVORITO', viewRatings: 'VER AVALIACOES', viewReports: 'VER RECLAMACOES' },
+  ru: { showGoogle: 'OTKRYT V GOOGLE MAPS', favoriteAdd: 'DOBAVIT V IZBRANNOE', favoriteRemove: 'UBRAT IZBRANNOE', viewRatings: 'POKAZAT OTSENKI', viewReports: 'POKAZAT ZHALOBY' },
+  zh: { showGoogle: '在 GOOGLE MAPS 打开', favoriteAdd: '加入收藏', favoriteRemove: '取消收藏', viewRatings: '查看评价', viewReports: '查看投诉' },
+  ja: { showGoogle: 'GOOGLE MAPSで開く', favoriteAdd: 'お気に入り追加', favoriteRemove: 'お気に入り解除', viewRatings: '評価を見る', viewReports: '苦情を見る' },
+  ko: { showGoogle: 'GOOGLE MAPS에서 열기', favoriteAdd: '즐겨찾기 추가', favoriteRemove: '즐겨찾기 해제', viewRatings: '평가 보기', viewReports: '신고 보기' },
+  ar: { showGoogle: 'افتح في GOOGLE MAPS', favoriteAdd: 'اضف الى المفضلة', favoriteRemove: 'ازالة من المفضلة', viewRatings: 'عرض التقييمات', viewReports: 'عرض الشكاوى' },
 };
 
 const BASE_STYLE = {
@@ -147,8 +153,8 @@ function createDriversGeoJsonByType(drivers: Driver[], zoomLevel = 12) {
     grouped[type] = createEmptyFeatureCollection();
   }
 
-  const lowZoomAggregation = zoomLevel < 8.5;
-  const cellSize = zoomLevel < 6.5 ? 0.18 : 0.08;
+  const lowZoomAggregation = zoomLevel < 10;
+  const cellSize = zoomLevel < 6.2 ? 0.28 : zoomLevel < 8.2 ? 0.14 : 0.08;
   const buckets = new Map<string, { count: number; sumLng: number; sumLat: number; driver: Driver; subType: string }>();
 
   for (const d of drivers) {
@@ -259,15 +265,21 @@ function createUserPointGeoJson(coords: [number, number] | null) {
 }
 
 function getFocusPadding() {
-  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 520 };
-  const vh = window.innerHeight || 900;
+  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 230 };
   return {
     ...FOCUS_PADDING_BASE,
-    bottom: Math.max(460, Math.round(vh * 0.5)),
+    bottom: 230,
   };
 }
 
-function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver, method: 'call' | 'message') => void) {
+function buildPopup(
+  driver: Driver,
+  lang: AppLang,
+  isFavorite: boolean,
+  onToggleFavorite?: (driver: Driver) => void,
+  onViewRatings?: (driverId: string, driverName?: string) => void,
+  onViewReports?: (driverId: string, driverName?: string) => void
+) {
   const subType = driver.service?.subType || 'other';
   const color = getServiceColor(subType);
   const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang] || SERVICE_LABELS.other.en;
@@ -287,7 +299,6 @@ function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver
   const rating = ratingValue.toFixed(1);
   const filledStars = Math.max(0, Math.min(5, Math.round(ratingValue)));
   const emptyStars = 5 - filledStars;
-  const phone = driver.phoneNumber || '';
 
   wrap.innerHTML = `
     <div style="font-family: ui-sans-serif, system-ui;">
@@ -301,25 +312,24 @@ function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver
         <span>${rating}</span>
       </div>
       <div style="display:flex;gap:8px;">
-        <button data-action="call" style="flex:1;border:0;border-radius:13px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.call}</button>
-        <button data-action="message" style="flex:1;border:0;border-radius:13px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+        <button data-action="favorite" style="flex:1;border:1px solid #e5e7eb;border-radius:13px;padding:10px 8px;color:${isFavorite ? 'white' : '#374151'};background:${isFavorite ? color : '#ffffff'};font-size:10px;font-weight:900;cursor:pointer;">${isFavorite ? uiText.favoriteRemove : uiText.favoriteAdd}</button>
       </div>
-      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:11px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.show}</button>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button data-action="ratings" style="flex:1;border:0;border-radius:11px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.viewRatings}</button>
+        <button data-action="reports" style="flex:1;border:0;border-radius:11px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.viewReports}</button>
+      </div>
+      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:11px;padding:10px 8px;color:white;background:${color};font-size:10px;font-weight:900;cursor:pointer;">${uiText.showGoogle}</button>
     </div>
   `;
 
-  const callBtn = wrap.querySelector('[data-action="call"]') as HTMLButtonElement | null;
-  const messageBtn = wrap.querySelector('[data-action="message"]') as HTMLButtonElement | null;
+  const favoriteBtn = wrap.querySelector('[data-action="favorite"]') as HTMLButtonElement | null;
+  const ratingsBtn = wrap.querySelector('[data-action="ratings"]') as HTMLButtonElement | null;
+  const reportsBtn = wrap.querySelector('[data-action="reports"]') as HTMLButtonElement | null;
   const showBtn = wrap.querySelector('[data-action="show"]') as HTMLButtonElement | null;
 
-  callBtn?.addEventListener('click', () => {
-    onStartOrder(driver, 'call');
-    if (phone) window.location.href = `tel:${phone}`;
-  });
-  messageBtn?.addEventListener('click', () => {
-    onStartOrder(driver, 'message');
-    if (phone) window.location.href = `sms:${phone}`;
-  });
+  favoriteBtn?.addEventListener('click', () => onToggleFavorite?.(driver));
+  ratingsBtn?.addEventListener('click', () => onViewRatings?.(driver._id, driver.businessName));
+  reportsBtn?.addEventListener('click', () => onViewReports?.(driver._id, driver.businessName));
   showBtn?.addEventListener('click', () => {
     const lat = driver.location?.coordinates?.[1];
     const lng = driver.location?.coordinates?.[0];
@@ -340,6 +350,11 @@ function MapView({
   onStartOrder,
   activeDriverId,
   onSelectDriver,
+  isFavorite,
+  onToggleFavorite,
+  onViewRatings,
+  onViewReports,
+  onMapInteract,
   onMapMove,
   onMapClick,
 }: MapProps) {
@@ -350,6 +365,10 @@ function MapView({
   const popupRef = useRef<Popup | null>(null);
   const lastFocusTokenRef = useRef<number | undefined>(undefined);
   const lastActiveFocusIdRef = useRef<string | null>(null);
+  const aggregateCacheRef = useRef<{
+    driversRef: Driver[] | null;
+    byBucket: Record<string, Record<string, any>>;
+  }>({ driversRef: null, byBucket: {} });
 
   const center = useMemo<[number, number]>(() => {
     if (!searchCoords) return INITIAL_CENTER;
@@ -361,6 +380,18 @@ function MapView({
     for (const d of drivers) m.set(d._id, d);
     return m;
   }, [drivers]);
+
+  const getAggregatedDrivers = useCallback((list: Driver[], zoom: number) => {
+    const bucket = zoom < 6.2 ? 'z0' : zoom < 8.2 ? 'z1' : zoom < 10 ? 'z2' : 'z3';
+    if (aggregateCacheRef.current.driversRef !== list) {
+      aggregateCacheRef.current = { driversRef: list, byBucket: {} };
+    }
+    const hit = aggregateCacheRef.current.byBucket[bucket];
+    if (hit) return hit;
+    const grouped = createDriversGeoJsonByType(list, zoom);
+    aggregateCacheRef.current.byBucket[bucket] = grouped;
+    return grouped;
+  }, []);
 
   useEffect(() => {
     setLang(getPreferredLang());
@@ -385,7 +416,7 @@ function MapView({
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', () => {
-      const grouped = createDriversGeoJsonByType(drivers, map.getZoom());
+      const grouped = getAggregatedDrivers(drivers, map.getZoom());
       for (const type of RENDER_SERVICE_TYPES) {
         const sourceId = `drivers-${type}`;
         map.addSource(sourceId, {
@@ -403,8 +434,8 @@ function MapView({
           filter: ['has', 'point_count'],
           paint: {
             'circle-color': getServiceColor(type),
-            'circle-radius': ['step', ['get', 'point_count'], 20, 20, 25, 60, 31],
-            'circle-stroke-width': 2.5,
+            'circle-radius': ['step', ['get', 'point_count'], 20 * MARKER_SCALE, 20, 25 * MARKER_SCALE, 60, 31 * MARKER_SCALE],
+            'circle-stroke-width': 2 * MARKER_SCALE,
             'circle-stroke-color': '#ffffff',
           },
         });
@@ -416,7 +447,7 @@ function MapView({
           filter: ['has', 'point_count'],
           layout: {
             'text-field': ['get', 'point_count_abbreviated'],
-            'text-size': 13,
+            'text-size': 12,
             'text-font': ['Open Sans Bold'],
           },
           paint: { 'text-color': '#ffffff' },
@@ -429,9 +460,9 @@ function MapView({
           filter: ['!', ['has', 'point_count']],
           paint: {
             'circle-color': getServiceColor(type),
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15, 12, 18.75, 16, 21.75],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15 * MARKER_SCALE, 12, 18.75 * MARKER_SCALE, 16, 21.75 * MARKER_SCALE],
             'circle-opacity': 0.95,
-            'circle-stroke-width': 2.5,
+            'circle-stroke-width': 2 * MARKER_SCALE,
             'circle-stroke-color': '#ffffff',
           },
         });
@@ -448,8 +479,8 @@ function MapView({
         source: 'active-driver',
         paint: {
           'circle-color': ['coalesce', ['get', 'color'], '#111827'],
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15, 12, 18.75, 16, 21.75],
-          'circle-stroke-width': 3,
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 15 * MARKER_SCALE, 12, 18.75 * MARKER_SCALE, 16, 21.75 * MARKER_SCALE],
+          'circle-stroke-width': 2.4 * MARKER_SCALE,
           'circle-stroke-color': ['coalesce', ['get', 'color'], '#111827'],
           'circle-opacity': 0.96,
         },
@@ -466,7 +497,7 @@ function MapView({
         source: 'search-point',
         paint: {
           'circle-color': '#2563eb',
-          'circle-radius': 9,
+          'circle-radius': 8 * MARKER_SCALE,
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 4,
         },
@@ -478,7 +509,7 @@ function MapView({
         source: 'search-point',
         paint: {
           'circle-color': '#2563eb',
-          'circle-radius': 20,
+          'circle-radius': 18 * MARKER_SCALE,
           'circle-opacity': 0.22,
         },
       });
@@ -490,6 +521,7 @@ function MapView({
         const clusterLayerId = `clusters-${type}`;
         const sourceId = `drivers-${type}`;
         map.on('click', clusterLayerId, async (e) => {
+          onMapInteract?.();
           const feature = e.features?.[0];
           if (!feature) return;
           const clusterId = feature.properties?.cluster_id;
@@ -503,6 +535,7 @@ function MapView({
 
         const pointLayerId = `driver-points-${type}`;
         map.on('click', pointLayerId, (e) => {
+          onMapInteract?.();
           const feature = e.features?.[0];
           if (!feature) return;
           const id = String(feature.properties?.driverId || '');
@@ -517,6 +550,7 @@ function MapView({
       }
 
       map.on('click', (e) => {
+        onMapInteract?.();
         const features = map.queryRenderedFeatures(e.point, { layers: [...clusterLayers, ...pointLayers, 'active-driver-point'] });
         if (features.length === 0) onMapClick?.();
       });
@@ -544,7 +578,7 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const grouped = createDriversGeoJsonByType(drivers, mapZoomLevel);
+    const grouped = getAggregatedDrivers(drivers, mapZoomLevel);
     for (const type of RENDER_SERVICE_TYPES) {
       const source = map.getSource(`drivers-${type}`) as maplibregl.GeoJSONSource | undefined;
       if (source) source.setData(grouped[type] as any);
@@ -553,7 +587,7 @@ function MapView({
     if (activeSource) {
       activeSource.setData(createActiveDriverGeoJson(activeDriverId ? driverById.get(activeDriverId) : undefined) as any);
     }
-  }, [drivers, activeDriverId, driverById, mapZoomLevel]);
+  }, [activeDriverId, driverById, drivers, getAggregatedDrivers, mapZoomLevel]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -624,7 +658,14 @@ function MapView({
     const driver = driverById.get(activeDriverId);
     if (!driver?.location?.coordinates) return;
 
-    const popupNode = buildPopup(driver, lang, onStartOrder);
+    const popupNode = buildPopup(
+      driver,
+      lang,
+      !!isFavorite?.(driver._id),
+      onToggleFavorite,
+      onViewRatings,
+      onViewReports
+    );
     const popup = new maplibregl.Popup({
       closeButton: false,
       closeOnMove: false,
@@ -637,7 +678,7 @@ function MapView({
       .addTo(map);
 
     popupRef.current = popup;
-  }, [activeDriverId, driverById, lang, onStartOrder]);
+  }, [activeDriverId, driverById, isFavorite, lang, onStartOrder, onToggleFavorite, onViewRatings, onViewReports]);
 
   return <div ref={mapNodeRef} className="absolute inset-0 h-full w-full bg-[#f0f4f8]" />;
 }
