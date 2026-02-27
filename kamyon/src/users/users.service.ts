@@ -177,8 +177,8 @@ export class UsersService implements OnModuleInit {
     let limit = 200;
 
     if (safeZoom < 8) { maxDist = 20000000; limit = 3200; }
-    else if (safeZoom < 11) { maxDist = 2000000; limit = 800; }
-    else { maxDist = 150000; limit = 300; }
+    else if (safeZoom < 11) { maxDist = 2500000; limit = 1000; }
+    else { maxDist = 280000; limit = 500; }
 
     if (typeof requestedLimit === 'number' && Number.isFinite(requestedLimit)) {
       const normalizedLimit = Math.max(20, Math.min(5000, Math.floor(requestedLimit)));
@@ -219,7 +219,7 @@ export class UsersService implements OnModuleInit {
         maxDist = 20000000;
         limit = Math.max(limit, 3200);
       } else {
-        maxDist = Math.max(8000, Math.min(Math.ceil(cornerDistance * 1.2), 20000000));
+        maxDist = Math.max(45000, Math.min(Math.ceil(cornerDistance * 1.85), 20000000));
       }
     }
 
@@ -325,6 +325,44 @@ export class UsersService implements OnModuleInit {
       else query['service.subType'] = type;
     }
     return this.providerModel.find(query).sort({ _id: -1 }).limit(500).exec();
+  }
+
+  async findCityScoped(
+    city: string,
+    rawType: string,
+    lat?: number,
+    lng?: number,
+    requestedLimit?: number
+  ) {
+    const filter: any = this.buildServiceFilter(rawType);
+    const normalizedCity = (city || '').trim();
+    if (normalizedCity) {
+      filter['address.city'] = new RegExp(`^${normalizedCity}$`, 'i');
+    }
+
+    const limit = Math.max(20, Math.min(Number(requestedLimit || 350), 1500));
+    const rows = await this.providerModel
+      .find(filter)
+      .sort({ updatedAt: -1, rating: -1 })
+      .limit(limit)
+      .lean()
+      .exec();
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return rows;
+    }
+
+    return rows
+      .map((provider: any) => {
+        const pLat = provider?.location?.coordinates?.[1];
+        const pLng = provider?.location?.coordinates?.[0];
+        const distance =
+          Number.isFinite(pLat) && Number.isFinite(pLng)
+            ? this.distanceMeters(lat as number, lng as number, Number(pLat), Number(pLng))
+            : Number.MAX_SAFE_INTEGER;
+        return { ...provider, distance };
+      })
+      .sort((a, b) => Number(a.distance || 0) - Number(b.distance || 0));
   }
 
   async searchByText(

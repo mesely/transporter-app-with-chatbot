@@ -93,7 +93,7 @@ export default function Home() {
   const MIN_MOVE_DISTANCE_DEG = 0.03;
   const MIN_ZOOM_DELTA = 0.9;
   const VIEWPORT_REFETCH_EDGE_RATIO = 0.22;
-  const BBOX_OVERSCAN_FACTOR = 0.22;
+  const BBOX_OVERSCAN_FACTOR = 0.45;
   const COUNTRY_MODE_ZOOM_THRESHOLD = 6.35;
   const COUNTRY_MODE_FETCH_LIMIT = 3200;
   const TOP_UI_OFFSET = 'max(calc(env(safe-area-inset-top, 0px) + 22px), 34px)';
