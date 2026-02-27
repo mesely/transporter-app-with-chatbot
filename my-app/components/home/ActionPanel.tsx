@@ -484,15 +484,16 @@ function ActionPanel({
   }, [activeDriverId, localSelectedId, displayDrivers, renderedCount]);
 
   useEffect(() => {
-    if (panelState <= 1) return;
+    if (panelState <= 0) return;
     const el = listContainerRef.current;
     if (!el) return;
     const onScroll = () => {
-      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 260;
+      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 560;
       if (nearBottom) {
         setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
       }
     };
+    onScroll();
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, [displayDrivers.length, panelState]);
@@ -784,7 +785,7 @@ function ActionPanel({
         )}
 
         {panelState > 1 && (
-        <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
+        <div ref={listContainerRef} className="flex-1 overflow-y-scroll pb-40 custom-scrollbar overscroll-contain">
           {(loading || cityScopedLoading) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
             visibleDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
@@ -1019,7 +1020,7 @@ function ActionPanel({
                         </div>
                     </div>
                     {isSelected && (
-                    <div className="mt-4 pt-4 border-t border-white/20 space-y-3">
+                    <div className="mt-1 pt-1 border-t border-white/20 space-y-1.5">
                         <div className="grid grid-cols-4 gap-2">
                           <button
                             onClick={(e) => {

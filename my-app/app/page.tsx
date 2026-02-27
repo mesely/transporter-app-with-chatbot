@@ -709,14 +709,16 @@ export default function Home() {
       let expandedBbox = bbox;
       let requestedLimit: number | undefined;
       if (bbox) {
-        const latPad = Math.max(0.02, (bbox.maxLat - bbox.minLat) * BBOX_OVERSCAN_FACTOR);
-        const lngPad = Math.max(0.02, (bbox.maxLng - bbox.minLng) * BBOX_OVERSCAN_FACTOR);
+        const minPad = zoom >= 12 ? 0.1 : zoom >= 10 ? 0.08 : 0.05;
+        const latPad = Math.max(minPad, (bbox.maxLat - bbox.minLat) * BBOX_OVERSCAN_FACTOR);
+        const lngPad = Math.max(minPad, (bbox.maxLng - bbox.minLng) * BBOX_OVERSCAN_FACTOR);
         expandedBbox = {
           minLat: bbox.minLat - latPad,
           minLng: bbox.minLng - lngPad,
           maxLat: bbox.maxLat + latPad,
           maxLng: bbox.maxLng + lngPad,
         };
+        requestedLimit = zoom >= 10 ? 1400 : 1000;
       }
       if (zoom <= COUNTRY_MODE_ZOOM_THRESHOLD) {
         expandedBbox = TURKEY_BBOX;
