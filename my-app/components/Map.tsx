@@ -29,6 +29,7 @@ interface MapProps {
   drivers: Driver[];
   onStartOrder: (driver: Driver, method: 'call' | 'message') => void;
   activeDriverId: string | null;
+  popupDriverId?: string | null;
   onSelectDriver: (id: string | null) => void;
   isFavorite?: (driverId: string) => boolean;
   onToggleFavorite?: (driver: Driver) => void;
@@ -291,7 +292,7 @@ function buildPopup(
   wrap.style.width = 'min(380px, calc(100vw - 48px))';
   wrap.style.maxWidth = '100%';
   wrap.style.boxSizing = 'border-box';
-  wrap.style.transform = 'scale(0.975)';
+  wrap.style.transform = 'scale(0.75)';
   wrap.style.transformOrigin = 'top left';
 
   const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';
@@ -363,6 +364,7 @@ function MapView({
   drivers,
   onStartOrder,
   activeDriverId,
+  popupDriverId,
   onSelectDriver,
   isFavorite,
   onToggleFavorite,
@@ -667,9 +669,9 @@ function MapView({
     if (!map) return;
 
     popupRef.current?.remove();
-    if (!activeDriverId) return;
+    if (!popupDriverId) return;
 
-    const driver = driverById.get(activeDriverId);
+    const driver = driverById.get(popupDriverId);
     if (!driver?.location?.coordinates) return;
 
     const popupNode = buildPopup(
@@ -692,7 +694,7 @@ function MapView({
       .addTo(map);
 
     popupRef.current = popup;
-  }, [activeDriverId, driverById, isFavorite, lang, onStartOrder, onToggleFavorite, onViewRatings, onViewReports]);
+  }, [driverById, isFavorite, lang, onStartOrder, onToggleFavorite, onViewRatings, onViewReports, popupDriverId]);
 
   return <div ref={mapNodeRef} className="absolute inset-0 h-full w-full bg-[#f0f4f8]" />;
 }

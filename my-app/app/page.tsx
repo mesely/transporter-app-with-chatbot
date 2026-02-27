@@ -92,6 +92,7 @@ export default function Home() {
   const [mapFocusToken, setMapFocusToken] = useState(0);
   const [mapFocusZoom, setMapFocusZoom] = useState<number | undefined>(undefined);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
+  const [popupDriverId, setPopupDriverId] = useState<string | null>(null);
   const [mapSearchQuery, setMapSearchQuery] = useState('');
   const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
   const [reminderNotice, setReminderNotice] = useState<string | null>(null);
@@ -500,8 +501,9 @@ export default function Home() {
     });
   }, [fetchDrivers, readTypeCache, searchCoords]);
 
-  const handleSelectDriver = useCallback((id: string | null) => {
+  const handleSelectDriver = useCallback((id: string | null, openPopup: boolean) => {
     setActiveDriverId(id);
+    setPopupDriverId(openPopup ? id : null);
     if (id) {
       setMapFocusZoom(12.8);
       setMapFocusToken((v) => v + 1);
@@ -536,7 +538,7 @@ export default function Home() {
 
   const handleSearchPick = useCallback((driver: any) => {
     setMapSearchQuery(driver?.businessName || '');
-    handleSelectDriver(driver?._id || null);
+    handleSelectDriver(driver?._id || null, true);
   }, [handleSelectDriver]);
 
   const isFavorite = useCallback((driverId: string) => {
@@ -743,7 +745,8 @@ export default function Home() {
           focusRequestZoom={mapFocusZoom}
           drivers={filteredDrivers}
           activeDriverId={activeDriverId}
-          onSelectDriver={handleSelectDriver}
+          popupDriverId={popupDriverId}
+          onSelectDriver={(id) => handleSelectDriver(id, true)}
           isFavorite={isFavorite}
           onToggleFavorite={handleToggleFavorite}
           onViewRatings={handleOpenRatings}
@@ -752,6 +755,7 @@ export default function Home() {
           onMapMove={handleMapMove}
           onMapClick={() => {
             setActiveDriverId(null);
+            setPopupDriverId(null);
             setPanelCollapseToken((v) => v + 1);
           }}
           onStartOrder={handleCreateOrder}
@@ -769,7 +773,7 @@ export default function Home() {
         drivers={filteredDrivers}
         loading={loading}
         activeDriverId={activeDriverId}
-        onSelectDriver={handleSelectDriver}
+        onSelectDriver={(id) => handleSelectDriver(id, false)}
         onStartOrder={handleCreateOrder}
         isSidebarOpen={false}
         collapseRequestToken={panelCollapseToken}

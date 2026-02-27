@@ -624,7 +624,7 @@ function ActionPanel({
     <>
     <div
       onClick={() => panelState > 1 && setPanelState(prev => prev === 3 ? 2 : 1)}
-      className={`fixed inset-x-0 bottom-0 z-[2000] transition-[height,transform,opacity] duration-300 will-change-transform rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-8px_24px_rgba(0,0,0,0.10)] overflow-hidden text-gray-900`}
+      className={`fixed inset-x-0 bottom-0 z-[2000] transition-[height,transform,opacity] duration-300 will-change-transform rounded-t-[3.5rem] flex flex-col ${sizeClass} ${isSidebarOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'} bg-white/10 backdrop-blur-md border-t border-white/30 shadow-[0_-8px_24px_rgba(0,0,0,0.10)] overflow-hidden text-gray-900 scale-[0.75] origin-bottom`}
     >
       <div
         onMouseDown={(e) => { e.stopPropagation(); dragStartY.current = e.clientY; }}
