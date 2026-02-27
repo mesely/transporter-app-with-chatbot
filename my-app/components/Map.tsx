@@ -23,6 +23,7 @@ interface Driver {
 
 interface MapProps {
   searchCoords: [number, number] | null;
+  focusCoords?: [number, number] | null;
   focusRequestToken?: number;
   focusRequestZoom?: number;
   drivers: Driver[];
@@ -332,6 +333,7 @@ function buildPopup(driver: Driver, lang: AppLang, onStartOrder: (driver: Driver
 
 function MapView({
   searchCoords,
+  focusCoords,
   focusRequestToken,
   focusRequestZoom,
   drivers,
@@ -580,11 +582,12 @@ function MapView({
         });
         return;
       }
-      if (searchCoords) {
+      const targetCoords = focusCoords || searchCoords;
+      if (targetCoords) {
         lastActiveFocusIdRef.current = null;
         map.stop();
         map.easeTo({
-          center: [searchCoords[1], searchCoords[0]],
+          center: [targetCoords[1], targetCoords[0]],
           zoom: focusRequestZoom ?? 13.2,
           duration: 900,
           padding: getFocusPadding(),
@@ -609,7 +612,7 @@ function MapView({
     } else if (!activeDriverId) {
       lastActiveFocusIdRef.current = null;
     }
-  }, [activeDriverId, driverById, focusRequestToken, focusRequestZoom, searchCoords]);
+  }, [activeDriverId, driverById, focusCoords, focusRequestToken, focusRequestZoom, searchCoords]);
 
   useEffect(() => {
     const map = mapRef.current;

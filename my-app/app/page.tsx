@@ -82,6 +82,7 @@ export default function Home() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
+  const [focusCoords, setFocusCoords] = useState<[number, number] | null>(null);
   const [mapFocusToken, setMapFocusToken] = useState(0);
   const [mapFocusZoom, setMapFocusZoom] = useState<number | undefined>(undefined);
   const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
@@ -316,17 +317,19 @@ export default function Home() {
   const handleSearchLocation = useCallback((
     lat: number,
     lng: number,
-    opts?: { forceFocus?: boolean; targetZoom?: number; clearActiveDriver?: boolean }
+    opts?: { forceFocus?: boolean; targetZoom?: number; clearActiveDriver?: boolean; preserveCurrentCoords?: boolean }
   ) => {
+    const preserveCurrentCoords = !!opts?.preserveCurrentCoords;
     const prev = searchCoordsRef.current;
     const sameCoords =
       !!prev &&
       Math.abs(prev[0] - lat) < 0.00001 &&
       Math.abs(prev[1] - lng) < 0.00001;
 
-    if (sameCoords) {
+    if (sameCoords && !preserveCurrentCoords) {
       if (opts?.clearActiveDriver) setActiveDriverId(null);
       if (opts?.forceFocus) {
+        setFocusCoords([lat, lng]);
         setMapFocusZoom(opts?.targetZoom);
         setMapFocusToken((v) => v + 1);
       }
@@ -334,12 +337,22 @@ export default function Home() {
     }
 
     if (opts?.clearActiveDriver) setActiveDriverId(null);
-    setSearchCoords([lat, lng]);
+
+    if (preserveCurrentCoords) {
+      setFocusCoords([lat, lng]);
+    } else {
+      setFocusCoords(null);
+      setSearchCoords([lat, lng]);
+    }
+
     if (opts?.forceFocus) {
       setMapFocusZoom(opts?.targetZoom);
       setMapFocusToken((v) => v + 1);
     }
-    fetchDrivers(lat, lng, actionTypeRef.current);
+
+    const anchorLat = preserveCurrentCoords ? (searchCoordsRef.current?.[0] ?? DEFAULT_LAT) : lat;
+    const anchorLng = preserveCurrentCoords ? (searchCoordsRef.current?.[1] ?? DEFAULT_LNG) : lng;
+    fetchDrivers(anchorLat, anchorLng, actionTypeRef.current);
   }, [fetchDrivers]);
 
   useEffect(() => {
@@ -552,6 +565,7 @@ export default function Home() {
       <div className="absolute inset-0 z-0">
         <Map
           searchCoords={searchCoords}
+          focusCoords={focusCoords}
           focusRequestToken={mapFocusToken}
           focusRequestZoom={mapFocusZoom}
           drivers={filteredDrivers}

@@ -192,7 +192,7 @@ interface ActionPanelProps {
   onSearchLocation: (
     lat: number,
     lng: number,
-    opts?: { forceFocus?: boolean; targetZoom?: number; clearActiveDriver?: boolean }
+    opts?: { forceFocus?: boolean; targetZoom?: number; clearActiveDriver?: boolean; preserveCurrentCoords?: boolean }
   ) => void;
   currentCoords: [number, number] | null;
   onFilterApply: (type: string) => void;
@@ -366,7 +366,12 @@ function ActionPanel({
     const lat = f?.location?.coordinates?.[1];
     const lng = f?.location?.coordinates?.[0];
     if (typeof lat === 'number' && typeof lng === 'number') {
-      onSearchLocation(lat, lng, { forceFocus: true, targetZoom: 13, clearActiveDriver: false });
+      onSearchLocation(lat, lng, {
+        forceFocus: true,
+        targetZoom: 13,
+        clearActiveDriver: false,
+        preserveCurrentCoords: true,
+      });
     }
     onSelectDriver(f?._id || null);
     setShowFavorites(false);
@@ -666,9 +671,13 @@ function ActionPanel({
               <div className="ml-auto flex items-center gap-2">
                 <button
                   onClick={() => setShowFavorites((v) => !v)}
-                  className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg shrink-0 transition-colors ${activeThemeColor}`}
+                  className={`w-10 h-10 flex items-center justify-center rounded-2xl shadow-lg shrink-0 transition-colors border ${
+                    showFavorites
+                      ? `${activeThemeColor} text-white border-transparent`
+                      : 'bg-white text-slate-500 border-slate-200'
+                  }`}
                 >
-                  <Heart size={16} />
+                  <Heart size={16} className={showFavorites ? 'fill-white' : ''} />
                 </button>
                 <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg shrink-0 transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
               </div>
@@ -849,6 +858,7 @@ function ActionPanel({
                             starOff: 'text-purple-200',
                             ring: 'border-purple-400 ring-purple-300/30',
                           };
+                const favoriteFilled = isFavorite(driver._id);
 
                 return (
                 <div
@@ -953,11 +963,13 @@ function ActionPanel({
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
-                            className="w-full py-3 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40"
-                            style={{ background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` }}
+                            className={`w-full py-3 rounded-[2rem] font-black text-[10px] shadow-lg uppercase flex items-center justify-center gap-2 border ${
+                              favoriteFilled ? 'text-white border-white/40' : `${theme.text} border-slate-200 bg-white`
+                            }`}
+                            style={favoriteFilled ? { background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` } : undefined}
                           >
-                            <Heart size={14} className={isFavorite(driver._id) ? 'fill-white' : ''} />
-                            {isFavorite(driver._id) ? 'FAVORILERDEN CIKAR' : 'FAVORILERE EKLE'}
+                            <Heart size={14} className={favoriteFilled ? 'fill-white' : ''} />
+                            {favoriteFilled ? 'FAVORILERDEN CIKAR' : 'FAVORILERE EKLE'}
                           </button>
                         </div>
 
