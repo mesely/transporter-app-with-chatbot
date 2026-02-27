@@ -251,6 +251,7 @@ function ActionPanel({
   const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
   const [activePhotoCardId, setActivePhotoCardId] = useState<string | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [cityScopedDrivers, setCityScopedDrivers] = useState<any[]>([]);
@@ -496,6 +497,25 @@ function ActionPanel({
     onScroll();
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
+  }, [displayDrivers.length, panelState]);
+
+  useEffect(() => {
+    if (panelState <= 0) return;
+    const root = listContainerRef.current;
+    const target = loadMoreSentinelRef.current;
+    if (!root || !target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
+        }
+      },
+      { root, rootMargin: '320px 0px 460px 0px', threshold: 0 }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
   }, [displayDrivers.length, panelState]);
 
   const getCurrentPosition = (opts?: PositionOptions) =>
@@ -1164,6 +1184,7 @@ function ActionPanel({
               Liste yükleniyor...
             </div>
           )}
+          <div ref={loadMoreSentinelRef} className="h-8 w-full" />
         </div>
         )}
       </div>
