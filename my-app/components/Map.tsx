@@ -266,10 +266,10 @@ function createUserPointGeoJson(coords: [number, number] | null) {
 }
 
 function getFocusPadding() {
-  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 295 };
+  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 495 };
   return {
     ...FOCUS_PADDING_BASE,
-    bottom: 295,
+    bottom: 495,
   };
 }
 
@@ -293,7 +293,7 @@ function buildPopup(
   wrap.style.width = 'min(360px, calc(100vw - 48px))';
   wrap.style.maxWidth = '100%';
   wrap.style.boxSizing = 'border-box';
-  wrap.style.transform = 'scale(1.25)';
+  wrap.style.transform = 'scale(0.94)';
   wrap.style.transformOrigin = 'top left';
 
   const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';

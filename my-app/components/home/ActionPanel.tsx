@@ -484,6 +484,7 @@ function ActionPanel({
   }, [activeDriverId, localSelectedId, displayDrivers, renderedCount]);
 
   useEffect(() => {
+    if (panelState <= 1) return;
     const el = listContainerRef.current;
     if (!el) return;
     const onScroll = () => {
@@ -494,7 +495,7 @@ function ActionPanel({
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [displayDrivers.length]);
+  }, [displayDrivers.length, panelState]);
 
   const getCurrentPosition = (opts?: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
