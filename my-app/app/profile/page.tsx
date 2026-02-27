@@ -118,6 +118,8 @@ export default function ProfilePage() {
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [lastAddressKey, setLastAddressKey] = useState('');
   const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [addressLocating, setAddressLocating] = useState(false);
   const [profileDisplayName, setProfileDisplayName] = useState('');
   const [autoLookupTried, setAutoLookupTried] = useState(false);
 
@@ -185,7 +187,29 @@ export default function ProfilePage() {
     } catch { return null; }
   };
 
-  const normalizePhone = (value: string) => value.replace(/\D/g, '');
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=tr`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const addr = data?.address || {};
+      const city = addr.city || addr.town || addr.province || addr.state || '';
+      const district = addr.town || addr.suburb || addr.county || addr.city_district || '';
+      const street = [addr.road, addr.house_number].filter(Boolean).join(' ').trim();
+      const displayStreet = street || String(data?.display_name || '').split(',').slice(0, 2).join(',').trim();
+      return {
+        city: String(city || '').trim(),
+        district: String(district || '').trim(),
+        streetAddress: displayStreet,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const normalizePhone = (value: unknown) => String(value ?? '').replace(/\D/g, '');
   const normalizeAddressKey = (street: string, district: string, city: string) =>
     `${String(street || '').trim().toLocaleLowerCase('tr')}|${String(district || '').trim().toLocaleLowerCase('tr')}|${String(city || '').trim().toLocaleLowerCase('tr')}`;
 
@@ -223,11 +247,48 @@ export default function ProfilePage() {
     }));
     setLastAddressKey(normalizeAddressKey(mainAddress, found.address?.district || found.district || '', found.address?.city || found.city || ''));
     setLastCoords(foundCoords);
+    setSelectedCoords(foundCoords);
     if (normalizedPhone) localStorage.setItem(PROVIDER_PHONE_KEY, normalizedPhone);
     localStorage.setItem(PROVIDER_ID_KEY, found._id);
   }, []);
 
-  const handlePhoneLookup = useCallback(async (phoneInput?: string, redirectOnSuccess = false) => {
+  const useCurrentLocationForAddress = useCallback(async () => {
+    if (!navigator?.geolocation) {
+      alert('Konum servisi desteklenmiyor.');
+      return;
+    }
+    setAddressLocating(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 60000,
+        })
+      );
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setSelectedCoords(coords);
+      setLastCoords(coords);
+      const parsed = await reverseGeocode(coords.lat, coords.lng);
+      if (parsed) {
+        setFormData((prev) => ({
+          ...prev,
+          city: parsed.city || prev.city,
+          district: parsed.district || prev.district,
+          streetAddress: parsed.streetAddress || prev.streetAddress,
+        }));
+        setLastAddressKey(normalizeAddressKey(parsed.streetAddress || formData.streetAddress, parsed.district || formData.district, parsed.city || formData.city));
+      } else {
+        setLastAddressKey(normalizeAddressKey(formData.streetAddress, formData.district, formData.city));
+      }
+    } catch {
+      alert('Mevcut konum alınamadı. Lütfen konum iznini kontrol edin.');
+    } finally {
+      setAddressLocating(false);
+    }
+  }, [formData.city, formData.district, formData.streetAddress]);
+
+  const handlePhoneLookup = useCallback(async (phoneInput?: string) => {
     const phone = normalizePhone(phoneInput ?? formData.phoneNumber);
     if (phone.length < 10) return false;
     setCheckingPhone(true);
@@ -237,9 +298,6 @@ export default function ProfilePage() {
       const found = await res.json();
       if (!found?._id) return false;
       hydrateProfileFromUser(found);
-      if (redirectOnSuccess) {
-        window.location.assign('/settings');
-      }
       return true;
     } catch {
       return false;
@@ -341,6 +399,7 @@ export default function ProfilePage() {
     if (!String(formData.taxNumber || '').trim()) return alert("Vergi levhası bilgisi zorunludur.");
 
     let targetId = existingId;
+    let matchedProvider: any = null;
     let finalMethod = existingId ? 'PUT' : 'POST';
 
     if (!existingId) {
@@ -348,6 +407,7 @@ export default function ProfilePage() {
         const resCheck = await fetch(`${API_URL}/users/by-phone?phone=${normalizePhone(formData.phoneNumber)}`);
         const found = await resCheck.json();
         if (found?._id) {
+          matchedProvider = found;
           if (confirm(`Bu numara zaten kayıtlı. Mevcut kaydı girdiğiniz yeni bilgilerle güncellemek istiyor musunuz?`)) {
             targetId = found._id;
             finalMethod = 'PUT';
@@ -369,7 +429,11 @@ export default function ProfilePage() {
 
       const currentAddressKey = normalizeAddressKey(formData.streetAddress, formData.district, formData.city);
       const shouldReuseCoords = Boolean(existingId) && currentAddressKey === lastAddressKey && lastCoords;
-      let coords = shouldReuseCoords ? lastCoords : null;
+      const matchedCoords = Array.isArray(matchedProvider?.location?.coordinates) && matchedProvider.location.coordinates.length === 2
+        ? { lng: Number(matchedProvider.location.coordinates[0]), lat: Number(matchedProvider.location.coordinates[1]) }
+        : null;
+
+      let coords = selectedCoords || (shouldReuseCoords ? lastCoords : null) || matchedCoords;
       if (!coords) {
         const combined = `${formData.streetAddress}, ${formData.district}, ${formData.city}, Türkiye`;
         coords = await getCoordinatesFromAddress(combined) || await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
@@ -413,10 +477,11 @@ export default function ProfilePage() {
         setExistingId(persistedId);
         setLastAddressKey(currentAddressKey);
         setLastCoords({ lat: coords.lat, lng: coords.lng });
+        setSelectedCoords({ lat: coords.lat, lng: coords.lng });
         setProfileDisplayName(formData.businessName);
         localStorage.setItem(PROVIDER_PHONE_KEY, normalizePhone(formData.phoneNumber));
         if (persistedId) localStorage.setItem(PROVIDER_ID_KEY, String(persistedId));
-        window.location.assign('/settings');
+        alert('Bilgileriniz güncellendi.');
       } else { alert("Kaydedilemedi."); }
     } catch { alert("Hata!"); } finally { setSaving(false); }
   };
@@ -458,7 +523,7 @@ export default function ProfilePage() {
              />
              <button
                type="button"
-               onClick={() => handlePhoneLookup(undefined, true)}
+               onClick={() => handlePhoneLookup()}
                className="px-4 rounded-2xl bg-black text-white text-[10px] font-black uppercase"
              >
                {checkingPhone ? '...' : 'Giriş Yap'}
@@ -518,6 +583,15 @@ export default function ProfilePage() {
             <input type="text" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Vergi levhası no"/>
           </div>
           <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+          <button
+            type="button"
+            onClick={useCurrentLocationForAddress}
+            disabled={addressLocating}
+            className="md:col-span-2 inline-flex items-center justify-center gap-2 bg-black text-white rounded-2xl px-5 py-3 text-[10px] font-black uppercase shadow-lg disabled:opacity-60"
+          >
+            {addressLocating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+            Mevcut Konumu Kullan
+          </button>
           <div className="bg-white/50 backdrop-blur-sm border border-white/40 p-4 rounded-2xl md:col-span-2 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-[8px] font-black uppercase text-[#00c5c0] block">Araçlar ve Fotoğraflar (Opsiyonel)</label>
