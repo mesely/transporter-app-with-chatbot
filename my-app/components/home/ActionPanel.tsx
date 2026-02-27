@@ -259,6 +259,12 @@ function ActionPanel({
   const cityScopedCacheRef = useRef<Record<string, { ts: number; data: any[] }>>({});
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
+  useEffect(() => {
+    if (typeof collapseRequestToken === 'number') {
+      setPanelState(0);
+    }
+  }, [collapseRequestToken]);
+
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
     if (actionType.includes('sarj') || actionType === 'istasyon') return 'bg-blue-600';
@@ -1209,8 +1215,3 @@ function ActionPanel({
 }
 
 export default memo(ActionPanel);
-  useEffect(() => {
-    if (typeof collapseRequestToken === 'number') {
-      setPanelState(0);
-    }
-  }, [collapseRequestToken]);
