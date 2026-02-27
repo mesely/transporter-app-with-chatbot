@@ -104,7 +104,7 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
 };
 
 const MAP_UI_TEXT: Record<AppLang, { showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
-  tr: { showGoogle: "GOOGLE MAPS'TE GOR", favoriteAdd: 'FAVORILERE EKLE', favoriteRemove: 'FAVORILERDEN CIKAR', viewRatings: 'DEGERLENDIRMELERI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
+  tr: { showGoogle: "GOOGLE MAPS'TE GOR", favoriteAdd: 'FAVORILERE EKLE', favoriteRemove: 'FAVORILERDEN CIKAR', viewRatings: 'DEGERLENDIRMELER', viewReports: 'SIKAYETLER' },
   en: { showGoogle: 'OPEN IN GOOGLE MAPS', favoriteAdd: 'ADD TO FAVORITES', favoriteRemove: 'REMOVE FAVORITE', viewRatings: 'VIEW REVIEWS', viewReports: 'VIEW REPORTS' },
   de: { showGoogle: 'IN GOOGLE MAPS OFFNEN', favoriteAdd: 'ZU FAVORITEN', favoriteRemove: 'FAVORIT ENTFERNEN', viewRatings: 'BEWERTUNGEN ANZEIGEN', viewReports: 'BESCHWERDEN ANZEIGEN' },
   fr: { showGoogle: 'OUVRIR DANS GOOGLE MAPS', favoriteAdd: 'AJOUTER AUX FAVORIS', favoriteRemove: 'RETIRER DES FAVORIS', viewRatings: 'VOIR LES AVIS', viewReports: 'VOIR LES PLAINTES' },

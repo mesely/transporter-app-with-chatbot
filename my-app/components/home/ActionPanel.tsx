@@ -174,7 +174,7 @@ const TAG_DETAILS_EN: Record<string, { tasima: string, kapasite: string }> = {
 };
 
 const PANEL_TEXT: Record<AppLang, Record<string, string>> = {
-  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "GOOGLE MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeleri Görüntüle', viewReports: 'Şikayetleri Görüntüle', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
+  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "GOOGLE MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeler', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
   en: { kurtarici: 'Recovery', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger', otoKurtarma: 'Roadside Recovery', vinc: 'Crane', domestic: 'Domestic', international: 'International', homeMoving: 'Home Moving', trailer: 'Trailer', truck: 'Truck', van: 'Van', station: 'Station', geziciSarj: 'Mobile Charge', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE', tapCall: 'Tap To Get Price And Call', verifiedPrice: 'Verified Price', mapsOpen: 'OPEN IN GOOGLE MAPS', call: 'CALL', message: 'MESSAGE', site: 'GO TO SITE', listVehicles: 'List Vehicles', viewPhotos: 'View Vehicle Photos', noVehicles: 'No registered vehicle info.', noPhotos: 'No registered photos.', reviewsAndReports: 'Reviews & Reports', noRating: 'Not rated yet', scoreText: 'Score', viewRatings: 'View Reviews', viewReports: 'View Reports', turkeyWide: 'Nationwide', transport: 'Transport', capacity: 'Capacity', close: 'Close', vehicle: 'Vehicle', photo: 'Photo', vehiclePhoto: 'Vehicle photo', previewPhoto: 'Large vehicle photo preview' },
   de: { kurtarici: 'Bergung', nakliye: 'Transport', sarj: 'Laden', yolcu: 'Passagier', otoKurtarma: 'Pannenhilfe', vinc: 'Kran', domestic: 'Inland', international: 'International', homeMoving: 'Umzug', trailer: 'Auflieger', truck: 'LKW', van: 'Transporter', station: 'Station', geziciSarj: 'Mobiles Laden', loading: 'Lädt...', score: 'PUNKT', allTurkey: 'GANZE TÜRKEI', tapCall: 'Tippen für Preis und Anruf', verifiedPrice: 'Verifizierter Preis', mapsOpen: 'IN GOOGLE MAPS ÖFFNEN', call: 'ANRUFEN', message: 'NACHRICHT', site: 'ZUR WEBSEITE', listVehicles: 'Fahrzeuge anzeigen', viewPhotos: 'Fahrzeugfotos anzeigen', noVehicles: 'Keine Fahrzeugdaten vorhanden.', noPhotos: 'Keine Fotos vorhanden.', reviewsAndReports: 'Bewertungen & Beschwerden', noRating: 'Noch keine Bewertung', scoreText: 'Punkt', viewRatings: 'Bewertungen anzeigen', viewReports: 'Beschwerden anzeigen', turkeyWide: 'Landesweit', transport: 'Transport', capacity: 'Kapazität', close: 'Schließen', vehicle: 'Fahrzeug', photo: 'Foto', vehiclePhoto: 'Fahrzeugfoto', previewPhoto: 'Große Fahrzeugfoto-Vorschau' },
   fr: { kurtarici: 'Dépannage', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passager', otoKurtarma: 'Assistance routière', vinc: 'Grue', domestic: 'National', international: 'International', homeMoving: 'Déménagement', trailer: 'Semi-remorque', truck: 'Camion', van: 'Fourgon', station: 'Station', geziciSarj: 'Charge mobile', loading: 'Chargement...', score: 'NOTE', allTurkey: 'TOUTE LA TURQUIE', tapCall: 'Touchez pour le prix et appeler', verifiedPrice: 'Prix vérifié', mapsOpen: 'OUVRIR DANS GOOGLE MAPS', call: 'APPELER', message: 'MESSAGE', site: 'ALLER AU SITE', listVehicles: 'Voir les véhicules', viewPhotos: 'Voir les photos du véhicule', noVehicles: 'Aucune information véhicule.', noPhotos: 'Aucune photo enregistrée.', reviewsAndReports: 'Avis & Réclamations', noRating: 'Pas encore évalué', scoreText: 'Note', viewRatings: 'Voir les avis', viewReports: 'Voir les réclamations', turkeyWide: 'Dans toute la Turquie', transport: 'Transport', capacity: 'Capacité', close: 'Fermer', vehicle: 'Véhicule', photo: 'Photo', vehiclePhoto: 'Photo du véhicule', previewPhoto: 'Aperçu photo grand format' },
@@ -282,12 +282,9 @@ function ActionPanel({
   }, [actionType]);
 
   useEffect(() => {
-    const targetId = activeDriverId || localSelectedId;
-    if (targetId) {
-      if (panelState < 2) setPanelState(2);
-      setTimeout(() => { itemRefs.current[targetId]?.scrollIntoView({ behavior: 'auto', block: 'center' }); }, 300);
-    }
-  }, [activeDriverId, localSelectedId]);
+    if (!localSelectedId) return;
+    setTimeout(() => { itemRefs.current[localSelectedId]?.scrollIntoView({ behavior: 'auto', block: 'center' }); }, 300);
+  }, [localSelectedId]);
 
   useEffect(() => {
     setLang(getPreferredLang());
@@ -781,7 +778,7 @@ function ActionPanel({
         <div ref={listContainerRef} className="flex-1 overflow-y-auto pb-40 custom-scrollbar overscroll-contain">
           {(loading || cityScopedLoading) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
             visibleDrivers.map((driver) => {
-                const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
+                const isSelected = localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
 
                 const isMobileCharge = sub === 'seyyar_sarj';
@@ -938,18 +935,8 @@ function ActionPanel({
                     ref={el => { itemRefs.current[driver._id] = el; }}
                     onClick={(e) => {
                         e.stopPropagation();
-                        if (isSelected) {
-                            onSelectDriver(null);
-                            setLocalSelectedId(null);
-                        } else {
-                            if (isSpecialCategory) {
-                                onSelectDriver(null);
-                                setLocalSelectedId(driver._id);
-                            } else {
-                                setLocalSelectedId(null);
-                                onSelectDriver(driver._id);
-                            }
-                        }
+                        setLocalSelectedId(null);
+                        onSelectDriver(driver._id);
                     }}
                     className={`bg-white/90 rounded-[2.5rem] p-6 mb-4 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >
