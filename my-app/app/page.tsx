@@ -31,6 +31,7 @@ const LAST_RESULTS_KEY = 'Transport_last_results_v1';
 const LAST_RESULTS_BY_TYPE_KEY = 'Transport_last_results_by_type_v1';
 const RATE_REMINDERS_KEY = 'Transport_rate_reminders_v1';
 const FAVORITES_KEY = 'Transport_favorites_v1';
+const MANUAL_LOCATION_KEY = 'Transport_manual_location_v1';
 const TURKEY_BBOX = {
   minLat: 35.45,
   minLng: 25.4,
@@ -65,6 +66,21 @@ function normalizeText(v: string) {
     .replace(/[^\w\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function readManualLocation(): { lat: number; lng: number; city?: string; district?: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(MANUAL_LOCATION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const lat = Number(parsed?.lat);
+    const lng = Number(parsed?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng, city: parsed?.city, district: parsed?.district };
+  } catch {
+    return null;
+  }
 }
 
 export default function Home() {
@@ -337,6 +353,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     const goRequired = () => {
+      if (readManualLocation()) return;
       if (!cancelled) router.replace('/location-required');
     };
 
@@ -373,6 +390,34 @@ export default function Home() {
       });
     }
   }, [fetchDrivers, searchCoords]);
+
+  useEffect(() => {
+    if (searchCoords) return;
+    if (typeof window === 'undefined') return;
+    const manual = readManualLocation();
+    if (!manual) return;
+
+    const useManualIfNeeded = async () => {
+      if (!navigator?.geolocation) {
+        setSearchCoords([manual.lat, manual.lng]);
+        setMapFocusZoom(12.5);
+        setMapFocusToken((v) => v + 1);
+        return;
+      }
+      try {
+        const permissions = (navigator as any).permissions;
+        if (!permissions?.query) return;
+        const status = await permissions.query({ name: 'geolocation' as PermissionName });
+        if (status?.state === 'denied') {
+          setSearchCoords([manual.lat, manual.lng]);
+          setMapFocusZoom(12.5);
+          setMapFocusToken((v) => v + 1);
+        }
+      } catch {}
+    };
+
+    useManualIfNeeded();
+  }, [searchCoords]);
 
   const filteredDrivers = useMemo(() => {
     return drivers.filter((d) => {
@@ -479,6 +524,7 @@ export default function Home() {
         },
         (err) => {
           if ((err as GeolocationPositionError)?.code === 1) {
+            if (readManualLocation()) return;
             router.replace('/location-required');
           }
         },

@@ -288,23 +288,26 @@ function buildPopup(
   const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
 
   const wrap = document.createElement('div');
-  wrap.className = 'p-1.5 text-gray-900';
+  wrap.className = 'p-0 text-gray-900';
   wrap.style.minWidth = '360px';
   wrap.style.width = 'min(360px, calc(100vw - 48px))';
   wrap.style.maxWidth = '100%';
   wrap.style.boxSizing = 'border-box';
-  wrap.style.transform = 'scale(0.75)';
+  wrap.style.transform = 'scale(0.94)';
   wrap.style.transformOrigin = 'top left';
 
   const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';
+  const ratingValue = Number(driver.rating || 0);
+  const filledStars = Math.max(0, Math.min(5, Math.round(ratingValue)));
+  const emptyStars = 5 - filledStars;
   wrap.innerHTML = `
-    <div style="font-family:ui-sans-serif,system-ui;background:rgba(255,255,255,0.66);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border:1px solid rgba(255,255,255,0.65);box-shadow:0 12px 32px rgba(15,23,42,0.14);border-radius:16px;padding:10px;">
+    <div style="font-family:ui-sans-serif,system-ui;background:rgba(255,255,255,0.92);backdrop-filter:blur(10px) saturate(130%);-webkit-backdrop-filter:blur(10px) saturate(130%);box-shadow:0 10px 22px rgba(15,23,42,0.12);border-radius:16px;padding:10px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:7px;">
         <span style="font-size:10px;font-weight:900;color:white;padding:5px 8px;border-radius:10px;background:${color};text-transform:uppercase;">${label}</span>
         <button data-action="favorite" style="border:1px solid #fecaca;border-radius:999px;width:28px;height:28px;color:${isFavorite ? '#ffffff' : '#dc2626'};background:${isFavorite ? color : '#ffffff'};font-size:14px;font-weight:900;cursor:pointer;line-height:1;transition:all .18s ease;">♡</button>
       </div>
       <h4 style="font-size:13px;font-weight:900;margin:0 0 5px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
-      ${distance ? `<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:7px;">${distance}</div>` : '<div style="margin-bottom:7px;"></div>'}
+      ${distance ? `<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:7px;display:flex;align-items:center;gap:6px;"><span>${distance}</span><span style="color:#dc2626;letter-spacing:1px;">${'★'.repeat(filledStars)}${'☆'.repeat(emptyStars)}</span></div>` : '<div style="margin-bottom:7px;"></div>'}
       <div style="display:flex;gap:7px;">
         <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.call}</button>
         <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.message}</button>
@@ -677,6 +680,7 @@ function MapView({
       closeOnMove: false,
       anchor: 'bottom',
       offset: 18,
+      className: 'transport-popup-clean',
       maxWidth: 'min(420px, calc(100vw - 24px))'
     })
       .setLngLat([driver.location.coordinates[0], driver.location.coordinates[1]])

@@ -145,3 +145,15 @@ html {
 .pt-safe {
   padding-top: env(safe-area-inset-top);
 }
+
+/* MapLibre popup kabuğunu sadeleştir */
+.maplibregl-popup.transport-popup-clean .maplibregl-popup-content {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.maplibregl-popup.transport-popup-clean .maplibregl-popup-tip {
+  display: none;
+}
