@@ -288,7 +288,7 @@ function buildPopup(
   const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
 
   const wrap = document.createElement('div');
-  wrap.className = 'p-2 text-gray-900';
+  wrap.className = 'p-1.5 text-gray-900';
   wrap.style.minWidth = '360px';
   wrap.style.width = 'min(360px, calc(100vw - 48px))';
   wrap.style.maxWidth = '100%';
@@ -298,21 +298,21 @@ function buildPopup(
 
   const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';
   wrap.innerHTML = `
-    <div style="font-family: ui-sans-serif, system-ui;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
+    <div style="font-family:ui-sans-serif,system-ui;background:rgba(255,255,255,0.66);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border:1px solid rgba(255,255,255,0.65);box-shadow:0 12px 32px rgba(15,23,42,0.14);border-radius:16px;padding:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:7px;">
         <span style="font-size:10px;font-weight:900;color:white;padding:5px 8px;border-radius:10px;background:${color};text-transform:uppercase;">${label}</span>
-        <button data-action="favorite" style="border:1px solid #fecaca;border-radius:999px;width:28px;height:28px;color:${isFavorite ? '#ffffff' : '#dc2626'};background:${isFavorite ? color : '#ffffff'};font-size:14px;font-weight:900;cursor:pointer;line-height:1;">♡</button>
+        <button data-action="favorite" style="border:1px solid #fecaca;border-radius:999px;width:28px;height:28px;color:${isFavorite ? '#ffffff' : '#dc2626'};background:${isFavorite ? color : '#ffffff'};font-size:14px;font-weight:900;cursor:pointer;line-height:1;transition:all .18s ease;">♡</button>
       </div>
-      <h4 style="font-size:13px;font-weight:900;margin:0 0 6px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
-      ${distance ? `<div style="font-size:10px;font-weight:800;color:#9ca3af;margin-bottom:8px;">${distance}</div>` : '<div style="margin-bottom:8px;"></div>'}
-      <div style="display:flex;gap:8px;">
-        <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.call}</button>
-        <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.message}</button>
+      <h4 style="font-size:13px;font-weight:900;margin:0 0 5px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
+      ${distance ? `<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:7px;">${distance}</div>` : '<div style="margin-bottom:7px;"></div>'}
+      <div style="display:flex;gap:7px;">
+        <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.call}</button>
+        <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.message}</button>
       </div>
-      <button data-action="show" style="margin-top:8px;width:100%;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.showGoogle}</button>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button data-action="ratings" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.viewRatings}</button>
-        <button data-action="reports" style="flex:1;border:0;border-radius:10px;padding:9px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;">${uiText.viewReports}</button>
+      <button data-action="show" style="margin-top:7px;width:100%;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.showGoogle}</button>
+      <div style="display:flex;gap:7px;margin-top:7px;">
+        <button data-action="ratings" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewRatings}</button>
+        <button data-action="reports" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewReports}</button>
       </div>
     </div>
   `;
