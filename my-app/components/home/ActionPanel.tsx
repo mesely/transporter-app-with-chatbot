@@ -653,46 +653,46 @@ function ActionPanel({
       </div>
 
       <div onClick={(e) => e.stopPropagation()} className={`px-6 pb-6 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
-        <div className="flex gap-2 shrink-0 mb-4">
-          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
-            <Wrench size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.kurtarici}</span>
+        <div className="flex gap-2 shrink-0 mb-3">
+          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-2.5 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
+            <Wrench size={16} className="mb-0.5 scale-[0.75]" /> <span className="text-[8px] font-black uppercase scale-[0.75] leading-none">{tx.kurtarici}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
-            <Truck size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.nakliye}</span>
+          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-2.5 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
+            <Truck size={16} className="mb-0.5 scale-[0.75]" /> <span className="text-[8px] font-black uppercase scale-[0.75] leading-none">{tx.nakliye}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
-            <Zap size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.sarj}</span>
+          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-2.5 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
+            <Zap size={16} className="mb-0.5 scale-[0.75]" /> <span className="text-[8px] font-black uppercase scale-[0.75] leading-none">{tx.sarj}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-4 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
-            <Users size={22} className="mb-1" /> <span className="text-[9px] font-black uppercase">{tx.yolcu}</span>
+          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-2.5 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
+            <Users size={16} className="mb-0.5 scale-[0.75]" /> <span className="text-[8px] font-black uppercase scale-[0.75] leading-none">{tx.yolcu}</span>
           </button>
         </div>
 
         <div className="space-y-3 shrink-0 mb-2">
           {showTowRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={14}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={14}/> {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={12}/> {tx.otoKurtarma}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={12}/> {tx.vinc}</button>
             </div>
           )}
           {(showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
              <div className="flex gap-2">
-                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{tx.domestic}</button>
-                <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={14} className="inline mr-1"/> {tx.international}</button>
+                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{tx.domestic}</button>
+                <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={12} className="inline mr-1"/> {tx.international}</button>
              </div>
           )}
           {showDomesticRow && actionType !== 'yurt_disi_nakliye' && (
             <div className="grid grid-cols-4 gap-2">
-               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> {tx.homeMoving}</button>
-               <button onClick={() => handleTransportTypeClick('tir')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={14}/> {tx.trailer}</button>
-               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> {tx.truck}</button>
-               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={14}/> {tx.van}</button>
+               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={12}/> {tx.homeMoving}</button>
+               <button onClick={() => handleTransportTypeClick('tir')} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={12}/> {tx.trailer}</button>
+               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={12}/> {tx.truck}</button>
+               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={12}/> {tx.van}</button>
             </div>
           )}
           {activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => (
-                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-3 rounded-xl text-[8px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
+                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-2 rounded-xl text-[7px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
                         {activeTags.includes(sub.id) && <Check size={10} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                     </button>
                 ))}
@@ -700,17 +700,17 @@ function ActionPanel({
           )}
           {showChargeRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={14}/> {tx.station}</button>
-              <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
-                <img src="/icons/GeziciIcon.png" className={`w-5 h-5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> {tx.geziciSarj}
+              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={12}/> {tx.station}</button>
+              <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md flex items-center justify-center gap-2 transition-colors ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
+                <img src="/icons/GeziciIcon.png" className={`w-4 h-4 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> {tx.geziciSarj}
               </button>
             </div>
           )}
           {showPassengerRow && (
             <div className="grid grid-cols-4 gap-2">
                {SUB_FILTERS.yolcu.map((sub) => (
-                  <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-3 rounded-2xl text-[9px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-colors ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
-                    {sub.id === 'minibus' && <CarFront size={14}/>} {sub.id === 'otobus' && <Bus size={14}/>} {sub.id === 'midibus' && <Bus size={14}/>} {sub.id === 'vip_tasima' && <Crown size={14}/>}
+                  <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-colors ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                    {sub.id === 'minibus' && <CarFront size={12}/>} {sub.id === 'otobus' && <Bus size={12}/>} {sub.id === 'midibus' && <Bus size={12}/>} {sub.id === 'vip_tasima' && <Crown size={12}/>}
                     {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                   </button>
                ))}
@@ -1029,7 +1029,7 @@ function ActionPanel({
                             className="py-2 rounded-xl text-[8px] font-black uppercase text-white border border-white/40 flex items-center justify-center"
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           >
-                            MAPS
+                            MAPS'TE GORUNTULE
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
@@ -1038,7 +1038,7 @@ function ActionPanel({
                             }`}
                             style={favoriteFilled ? { background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` } : undefined}
                           >
-                            {favoriteFilled ? 'CIKAR' : 'FAVORI'}
+                            {favoriteFilled ? 'FAVORIDEN CIKAR' : 'FAVORIYE EKLE'}
                           </button>
                           <button
                             onClick={(e) => {
@@ -1050,7 +1050,7 @@ function ActionPanel({
                             className={`py-2 rounded-xl text-[8px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
                             style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                           >
-                            YORUM
+                            YORUMLARI GORUNTULE
                           </button>
                           <button
                             onClick={(e) => {
@@ -1062,7 +1062,7 @@ function ActionPanel({
                             className={`py-2 rounded-xl text-[8px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
                             style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                           >
-                            SIKAYET
+                            SIKAYETLERI GORUNTULE
                           </button>
                         </div>
 

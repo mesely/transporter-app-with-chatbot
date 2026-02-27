@@ -105,7 +105,7 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
 };
 
 const MAP_UI_TEXT: Record<AppLang, { showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
-  tr: { showGoogle: "GOOGLE MAPS'TE GOR", favoriteAdd: 'FAVORI EKLE', favoriteRemove: 'FAVORI CIKAR', viewRatings: 'DEGERLENDIRME', viewReports: 'SIKAYETLER' },
+  tr: { showGoogle: "MAPS'TE GORUNTULE", favoriteAdd: 'FAVORIYE EKLE', favoriteRemove: 'FAVORIDEN CIKAR', viewRatings: 'YORUMLARI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
   en: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITE', favoriteRemove: 'UNFAVORITE', viewRatings: 'REVIEWS', viewReports: 'REPORTS' },
   de: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE' },
   fr: { showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES' },
