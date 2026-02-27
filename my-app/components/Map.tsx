@@ -266,10 +266,10 @@ function createUserPointGeoJson(coords: [number, number] | null) {
 }
 
 function getFocusPadding() {
-  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 230 };
+  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 235 };
   return {
     ...FOCUS_PADDING_BASE,
-    bottom: 230,
+    bottom: 235,
   };
 }
 
