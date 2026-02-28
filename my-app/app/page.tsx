@@ -203,7 +203,7 @@ export default function Home() {
     lat: number,
     lng: number,
     type: string,
-    opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number } }
+    opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }; append?: boolean }
   ) => {
     const key = [
       type,
@@ -277,7 +277,16 @@ export default function Home() {
       if (normalizedData.length === 0 && Array.isArray(driversRef.current) && driversRef.current.length > 0 && !!opts?.bbox) {
         // Keep current visible list if a move query returns empty to avoid sudden blank panel.
       } else {
-        setDrivers(normalizedData);
+        if (opts?.append) {
+          setDrivers((prev) => {
+            const map = new Map<string, any>();
+            for (const item of prev || []) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
+            for (const item of normalizedData) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
+            return Array.from(map.values());
+          });
+        } else {
+          setDrivers(normalizedData);
+        }
       }
     } catch (err) {
       if ((err as any)?.name !== 'AbortError') {
@@ -553,25 +562,11 @@ export default function Home() {
       setDrivers(typeCached);
     }
     const zoom = lastMapFetchRef.current?.zoom ?? 9;
-    let expandedBbox = lastMapFetchRef.current?.bbox;
-    if (expandedBbox) {
-      const latSpan = Math.max(0.01, expandedBbox.maxLat - expandedBbox.minLat);
-      const lngSpan = Math.max(0.01, expandedBbox.maxLng - expandedBbox.minLng);
-      const latPad = Math.max(0.09, latSpan * 0.95);
-      const lngPad = Math.max(0.09, lngSpan * 0.95);
-      expandedBbox = {
-        minLat: expandedBbox.minLat - latPad,
-        minLng: expandedBbox.minLng - lngPad,
-        maxLat: expandedBbox.maxLat + latPad,
-        maxLng: expandedBbox.maxLng + lngPad,
-      };
-    }
-    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, zoom >= 10 ? 1800 : 1200);
+    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, zoom >= 10 ? 2200 : 1600);
     listEndFetchLimitRef.current = requestedLimit;
     fetchDrivers(searchCoords?.[0] ?? DEFAULT_LAT, searchCoords?.[1] ?? DEFAULT_LNG, type, {
       zoom,
       limit: requestedLimit,
-      bbox: expandedBbox,
     });
   }, [fetchDrivers, readTypeCache, searchCoords]);
 
@@ -611,6 +606,7 @@ export default function Home() {
       zoom,
       limit: nextLimit,
       bbox: expandedBbox,
+      append: true,
     });
   }, [fetchDrivers]);
 
@@ -786,8 +782,10 @@ export default function Home() {
       }
       fetchDrivers(baseLat, baseLng, actionTypeRef.current, {
         zoom,
-        limit: requestedLimit,
-        bbox: expandedBbox,
+        limit: Math.max(requestedLimit || 0, zoom >= 10 ? 1800 : 1300),
+        // Do not constrain ActionPanel by viewport; keep nearby districts visible even in high zoom.
+        bbox: undefined,
+        append: true,
       });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
   }, [

@@ -235,6 +235,7 @@ export class DataService {
       insertedOrUpdated: 0,
       skippedDuplicates: 0,
       failed: 0,
+      districtsWithNoResults: 0,
       keyMissing: false,
       dryRun,
       start,
@@ -255,23 +256,16 @@ export class DataService {
 
     for (const district of districts) {
       stats.scannedDistricts++;
-      const query = `${district.ilce}, ${district.il} lastikçi`;
       let places: any[] = [];
       try {
-        const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
-          params: {
-            query,
-            language: 'tr',
-            region: 'tr',
-            key: apiKey,
-          },
-          timeout: 15000,
-        });
-        places = Array.isArray(response?.data?.results) ? response.data.results.slice(0, perDistrictLimit) : [];
+        places = await this.searchTirePlacesForDistrict(district.il, district.ilce, apiKey, perDistrictLimit);
       } catch (error) {
         stats.failed++;
-        this.logger.warn(`⚠️ Places arama hatası (${query}): ${(error as any)?.message || error}`);
+        this.logger.warn(`⚠️ Places arama hatası (${district.il}/${district.ilce}): ${(error as any)?.message || error}`);
         continue;
+      }
+      if (places.length === 0) {
+        stats.districtsWithNoResults++;
       }
 
       for (const place of places) {
@@ -568,6 +562,41 @@ export class DataService {
     } catch {
       return null;
     }
+  }
+
+  private async searchTirePlacesForDistrict(
+    city: string,
+    district: string,
+    apiKey: string,
+    perDistrictLimit: number
+  ): Promise<any[]> {
+    const queries = [
+      `${district}, ${city} lastikçi`,
+      `${district}, ${city} lastikci`,
+      `${district}, ${city} oto lastik`,
+      `${district}, ${city} oto lastikçi`,
+    ];
+
+    for (const query of queries) {
+      try {
+        const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+          params: {
+            query,
+            language: 'tr',
+            region: 'tr',
+            key: apiKey,
+          },
+          timeout: 15000,
+        });
+        const results = Array.isArray(response?.data?.results) ? response.data.results : [];
+        if (results.length > 0) {
+          return results.slice(0, perDistrictLimit);
+        }
+      } catch {
+        // Try next query variant
+      }
+    }
+    return [];
   }
 
   private async geocodeAddressFallback(address: string, city: string, district: string): Promise<[number, number]> {
