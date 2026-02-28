@@ -136,6 +136,8 @@ export default function Home() {
 
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
+  const fetchSeqRef = useRef(0);
+  const blockMapMoveFetchUntilRef = useRef(0);
   const driversRef = useRef<any[]>([]);
 
   useEffect(() => {
@@ -205,6 +207,7 @@ export default function Home() {
     type: string,
     opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }; append?: boolean; force?: boolean }
   ) => {
+    const requestSeq = ++fetchSeqRef.current;
     const key = [
       type,
       lat.toFixed(4),
@@ -260,6 +263,7 @@ export default function Home() {
           : `${API_URL}/users/nearby?${params.toString()}`;
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
+      if (requestSeq !== fetchSeqRef.current) return;
       const normalizedData = Array.isArray(data) ? data : [];
       driversCacheRef.current[key] = { data: normalizedData, ts: Date.now() };
       writeTypeCache(type, normalizedData);
@@ -289,6 +293,7 @@ export default function Home() {
         }
       }
     } catch (err) {
+      if (requestSeq !== fetchSeqRef.current) return;
       if ((err as any)?.name !== 'AbortError') {
         console.error('Fetch Error:', err);
         const typed = readTypeCache(type);
@@ -555,6 +560,11 @@ export default function Home() {
   }, [handleSearchLocation, router, searchCoords]);
 
   const handleFilterApply = useCallback((type: string) => {
+    blockMapMoveFetchUntilRef.current = Date.now() + 1400;
+    if (mapMoveDebounceRef.current) {
+      clearTimeout(mapMoveDebounceRef.current);
+      mapMoveDebounceRef.current = null;
+    }
     setActionType(type);
     setActiveTags([]);
     const typeCached = readTypeCache(type);
@@ -718,6 +728,9 @@ export default function Home() {
     zoom: number,
     bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }
   ) => {
+    if (Date.now() < blockMapMoveFetchUntilRef.current) {
+      return;
+    }
     if (suppressNextMapMoveFetchRef.current) {
       suppressNextMapMoveFetchRef.current = false;
       return;
