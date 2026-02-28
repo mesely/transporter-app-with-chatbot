@@ -220,7 +220,12 @@ export class DataService {
   }
 
   async importLastikFromGoogle(options: ImportLastikOptions = {}) {
-    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
+    const apiKey = (
+      process.env.GOOGLE_PLACES_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY ||
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      ''
+    ).trim();
 
     const start = Math.max(0, Number(options.start || 0));
     const endRaw = Number.isFinite(Number(options.end)) ? Number(options.end) : TURKEY_DATA.length;
@@ -713,7 +718,12 @@ export class DataService {
   }
 
   private async geocodeAddressFallback(address: string, city: string, district: string): Promise<[number, number]> {
-    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
+    const apiKey = (
+      process.env.GOOGLE_PLACES_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY ||
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      ''
+    ).trim();
     if (!apiKey) return [28.9784, 41.0082];
     const query = `${address}, ${district}, ${city}, Türkiye`;
     try {
