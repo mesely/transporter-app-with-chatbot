@@ -851,7 +851,7 @@ export default function Home() {
       />
 
       <div
-        className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto scale-[0.94] sm:scale-100 origin-top"
+        className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto scale-[0.75] sm:scale-[0.75] origin-top"
         style={{
           top: TOP_UI_OFFSET,
           width: 'min(540px, calc(100vw - 140px))'

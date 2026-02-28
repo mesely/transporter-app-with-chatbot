@@ -9,16 +9,17 @@ import { useRouter } from 'next/navigation';
 
 interface TopBarProps {
   onProfileClick: () => void;
+  topOffset?: string;
 }
 
-export default function TopBar({ onProfileClick }: TopBarProps) {
+export default function TopBar({ onProfileClick, topOffset }: TopBarProps) {
   const router = useRouter();
 
   return (
     <div className="absolute top-0 left-0 right-0 z-[500] pointer-events-none">
       <div
         className="px-6 flex items-center justify-between pointer-events-auto"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 30px)' }}
+        style={{ paddingTop: topOffset || 'max(calc(env(safe-area-inset-top, 0px) + 22px), 34px)' }}
       >
         
         {/* Settings butonu (eski Menu yerine) */}
@@ -29,7 +30,7 @@ export default function TopBar({ onProfileClick }: TopBarProps) {
             e.stopPropagation();
             router.push('/settings');
           }}
-          className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800"
+          className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800 scale-[0.75] origin-left"
         >
           <Settings className="w-6 h-6" />
         </button>
@@ -42,7 +43,7 @@ export default function TopBar({ onProfileClick }: TopBarProps) {
             e.stopPropagation();
             onProfileClick();
           }}
-          className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800"
+          className="p-3 rounded-2xl bg-white shadow-lg border border-gray-100 text-gray-800 scale-[0.75] origin-right"
         >
           <User className="w-6 h-6" />
         </button>

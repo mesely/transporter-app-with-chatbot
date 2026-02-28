@@ -744,8 +744,8 @@ function ActionPanel({
           {panelState > 1 && activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => (
-                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-sm flex items-center justify-center gap-0.5 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
-                        {activeTags.includes(sub.id) && <Check size={9} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
+                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-1.5 rounded-2xl text-[9px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
+                        {activeTags.includes(sub.id) && <Check size={13} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                     </button>
                 ))}
              </div>
