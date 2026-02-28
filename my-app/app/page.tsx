@@ -203,7 +203,7 @@ export default function Home() {
     lat: number,
     lng: number,
     type: string,
-    opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }; append?: boolean }
+    opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }; append?: boolean; force?: boolean }
   ) => {
     const key = [
       type,
@@ -213,11 +213,11 @@ export default function Home() {
       String(opts?.limit ? Math.round(opts.limit) : ''),
       String(opts?.bbox ? `${opts.bbox.minLat.toFixed(3)}:${opts.bbox.minLng.toFixed(3)}:${opts.bbox.maxLat.toFixed(3)}:${opts.bbox.maxLng.toFixed(3)}` : ''),
     ].join(':');
-    if (inflightFetchKeyRef.current === key) return;
+    if (!opts?.force && inflightFetchKeyRef.current === key) return;
 
     const now = Date.now();
     const cached = driversCacheRef.current[key];
-    if (cached) {
+    if (!opts?.force && cached) {
       setDrivers(cached.data);
       setLoading(false);
       if (now - cached.ts < DRIVERS_CACHE_REVALIDATE_MS) return;
@@ -231,7 +231,7 @@ export default function Home() {
     fetchAbortRef.current = controller;
     inflightFetchKeyRef.current = key;
 
-    if (!cached) {
+    if (!cached || opts?.force) {
       const typeCached = readTypeCache(type);
       if (typeCached && typeCached.length > 0) {
         setDrivers(typeCached);
@@ -567,6 +567,7 @@ export default function Home() {
     fetchDrivers(searchCoords?.[0] ?? DEFAULT_LAT, searchCoords?.[1] ?? DEFAULT_LNG, type, {
       zoom,
       limit: requestedLimit,
+      force: true,
     });
   }, [fetchDrivers, readTypeCache, searchCoords]);
 
