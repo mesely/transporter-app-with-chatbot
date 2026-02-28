@@ -359,7 +359,13 @@ export class UsersService implements OnModuleInit {
     const normalizedCity = (city || '').trim();
     if (normalizedCity) {
       const variants = this.cityVariants(normalizedCity);
-      filter.$or = variants.map((v) => ({ 'address.city': new RegExp(`^${v}$`, 'i') }));
+      const cityOr: any[] = [];
+      for (const v of variants) {
+        cityOr.push({ 'address.city': new RegExp(`^${v}$`, 'i') });
+        cityOr.push({ 'address.city': new RegExp(v, 'i') });
+        cityOr.push({ 'address.fullText': new RegExp(`(?:^|\\s|,|/|-)${v}(?:\\s|,|/|-|$)`, 'i') });
+      }
+      filter.$or = cityOr;
     }
 
     const limit = Math.max(20, Math.min(Number(requestedLimit || 350), 1500));
