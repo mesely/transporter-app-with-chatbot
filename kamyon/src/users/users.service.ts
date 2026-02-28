@@ -69,6 +69,12 @@ export class UsersService implements OnModuleInit {
       .trim();
   }
 
+  private withManualSourceTag(tags: string[] = []): string[] {
+    const clean = Array.from(new Set((tags || []).map((t) => String(t || '').trim()).filter(Boolean)));
+    if (!clean.includes('source:manual')) clean.push('source:manual');
+    return clean;
+  }
+
   private cityVariants(city: string): string[] {
     const raw = String(city || '').trim();
     if (!raw) return [];
@@ -146,7 +152,7 @@ export class UsersService implements OnModuleInit {
         service: {
           mainType,
           subType: subTypeToSave,
-          tags: data.filterTags || data.service?.tags || []
+          tags: this.withManualSourceTag(data.filterTags || data.service?.tags || [])
         },
         pricing: {
           openingFee: 0,
@@ -499,7 +505,7 @@ export class UsersService implements OnModuleInit {
       service: {
         mainType,
         subType: rawSubType || existing.service?.subType || 'genel',
-        tags: data.filterTags || data.service?.tags || existing.service?.tags || [],
+        tags: this.withManualSourceTag(data.filterTags || data.service?.tags || existing.service?.tags || []),
       },
       pricing: {
         openingFee: 0,

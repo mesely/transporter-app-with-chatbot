@@ -1004,6 +1004,11 @@ function ActionPanel({
                             ring: 'border-purple-400 ring-purple-300/30',
                           };
                 const favoriteFilled = isFavorite(driver._id);
+                const tags = Array.isArray(driver?.service?.tags) ? driver.service.tags.map((t: any) => String(t || '').trim()) : [];
+                const canShowVerifiedPrice =
+                  driver.isVerified &&
+                  Number(driver?.pricing?.pricePerUnit) > 0 &&
+                  (tags.includes('source:manual') || Boolean(String(driver?.taxNumber || '').trim()));
 
                 return (
                 <div
@@ -1022,7 +1027,7 @@ function ActionPanel({
                     }}
                     className={`bg-white/90 rounded-[2.2rem] p-3 mb-2.5 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >
-                    {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
+                    {canShowVerifiedPrice && (
                       <div className="absolute top-4 right-4 text-right">
                         <div
                           className="px-2.5 py-1 rounded-xl backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm"

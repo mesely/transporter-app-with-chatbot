@@ -535,7 +535,7 @@ export class DataService {
           service: {
             mainType: payload.mainType,
             subType: payload.subType,
-            tags: payload.tags,
+            tags: Array.from(new Set([...(payload.tags || []), 'source:import'])),
           },
           pricing: {
             openingFee: payload.mainType === 'YOLCU' ? 0 : 150,
