@@ -73,7 +73,7 @@ const FAVORITES_KEY = 'Transport_favorites_v1';
 // --- SERVICE_OPTIONS VE ALT SEÇENEKLER ---
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
-  { id: 'vinc', label: 'VİNÇ', icon: Construction, color: 'bg-amber-700', subs: [] },
+  { id: 'vinc', label: 'VİNÇ', icon: Construction, color: 'bg-red-800', subs: [] },
   { id: 'lastik', label: 'LASTİK', icon: Circle, color: 'bg-rose-900', subs: [] },
   { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'bg-indigo-600', subs: [] },
   {
@@ -723,7 +723,7 @@ function ActionPanel({
           {panelState > 1 && showTowRow && (
             <div className="grid grid-cols-3 gap-2">
               <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={10}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}><Construction size={10}/> {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-800 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Construction size={10}/> {tx.vinc}</button>
               <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}><Circle size={10}/> {tx.lastik}</button>
             </div>
           )}
@@ -864,7 +864,7 @@ function ActionPanel({
                 let iconBg = 'bg-gray-600';
                 if (isStation) iconBg = 'bg-blue-800';
                 else if (isMobileCharge) iconBg = 'bg-cyan-600';
-                else if (sub === 'vinc') iconBg = 'bg-amber-700';
+                else if (sub === 'vinc') iconBg = 'bg-red-800';
                 else if (sub === 'lastik') iconBg = 'bg-rose-900';
                 else if (sub.includes('kurtarma')) iconBg = 'bg-red-600';
                 else if (isPassenger) iconBg = 'bg-emerald-600';
@@ -888,7 +888,7 @@ function ActionPanel({
                 ].filter(Boolean) as string[];
                 const uniquePhotoUrls = Array.from(new Set(allPhotoUrls));
                 const hintColorClass = sub === 'vinc'
-                  ? 'text-amber-800'
+                  ? 'text-red-800'
                   : sub === 'lastik'
                   ? 'text-rose-700'
                   : sub.includes('kurtarma')
@@ -902,16 +902,16 @@ function ActionPanel({
                       : 'text-purple-700';
                 const theme = sub === 'vinc'
                   ? {
-                      start: '#b45309',
-                      end: '#92400e',
-                      darkStart: '#92400e',
-                      darkEnd: '#78350f',
-                      softStart: 'rgba(251,191,36,0.30)',
-                      softEnd: 'rgba(217,119,6,0.30)',
-                      text: 'text-amber-900',
-                      star: 'fill-amber-500 text-amber-500',
-                      starOff: 'text-amber-200',
-                      ring: 'border-amber-500 ring-amber-300/30',
+                      start: '#b91c1c',
+                      end: '#7f1d1d',
+                      darkStart: '#991b1b',
+                      darkEnd: '#61171a',
+                      softStart: 'rgba(248,113,113,0.30)',
+                      softEnd: 'rgba(185,28,28,0.30)',
+                      text: 'text-red-900',
+                      star: 'fill-red-600 text-red-600',
+                      starOff: 'text-red-200',
+                      ring: 'border-red-500 ring-red-300/30',
                     }
                   : sub === 'lastik'
                   ? {
