@@ -560,7 +560,7 @@ export default function Home() {
   }, [handleSearchLocation, router, searchCoords]);
 
   const handleFilterApply = useCallback((type: string) => {
-    blockMapMoveFetchUntilRef.current = Date.now() + 1400;
+    blockMapMoveFetchUntilRef.current = Date.now() + 1800;
     if (mapMoveDebounceRef.current) {
       clearTimeout(mapMoveDebounceRef.current);
       mapMoveDebounceRef.current = null;
@@ -572,10 +572,11 @@ export default function Home() {
       setDrivers(typeCached);
     }
     const zoom = lastMapFetchRef.current?.zoom ?? 9;
-    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, zoom >= 10 ? 2200 : 1600);
+    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, 2200);
     listEndFetchLimitRef.current = requestedLimit;
     fetchDrivers(searchCoords?.[0] ?? DEFAULT_LAT, searchCoords?.[1] ?? DEFAULT_LNG, type, {
-      zoom,
+      // Broader first fetch to avoid "second click loads all" behavior on category switches.
+      zoom: Math.min(zoom, 8.9),
       limit: requestedLimit,
       force: true,
     });
