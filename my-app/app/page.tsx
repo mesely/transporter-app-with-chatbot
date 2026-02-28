@@ -104,6 +104,7 @@ export default function Home() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
+  const [isApproximateLocation, setIsApproximateLocation] = useState(false);
   const [focusCoords, setFocusCoords] = useState<[number, number] | null>(null);
   const [mapFocusToken, setMapFocusToken] = useState(0);
   const [mapFocusZoom, setMapFocusZoom] = useState<number | undefined>(undefined);
@@ -449,16 +450,24 @@ export default function Home() {
     const useManualIfNeeded = async () => {
       if (!navigator?.geolocation) {
         setSearchCoords([manual.lat, manual.lng]);
+        setIsApproximateLocation(true);
         setMapFocusZoom(12.5);
         setMapFocusToken((v) => v + 1);
         return;
       }
       try {
         const permissions = (navigator as any).permissions;
-        if (!permissions?.query) return;
-        const status = await permissions.query({ name: 'geolocation' as PermissionName });
-        if (status?.state === 'denied') {
+        if (!permissions?.query) {
           setSearchCoords([manual.lat, manual.lng]);
+          setIsApproximateLocation(true);
+          setMapFocusZoom(12.5);
+          setMapFocusToken((v) => v + 1);
+          return;
+        }
+        const status = await permissions.query({ name: 'geolocation' as PermissionName });
+        if (status?.state !== 'granted') {
+          setSearchCoords([manual.lat, manual.lng]);
+          setIsApproximateLocation(true);
           setMapFocusZoom(12.5);
           setMapFocusToken((v) => v + 1);
         }
@@ -546,6 +555,7 @@ export default function Home() {
     } else {
       setFocusCoords(null);
       setSearchCoords([lat, lng]);
+      setIsApproximateLocation(false);
     }
 
     if (opts?.forceFocus) {
@@ -893,6 +903,8 @@ export default function Home() {
       <div className="absolute inset-0 z-0">
         <Map
           searchCoords={searchCoords}
+          searchApproximate={isApproximateLocation}
+          searchApproxRadiusKm={8}
           focusCoords={focusCoords}
           focusRequestToken={mapFocusToken}
           focusRequestZoom={mapFocusZoom}

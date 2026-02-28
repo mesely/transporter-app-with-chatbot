@@ -23,6 +23,8 @@ interface Driver {
 
 interface MapProps {
   searchCoords: [number, number] | null;
+  searchApproximate?: boolean;
+  searchApproxRadiusKm?: number;
   focusCoords?: [number, number] | null;
   focusRequestToken?: number;
   focusRequestZoom?: number;
@@ -268,11 +270,39 @@ function createUserPointGeoJson(coords: [number, number] | null) {
   };
 }
 
+function createApproximateRangeGeoJson(coords: [number, number] | null, radiusKm = 8) {
+  if (!coords) return { type: 'FeatureCollection', features: [] };
+  const [lat, lng] = coords;
+  const steps = 48;
+  const latDelta = radiusKm / 110.574;
+  const lngDelta = radiusKm / (111.32 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+  const ring: Array<[number, number]> = [];
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * Math.PI * 2;
+    const pointLat = lat + latDelta * Math.sin(angle);
+    const pointLng = lng + lngDelta * Math.cos(angle);
+    ring.push([pointLng, pointLat]);
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [ring],
+        },
+        properties: {},
+      },
+    ],
+  };
+}
+
 function getFocusPadding() {
-  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 230 };
+  if (typeof window === 'undefined') return { ...FOCUS_PADDING_BASE, bottom: 280 };
   return {
     ...FOCUS_PADDING_BASE,
-    bottom: 230,
+    bottom: 280,
   };
 }
 
@@ -353,6 +383,8 @@ function buildPopup(
 
 function MapView({
   searchCoords,
+  searchApproximate = false,
+  searchApproxRadiusKm = 8,
   focusCoords,
   focusRequestToken,
   focusRequestZoom,
@@ -499,7 +531,7 @@ function MapView({
 
       map.addSource('search-point', {
         type: 'geojson',
-        data: createUserPointGeoJson(searchCoords) as any,
+        data: createUserPointGeoJson(searchApproximate ? null : searchCoords) as any,
       });
 
       map.addLayer({
@@ -522,6 +554,32 @@ function MapView({
           'circle-color': '#2563eb',
           'circle-radius': 18 * MARKER_SCALE,
           'circle-opacity': 0.22,
+        },
+      });
+
+      map.addSource('search-range', {
+        type: 'geojson',
+        data: createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any,
+      });
+
+      map.addLayer({
+        id: 'search-range-fill',
+        type: 'fill',
+        source: 'search-range',
+        paint: {
+          'fill-color': '#2563eb',
+          'fill-opacity': 0.16,
+        },
+      });
+
+      map.addLayer({
+        id: 'search-range-line',
+        type: 'line',
+        source: 'search-range',
+        paint: {
+          'line-color': '#2563eb',
+          'line-width': 2,
+          'line-opacity': 0.7,
         },
       });
 
@@ -603,9 +661,13 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getSource('search-point')) return;
-    const source = map.getSource('search-point') as maplibregl.GeoJSONSource;
-    source.setData(createUserPointGeoJson(searchCoords) as any);
-  }, [searchCoords]);
+    const pointSource = map.getSource('search-point') as maplibregl.GeoJSONSource;
+    pointSource.setData(createUserPointGeoJson(searchApproximate ? null : searchCoords) as any);
+    const rangeSource = map.getSource('search-range') as maplibregl.GeoJSONSource | undefined;
+    if (rangeSource) {
+      rangeSource.setData(createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any);
+    }
+  }, [searchApproxRadiusKm, searchApproximate, searchCoords]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -588,13 +588,58 @@ export class DataService {
           },
           timeout: 15000,
         });
+        const status = String(response?.data?.status || '');
+        if (status === 'REQUEST_DENIED' || status === 'OVER_QUERY_LIMIT' || status === 'INVALID_REQUEST') {
+          throw new Error(`Places TextSearch status=${status} query="${query}" error="${response?.data?.error_message || ''}"`);
+        }
         const results = Array.isArray(response?.data?.results) ? response.data.results : [];
         if (results.length > 0) {
           return results.slice(0, perDistrictLimit);
         }
-      } catch {
+      } catch (error: any) {
+        this.logger.warn(`⚠️ Lastik TextSearch denemesi başarısız (${city}/${district}): ${(error as any)?.message || error}`);
         // Try next query variant
       }
+    }
+
+    // Fallback: ilce merkezini geocode edip nearby ile lastikcileri ara.
+    try {
+      const geoResp = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+        params: {
+          address: `${district}, ${city}, Türkiye`,
+          language: 'tr',
+          region: 'tr',
+          key: apiKey,
+        },
+        timeout: 15000,
+      });
+      const geoStatus = String(geoResp?.data?.status || '');
+      if (geoStatus !== 'OK') return [];
+      const loc = geoResp?.data?.results?.[0]?.geometry?.location;
+      const lat = Number(loc?.lat);
+      const lng = Number(loc?.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
+
+      const nearbyResp = await axios.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', {
+        params: {
+          location: `${lat},${lng}`,
+          radius: 20000,
+          keyword: 'lastikçi',
+          language: 'tr',
+          key: apiKey,
+        },
+        timeout: 15000,
+      });
+      const nearbyStatus = String(nearbyResp?.data?.status || '');
+      if (nearbyStatus !== 'OK') return [];
+
+      const nearbyResults = Array.isArray(nearbyResp?.data?.results) ? nearbyResp.data.results : [];
+      if (!nearbyResults.length) return [];
+
+      return nearbyResults.slice(0, perDistrictLimit);
+    } catch (error: any) {
+      this.logger.warn(`⚠️ Lastik Nearby fallback başarısız (${city}/${district}): ${(error as any)?.message || error}`);
+      return [];
     }
     return [];
   }
