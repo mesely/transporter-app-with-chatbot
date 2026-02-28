@@ -25,7 +25,7 @@ import {
   Box,
   Archive,
   Snowflake,
-  Disc3
+  Circle
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import ViewRatingsModal from '../ViewRatingsModal';
@@ -74,7 +74,7 @@ const FAVORITES_KEY = 'Transport_favorites_v1';
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
   { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'bg-rose-600', subs: [] },
-  { id: 'lastik', label: 'LASTİK', icon: Disc3, color: 'bg-rose-700', subs: [] },
+  { id: 'lastik', label: 'LASTİK', icon: Circle, color: 'bg-rose-700', subs: [] },
   { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'bg-indigo-600', subs: [] },
   {
     id: 'tir', label: 'TIR', icon: Container, color: 'bg-violet-600',
@@ -710,7 +710,7 @@ function ActionPanel({
             <div className="grid grid-cols-3 gap-2">
               <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={11}/> {tx.otoKurtarma}</button>
               <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={11}/> {tx.vinc}</button>
-              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}><Disc3 size={11}/> {tx.lastik} 🛞</button>
+              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}><Circle size={11}/> {tx.lastik}</button>
             </div>
           )}
           {panelState > 1 && (showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (

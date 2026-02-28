@@ -136,6 +136,11 @@ export default function Home() {
 
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
+  const driversRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    driversRef.current = drivers;
+  }, [drivers]);
 
   const readTypeCache = useCallback((type: string): any[] | null => {
     try {
@@ -269,7 +274,11 @@ export default function Home() {
         const purge = sorted.slice(0, keys.length - DRIVERS_CACHE_MAX_ENTRIES);
         for (const item of purge) delete driversCacheRef.current[item.k];
       }
-      setDrivers(normalizedData);
+      if (normalizedData.length === 0 && Array.isArray(driversRef.current) && driversRef.current.length > 0 && !!opts?.bbox) {
+        // Keep current visible list if a move query returns empty to avoid sudden blank panel.
+      } else {
+        setDrivers(normalizedData);
+      }
     } catch (err) {
       if ((err as any)?.name !== 'AbortError') {
         console.error('Fetch Error:', err);
@@ -537,15 +546,32 @@ export default function Home() {
   }, [handleSearchLocation, router, searchCoords]);
 
   const handleFilterApply = useCallback((type: string) => {
-    if (type === actionTypeRef.current && activeTagsRef.current.length === 0) return;
     setActionType(type);
     setActiveTags([]);
     const typeCached = readTypeCache(type);
     if (typeCached && typeCached.length > 0) {
       setDrivers(typeCached);
     }
+    const zoom = lastMapFetchRef.current?.zoom ?? 9;
+    let expandedBbox = lastMapFetchRef.current?.bbox;
+    if (expandedBbox) {
+      const latSpan = Math.max(0.01, expandedBbox.maxLat - expandedBbox.minLat);
+      const lngSpan = Math.max(0.01, expandedBbox.maxLng - expandedBbox.minLng);
+      const latPad = Math.max(0.09, latSpan * 0.95);
+      const lngPad = Math.max(0.09, lngSpan * 0.95);
+      expandedBbox = {
+        minLat: expandedBbox.minLat - latPad,
+        minLng: expandedBbox.minLng - lngPad,
+        maxLat: expandedBbox.maxLat + latPad,
+        maxLng: expandedBbox.maxLng + lngPad,
+      };
+    }
+    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, zoom >= 10 ? 1800 : 1200);
+    listEndFetchLimitRef.current = requestedLimit;
     fetchDrivers(searchCoords?.[0] ?? DEFAULT_LAT, searchCoords?.[1] ?? DEFAULT_LNG, type, {
-      zoom: lastMapFetchRef.current?.zoom ?? 9,
+      zoom,
+      limit: requestedLimit,
+      bbox: expandedBbox,
     });
   }, [fetchDrivers, readTypeCache, searchCoords]);
 

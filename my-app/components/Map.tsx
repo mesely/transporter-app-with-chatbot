@@ -64,7 +64,7 @@ const SERVICE_COLORS: Record<string, string> = {
 const SERVICE_ICONS: Record<string, string> = {
   oto_kurtarma: '🚗',
   vinc: '🏗',
-  lastik: '🛞',
+  lastik: '○',
   kurtarici: '🚨',
   nakliye: '🚚',
   evden_eve: '🏠',
