@@ -205,7 +205,14 @@ export default function Home() {
     lat: number,
     lng: number,
     type: string,
-    opts?: { zoom?: number; limit?: number; bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }; append?: boolean; force?: boolean }
+    opts?: {
+      zoom?: number;
+      limit?: number;
+      bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number };
+      append?: boolean;
+      force?: boolean;
+      countryFallback?: boolean;
+    }
   ) => {
     const requestSeq = ++fetchSeqRef.current;
     const key = [
@@ -265,6 +272,24 @@ export default function Home() {
       const data = await res.json();
       if (requestSeq !== fetchSeqRef.current) return;
       const normalizedData = Array.isArray(data) ? data : [];
+
+      if (
+        normalizedData.length === 0 &&
+        opts?.force &&
+        opts?.countryFallback !== false &&
+        type !== 'seyyar_sarj'
+      ) {
+        await fetchDrivers(lat, lng, type, {
+          zoom: 6.2,
+          limit: 3200,
+          bbox: TURKEY_BBOX,
+          force: true,
+          append: false,
+          countryFallback: false,
+        });
+        return;
+      }
+
       driversCacheRef.current[key] = { data: normalizedData, ts: Date.now() };
       writeTypeCache(type, normalizedData);
       try {
@@ -579,6 +604,7 @@ export default function Home() {
       zoom: Math.min(zoom, 8.9),
       limit: requestedLimit,
       force: true,
+      countryFallback: true,
     });
   }, [fetchDrivers, readTypeCache, searchCoords]);
 
