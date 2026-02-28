@@ -279,7 +279,7 @@ export default function Home() {
       } else {
         if (opts?.append) {
           setDrivers((prev) => {
-            const map = new Map<string, any>();
+            const map = new globalThis.Map<string, any>();
             for (const item of prev || []) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
             for (const item of normalizedData) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
             return Array.from(map.values());
