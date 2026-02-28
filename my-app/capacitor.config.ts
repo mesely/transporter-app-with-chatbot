@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.trasport245.app',
+  appId: 'com.mesely.transporter',
   appName: 'Transport 245',
   webDir: 'out',
   server: {
@@ -10,6 +10,15 @@ const config: CapacitorConfig = {
     cleartext: true,
     allowNavigation: [
       'transporter-app-with-chatbot.onrender.com',
+      'transport-245.firebaseapp.com',
+      'accounts.google.com',
+      'apis.google.com',
+      'www.googleapis.com',
+      'securetoken.googleapis.com',
+      'identitytoolkit.googleapis.com',
+      'www.facebook.com',
+      'm.facebook.com',
+      'graph.facebook.com',
       'router.project-osrm.org',
       'basemaps.cartocdn.com',
       'a.basemaps.cartocdn.com',

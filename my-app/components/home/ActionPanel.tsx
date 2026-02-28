@@ -33,6 +33,15 @@ import ViewReportsModal from '../ViewReportsModal';
 import { AppLang, getPreferredLang } from '../../utils/language';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const SERVICE_IMAGE_ICONS: Record<string, string> = {
+  seyyar_sarj: '/icons/GeziciIcon.png',
+  kamyonet: '/icons/kamyonet.png',
+  vinc: '/icons/vinc.png',
+  lastik: '/icons/lastikci.png',
+  tir: '/icons/tir.png',
+  otobus: '/icons/otobus.png',
+  midibus: '/icons/midibus.png',
+};
 
 // --- KOORDİNAT VERİTABANI ---
 const CITY_COORDINATES: Record<string, [number, number]> = {
@@ -114,7 +123,7 @@ const SERVICE_OPTIONS = [
       { id: 'vip_tasima', label: 'VIP TRANSFER', icon: Crown }
     ]
   },
-  { id: 'istasyon', label: 'İSTASYON', icon: Navigation, color: 'bg-blue-600', subs: [] },
+  { id: 'istasyon', label: 'İSTASYON', icon: Zap, color: 'bg-blue-600', subs: [] },
   { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'bg-cyan-500', subs: [] },
 ];
 
@@ -258,6 +267,20 @@ function ActionPanel({
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+
+  const renderServiceIcon = (type: string, sizeClass = 'w-3.5 h-3.5', selected = false, alt = '') => {
+    const src = SERVICE_IMAGE_ICONS[type];
+    if (!src) return null;
+    const useSelectedVariant = selected;
+    const iconSrc = useSelectedVariant ? src.replace(/(\.[a-zA-Z0-9]+)$/, '_selected$1') : src;
+    return (
+      <img
+        src={iconSrc}
+        className={`${sizeClass} object-cover`}
+        alt={alt || type}
+      />
+    );
+  };
   const [cityScopedDrivers, setCityScopedDrivers] = useState<any[]>([]);
   const [cityScopedLoading, setCityScopedLoading] = useState(false);
   const [renderedCount, setRenderedCount] = useState(28);
@@ -706,25 +729,25 @@ function ActionPanel({
       <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-1 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-2">
           <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
-            <Wrench size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
+            <Wrench size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
           </button>
           <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
-            <Truck size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.nakliye}</span>
+            <Truck size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.nakliye}</span>
           </button>
           <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
-            <Zap size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.sarj}</span>
+            <Zap size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.sarj}</span>
           </button>
           <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
-            <Users size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.yolcu}</span>
+            <Users size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.yolcu}</span>
           </button>
         </div>
 
         <div className="space-y-2 shrink-0 mb-1">
           {panelState > 1 && showTowRow && (
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={10}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-800 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Construction size={10}/> {tx.vinc}</button>
-              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}><Circle size={10}/> {tx.lastik}</button>
+              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={15}/> {tx.otoKurtarma}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-800 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}>{renderServiceIcon('vinc', 'w-[18px] h-[18px]', actionType === 'vinc', 'Vinc')} {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}>{renderServiceIcon('lastik', 'w-[18px] h-[18px]', actionType === 'lastik', 'Lastik')} {tx.lastik}</button>
             </div>
           )}
           {panelState > 1 && (showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
@@ -735,10 +758,10 @@ function ActionPanel({
           )}
           {panelState > 1 && showDomesticRow && actionType !== 'yurt_disi_nakliye' && (
             <div className="grid grid-cols-4 gap-2">
-               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={9}/> {tx.homeMoving}</button>
-               <button onClick={() => handleTransportTypeClick('tir')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Container size={9}/> {tx.trailer}</button>
-               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={9}/> {tx.truck}</button>
-               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Package size={9}/> {tx.van}</button>
+               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> {tx.homeMoving}</button>
+               <button onClick={() => handleTransportTypeClick('tir')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}>{renderServiceIcon('tir', 'w-[18px] h-[18px]', activeTransportFilter === 'tir', 'TIR')} {tx.trailer}</button>
+               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> {tx.truck}</button>
+               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}>{renderServiceIcon('kamyonet', 'w-[18px] h-[18px]', activeTransportFilter === 'kamyonet', 'Kamyonet')} {tx.van}</button>
             </div>
           )}
           {panelState > 1 && activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
@@ -752,9 +775,9 @@ function ActionPanel({
           )}
           {panelState > 1 && showChargeRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={10}/> {tx.station}</button>
+              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={15}/> {tx.station}</button>
               <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
-                <img src="/icons/GeziciIcon.png" className={`w-3.5 h-3.5 ${actionType === 'seyyar_sarj' ? 'invert brightness-200' : 'opacity-80'}`} alt="G" /> {tx.geziciSarj}
+                {renderServiceIcon('seyyar_sarj', 'w-[21px] h-[21px]', actionType === 'seyyar_sarj', 'Gezici Sarj')} {tx.geziciSarj}
               </button>
             </div>
           )}
@@ -762,7 +785,10 @@ function ActionPanel({
             <div className="grid grid-cols-4 gap-2">
                {SUB_FILTERS.yolcu.map((sub) => (
                   <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 transition-colors ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
-                    {sub.id === 'minibus' && <CarFront size={9}/>} {sub.id === 'otobus' && <Bus size={9}/>} {sub.id === 'midibus' && <Bus size={9}/>} {sub.id === 'vip_tasima' && <Crown size={9}/>}
+                    {sub.id === 'minibus' && <Bus size={14}/>}
+                    {sub.id === 'otobus' && (renderServiceIcon('otobus', 'w-[21px] h-[21px]', actionType === 'otobus', 'Otobus') || <Bus size={14}/>)}
+                    {sub.id === 'midibus' && (renderServiceIcon('midibus', 'w-[21px] h-[21px]', actionType === 'midibus', 'Midibus') || <Bus size={14}/>)}
+                    {sub.id === 'vip_tasima' && <Crown size={14}/>}
                     {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                   </button>
                ))}
@@ -1046,7 +1072,23 @@ function ActionPanel({
                     <div className="flex justify-between items-start text-gray-900">
                         <div className="flex gap-4 flex-1 overflow-hidden">
                             <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
-                               {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-5 h-5 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={18} strokeWidth={2.5} /> )}
+                               {isMobileCharge
+                                 ? renderServiceIcon('seyyar_sarj', 'w-7 h-7', true, 'Gezici Sarj')
+                                 : sub === 'vinc'
+                                   ? renderServiceIcon('vinc', 'w-10 h-10', true, 'Vinc')
+                                   : sub === 'lastik'
+                                     ? renderServiceIcon('lastik', 'w-10 h-10', true, 'Lastik')
+                                     : sub === 'tir'
+                                       ? renderServiceIcon('tir', 'w-10 h-10', true, 'TIR')
+                                       : sub === 'kamyonet'
+                                         ? renderServiceIcon('kamyonet', 'w-10 h-10', true, 'Kamyonet')
+                                        : sub === 'minibus'
+                                         ? <Bus size={24} strokeWidth={2.2} />
+                                        : sub === 'otobus'
+                                         ? renderServiceIcon('otobus', 'w-10 h-10', true, 'Otobus')
+                                        : sub === 'midibus'
+                                         ? renderServiceIcon('midibus', 'w-10 h-10', true, 'Midibus')
+                                         : <DisplayIcon size={18} strokeWidth={2.5} />}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <h4 className="font-black text-[10px] sm:text-[11px] uppercase truncate leading-tight w-full" title={driver.businessName}>

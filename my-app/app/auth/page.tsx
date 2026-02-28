@@ -1,8 +1,10 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { createUserWithEmailAndPassword, getRedirectResult, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { Mail, Lock, User, Phone, Facebook } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Capacitor } from '@capacitor/core';
 import { auth, facebookProvider, googleProvider } from '../../lib/firebase';
 
 type CountryCodeOption = { code: string; flag: string; label: string };
@@ -45,8 +47,22 @@ function buildEmailFromIdentifier(identifier: string, countryCode: string) {
   return `phone_${phone}@transport245.app`;
 }
 
+function mapAuthErrorMessage(err: any) {
+  const code = String(err?.code || '');
+  if (code.includes('popup-closed-by-user')) return 'Giriş penceresi kapatıldı. Tekrar deneyin.';
+  if (code.includes('popup-blocked')) return 'Tarayıcı popup engelledi. Popup izni verip tekrar deneyin.';
+  if (code.includes('unauthorized-domain')) return 'Bu domain Firebase yetkili domain listesinde değil.';
+  if (code.includes('account-exists-with-different-credential')) return 'Bu hesap farklı giriş yöntemiyle kayıtlı.';
+  if (code.includes('network-request-failed')) return 'Ağ hatası oluştu. İnternet bağlantısını kontrol edin.';
+  if (code.includes('internal-error')) return 'Android kimlik doğrulama hatası. Uygulamayı kapatıp açıp tekrar deneyin.';
+  if (code.includes('operation-not-allowed')) return 'Bu giriş yöntemi Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden etkinleştir.';
+  return err?.message || 'Kimlik doğrulama başarısız.';
+}
+
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('register');
+  const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
   const [name, setName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [phone, setPhone] = useState('');
@@ -54,29 +70,103 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lang, setLang] = useState<'tr' | 'en' | 'fr'>('tr');
 
   const title = useMemo(() => (mode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'), [mode]);
+  const identifierPlaceholder = useMemo(() => {
+    if (mode === 'login') {
+      if (loginMethod === 'phone') {
+        if (lang === 'fr') return 'Téléphone';
+        if (lang === 'en') return 'Phone';
+        return 'Telefon';
+      }
+      if (lang === 'fr') return 'E-mail';
+      if (lang === 'en') return 'Email';
+      return 'E-posta';
+    }
+    if (lang === 'fr') return 'E-mail ou téléphone';
+    if (lang === 'en') return 'Email or Phone';
+    return 'E-posta veya Telefon';
+  }, [lang, loginMethod, mode]);
+  const phonePlaceholder = useMemo(() => {
+    if (lang === 'fr') return `Téléphone (avec indicatif, ex: ${countryCode}537...)`;
+    if (lang === 'en') return `Phone (with country code, e.g. ${countryCode}537...)`;
+    return 'Telefon (0537...)';
+  }, [countryCode, lang]);
+
+  useEffect(() => {
+    const locale = String(globalThis?.navigator?.language || '').toLocaleLowerCase('tr');
+    if (locale.startsWith('fr')) {
+      setLang('fr');
+      if (countryCode === '+90') setCountryCode('+33');
+      return;
+    }
+    if (locale.startsWith('en')) {
+      setLang('en');
+    }
+  }, [countryCode]);
+
+  useEffect(() => {
+    let active = true;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (!active) return;
+        if (result?.user) {
+          const email = String(result.user.email || '');
+          const name = String(result.user.displayName || '') || (email.includes('@') ? email.split('@')[0] : '');
+          if (name) localStorage.setItem('Transport_user_name', name);
+          if (email) localStorage.setItem('Transport_user_email', email);
+          if (result.user.phoneNumber) localStorage.setItem('Transport_user_phone', result.user.phoneNumber);
+          router.replace('/');
+          return;
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(mapAuthErrorMessage(err));
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const onEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const email = buildEmailFromIdentifier(identifier, countryCode);
+      const normalizedIdentifier = mode === 'login'
+        ? (loginMethod === 'phone'
+          ? String(phone || '')
+          : String(identifier || '').trim().toLocaleLowerCase('tr'))
+        : identifier;
+      const email = buildEmailFromIdentifier(normalizedIdentifier, countryCode);
       if (!email) throw new Error('Lütfen geçerli bir e-posta veya telefon girin.');
       if (mode === 'register') {
-        await createUserWithEmailAndPassword(auth, email.trim(), password);
-        if (name.trim()) localStorage.setItem('Transport_auth_name', name.trim());
+        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const fallbackEmailName = String(cred?.user?.email || '').includes('@') ? String(cred?.user?.email || '').split('@')[0] : '';
+        const resolvedName = String(name || '').trim() || String(cred?.user?.displayName || '').trim() || fallbackEmailName;
+        if (resolvedName) localStorage.setItem('Transport_user_name', resolvedName);
+        if (cred?.user?.email) localStorage.setItem('Transport_user_email', cred.user.email);
         const normalizedPhone = normalizePhone(phone);
         if (normalizedPhone) {
           const cc = normalizePhone(countryCode);
-          localStorage.setItem('Transport_auth_phone', `+${cc}${normalizedPhone.startsWith('0') ? normalizedPhone.slice(1) : normalizedPhone}`);
+          localStorage.setItem('Transport_user_phone', `+${cc}${normalizedPhone.startsWith('0') ? normalizedPhone.slice(1) : normalizedPhone}`);
         }
+        router.replace('/');
       } else {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const loginEmail = String(cred?.user?.email || '');
+        const loginName = String(cred?.user?.displayName || '') || (loginEmail.includes('@') ? loginEmail.split('@')[0] : '');
+        if (loginName) localStorage.setItem('Transport_user_name', loginName);
+        if (loginEmail) localStorage.setItem('Transport_user_email', loginEmail);
+        if (cred?.user?.phoneNumber) localStorage.setItem('Transport_user_phone', cred.user.phoneNumber);
+        router.replace('/');
       }
     } catch (err: any) {
-      setError(err?.message || 'Kimlik doğrulama başarısız.');
+      setError(mapAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -87,14 +177,36 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const p = provider === 'google' ? googleProvider : facebookProvider;
+      if (provider === 'google') p.setCustomParameters({ prompt: 'select_account' });
       try {
-        await signInWithPopup(auth, p);
-      } catch {
-        await signInWithRedirect(auth, p);
+        const cred = await signInWithPopup(auth, p);
+        if (cred?.user) {
+          const socialEmail = String(cred.user.email || '');
+          const socialName = String(cred.user.displayName || '') || (socialEmail.includes('@') ? socialEmail.split('@')[0] : '');
+          if (socialName) localStorage.setItem('Transport_user_name', socialName);
+          if (socialEmail) localStorage.setItem('Transport_user_email', socialEmail);
+          if (cred.user.phoneNumber) localStorage.setItem('Transport_user_phone', cred.user.phoneNumber);
+          router.replace('/');
+          return;
+        }
+        setLoading(false);
+      } catch (popupErr: any) {
+        const popupCode = String(popupErr?.code || '');
+        if (
+          popupCode.includes('popup-closed-by-user') ||
+          popupCode.includes('popup-blocked') ||
+          popupCode.includes('internal-error')
+        ) {
+          await signInWithRedirect(auth, p);
+          return;
+        }
+        throw popupErr;
       }
     } catch (err: any) {
-      setError(err?.message || `${provider} ile giris basarisiz.`);
-      setLoading(false);
+      setError(mapAuthErrorMessage(err));
+    } finally {
+      // Redirect bazı cihazlarda gecikebildiği için loading'in takılı kalmasını engeller.
+      setTimeout(() => setLoading(false), 3500);
     }
   };
 
@@ -109,18 +221,49 @@ export default function AuthPage() {
 
         <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
           <button
-            onClick={() => setMode('register')}
+            onClick={() => {
+              setMode('register');
+              setLoginMethod('phone');
+            }}
             className={`rounded-xl py-2 text-xs font-black uppercase ${mode === 'register' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
           >
             Kayıt
           </button>
           <button
-            onClick={() => setMode('login')}
+            onClick={() => {
+              setMode('login');
+              setLoginMethod('phone');
+            }}
             className={`rounded-xl py-2 text-xs font-black uppercase ${mode === 'login' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
           >
             Giriş
           </button>
         </div>
+
+        {mode === 'login' && (
+          <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMethod('phone');
+                setIdentifier('');
+              }}
+              className={`rounded-xl py-2 text-[11px] font-black uppercase ${loginMethod === 'phone' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
+            >
+              Telefon ile Giriş
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMethod('email');
+                setIdentifier('');
+              }}
+              className={`rounded-xl py-2 text-[11px] font-black uppercase ${loginMethod === 'email' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
+            >
+              E-posta ile Giriş
+            </button>
+          </div>
+        )}
 
         <form onSubmit={onEmailSubmit} className="mt-4 space-y-3">
           {mode === 'register' && (
@@ -129,38 +272,77 @@ export default function AuthPage() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="w-full bg-transparent text-sm font-semibold outline-none" />
             </label>
           )}
-          <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-            <Mail size={16} className="text-cyan-700" />
-            <input
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="E-posta veya Telefon"
-              required
-              className="w-full bg-transparent text-sm font-semibold outline-none"
-            />
-          </label>
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-            <span className="text-sm font-black text-slate-600">🌐</span>
-            <select
-              value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value)}
-              className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-black text-slate-700 outline-none"
-            >
-              {COUNTRY_CODES.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.flag} {item.code}
-                </option>
-              ))}
-            </select>
-            <div className="h-5 w-px bg-slate-200" />
-            <Phone size={16} className="text-cyan-700" />
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Telefon (Kayıt için)"
-              className="w-full bg-transparent text-sm font-semibold outline-none"
-            />
-          </div>
+          {mode === 'login' && loginMethod === 'email' ? (
+            <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+              <Mail size={16} className="text-cyan-700" />
+              <input
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder={identifierPlaceholder}
+                required
+                className="w-full bg-transparent text-sm font-semibold outline-none"
+              />
+            </label>
+          ) : mode === 'login' && loginMethod === 'phone' ? (
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+              <span className="text-sm font-black text-slate-600">🌐</span>
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-black text-slate-700 outline-none"
+              >
+                {COUNTRY_CODES.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.flag} {item.code}
+                  </option>
+                ))}
+              </select>
+              <div className="h-5 w-px bg-slate-200" />
+              <Phone size={16} className="text-cyan-700" />
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Telefon"
+                required
+                className="w-full bg-transparent text-sm font-semibold outline-none"
+              />
+            </div>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                <Mail size={16} className="text-cyan-700" />
+                <input
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder={identifierPlaceholder}
+                  required
+                  className="w-full bg-transparent text-sm font-semibold outline-none"
+                />
+              </label>
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                <span className="text-sm font-black text-slate-600">🌐</span>
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-black text-slate-700 outline-none"
+                >
+                  {COUNTRY_CODES.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.flag} {item.code}
+                    </option>
+                  ))}
+                </select>
+                <div className="h-5 w-px bg-slate-200" />
+                <Phone size={16} className="text-cyan-700" />
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Telefon"
+                  className="w-full bg-transparent text-sm font-semibold outline-none"
+                />
+              </div>
+            </>
+          )}
           <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
             <Lock size={16} className="text-cyan-700" />
             <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Şifre" type="password" required className="w-full bg-transparent text-sm font-semibold outline-none" />
@@ -185,14 +367,14 @@ export default function AuthPage() {
             disabled={loading}
             className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <GoogleLogo /> Google ile Giriş
+            <GoogleLogo /> {mode === 'register' ? 'Google ile Kayıt' : 'Google ile Giriş'}
           </button>
           <button
             onClick={() => socialLogin('facebook')}
             disabled={loading}
             className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <Facebook size={16} className="text-blue-600" /> Facebook ile Giriş
+            <Facebook size={16} className="text-blue-600" /> {mode === 'register' ? 'Facebook ile Kayıt' : 'Facebook ile Giriş'}
           </button>
         </div>
       </section>
