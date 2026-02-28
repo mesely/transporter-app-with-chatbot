@@ -42,8 +42,8 @@ interface MapProps {
 
 const SERVICE_COLORS: Record<string, string> = {
   oto_kurtarma: '#dc2626',
-  vinc: '#7f1d1d',
-  lastik: '#be123c',
+  vinc: '#b45309',
+  lastik: '#881337',
   kurtarici: '#dc2626',
   nakliye: '#7e22ce',
   evden_eve: '#7e22ce',
@@ -63,7 +63,7 @@ const SERVICE_COLORS: Record<string, string> = {
 
 const SERVICE_ICONS: Record<string, string> = {
   oto_kurtarma: '🚗',
-  vinc: '🏗',
+  vinc: '🚧',
   lastik: '○',
   kurtarici: '🚨',
   nakliye: '🚚',

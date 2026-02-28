@@ -15,7 +15,7 @@
 import {
   Truck, Zap, Star, MapPin, Wrench,
   ChevronDown, ChevronUp, LocateFixed, Loader2,
-  Navigation, Globe, CarFront, Anchor, Home,
+  Navigation, Globe, CarFront, Construction, Home,
   Package, Container, ArrowUpDown, Map as MapIcon,
   Check, Phone, MessageCircle, Info, Users, Bus, Crown,
   ThumbsUp,
@@ -73,8 +73,8 @@ const FAVORITES_KEY = 'Transport_favorites_v1';
 // --- SERVICE_OPTIONS VE ALT SEÇENEKLER ---
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
-  { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'bg-rose-600', subs: [] },
-  { id: 'lastik', label: 'LASTİK', icon: Circle, color: 'bg-rose-700', subs: [] },
+  { id: 'vinc', label: 'VİNÇ', icon: Construction, color: 'bg-amber-700', subs: [] },
+  { id: 'lastik', label: 'LASTİK', icon: Circle, color: 'bg-rose-900', subs: [] },
   { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'bg-indigo-600', subs: [] },
   {
     id: 'tir', label: 'TIR', icon: Container, color: 'bg-violet-600',
@@ -723,8 +723,8 @@ function ActionPanel({
           {panelState > 1 && showTowRow && (
             <div className="grid grid-cols-3 gap-2">
               <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={10}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={10}/> {tx.vinc}</button>
-              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}><Circle size={10}/> {tx.lastik}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}><Construction size={10}/> {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}><Circle size={10}/> {tx.lastik}</button>
             </div>
           )}
           {panelState > 1 && (showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
@@ -864,8 +864,8 @@ function ActionPanel({
                 let iconBg = 'bg-gray-600';
                 if (isStation) iconBg = 'bg-blue-800';
                 else if (isMobileCharge) iconBg = 'bg-cyan-600';
-                else if (sub === 'vinc') iconBg = 'bg-rose-900';
-                else if (sub === 'lastik') iconBg = 'bg-rose-700';
+                else if (sub === 'vinc') iconBg = 'bg-amber-700';
+                else if (sub === 'lastik') iconBg = 'bg-rose-900';
                 else if (sub.includes('kurtarma')) iconBg = 'bg-red-600';
                 else if (isPassenger) iconBg = 'bg-emerald-600';
                 else if (sub === 'yurt_disi_nakliye') iconBg = 'bg-indigo-900';
@@ -888,7 +888,7 @@ function ActionPanel({
                 ].filter(Boolean) as string[];
                 const uniquePhotoUrls = Array.from(new Set(allPhotoUrls));
                 const hintColorClass = sub === 'vinc'
-                  ? 'text-rose-800'
+                  ? 'text-amber-800'
                   : sub === 'lastik'
                   ? 'text-rose-700'
                   : sub.includes('kurtarma')
@@ -902,29 +902,29 @@ function ActionPanel({
                       : 'text-purple-700';
                 const theme = sub === 'vinc'
                   ? {
-                      start: '#881337',
-                      end: '#4c0519',
-                      darkStart: '#6b0f24',
-                      darkEnd: '#3b0414',
-                      softStart: 'rgba(136,19,55,0.30)',
-                      softEnd: 'rgba(76,5,25,0.30)',
-                      text: 'text-rose-900',
-                      star: 'fill-rose-600 text-rose-600',
-                      starOff: 'text-rose-200',
-                      ring: 'border-rose-500 ring-rose-300/30',
+                      start: '#b45309',
+                      end: '#92400e',
+                      darkStart: '#92400e',
+                      darkEnd: '#78350f',
+                      softStart: 'rgba(251,191,36,0.30)',
+                      softEnd: 'rgba(217,119,6,0.30)',
+                      text: 'text-amber-900',
+                      star: 'fill-amber-500 text-amber-500',
+                      starOff: 'text-amber-200',
+                      ring: 'border-amber-500 ring-amber-300/30',
                     }
                   : sub === 'lastik'
                   ? {
-                      start: '#e11d48',
-                      end: '#9f1239',
-                      darkStart: '#be123c',
-                      darkEnd: '#881337',
-                      softStart: 'rgba(251,113,133,0.28)',
-                      softEnd: 'rgba(190,24,93,0.28)',
-                      text: 'text-rose-800',
-                      star: 'fill-rose-600 text-rose-600',
+                      start: '#9f1239',
+                      end: '#500724',
+                      darkStart: '#881337',
+                      darkEnd: '#3f021a',
+                      softStart: 'rgba(190,24,93,0.32)',
+                      softEnd: 'rgba(80,7,36,0.32)',
+                      text: 'text-rose-900',
+                      star: 'fill-rose-700 text-rose-700',
                       starOff: 'text-rose-200',
-                      ring: 'border-rose-500 ring-rose-300/30',
+                      ring: 'border-rose-700 ring-rose-300/30',
                     }
                   : sub.includes('kurtarma')
                   ? {
