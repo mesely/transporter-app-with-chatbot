@@ -52,4 +52,26 @@ export class MigrationController {
       data: result,
     });
   }
+
+  @Post('import-abroad-google')
+  async importAbroadGoogle(@Body() body: any, @Res() res) {
+    try {
+      const result = await this.dataService.importAbroadFromGoogle({
+        start: body?.start,
+        end: body?.end,
+        perServiceLimit: body?.perServiceLimit,
+        dryRun: body?.dryRun,
+        includeEurope: body?.includeEurope,
+        includeUs: body?.includeUs,
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Yurt dışı şehirlerden Google import işlemi tamamlandı.',
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        message: error?.message || 'Yurt dışı import işlemi başarısız.',
+      });
+    }
+  }
 }

@@ -8,12 +8,22 @@ import { NewUser, NewUserDocument } from './schemas/new-user.schema';
 import { NewProvider, NewProviderDocument } from './schemas/new-provider.schema';
 import { Profile } from '../users/schemas/profile.schema';
 import { TURKEY_DATA } from './turkey_data';
+import { european_data, us_data } from './abroad';
 
 type ImportLastikOptions = {
   start?: number;
   end?: number;
   perDistrictLimit?: number;
   dryRun?: boolean;
+};
+
+type ImportAbroadOptions = {
+  start?: number;
+  end?: number;
+  perServiceLimit?: number;
+  dryRun?: boolean;
+  includeEurope?: boolean;
+  includeUs?: boolean;
 };
 
 type StaticPassengerFirm = {
@@ -29,6 +39,28 @@ type StaticPassengerFirm = {
 @Injectable()
 export class DataService {
   private readonly logger = new Logger(DataService.name);
+  private readonly abroadServiceDefs: Array<{
+    key: string;
+    mainType: 'KURTARICI' | 'NAKLIYE' | 'SARJ' | 'YOLCU' | 'YURT_DISI';
+    subType: string;
+    tags: string[];
+    queries: string[];
+  }> = [
+    { key: 'oto_kurtarma', mainType: 'KURTARICI', subType: 'oto_kurtarma', tags: ['oto_kurtarma', 'roadside', '7/24'], queries: ['tow truck', 'roadside assistance', 'vehicle recovery'] },
+    { key: 'vinc', mainType: 'KURTARICI', subType: 'vinc', tags: ['vinc', 'crane', '7/24'], queries: ['mobile crane service', 'truck crane', 'crane rental'] },
+    { key: 'lastik', mainType: 'KURTARICI', subType: 'lastik', tags: ['lastik', 'tire', '7/24'], queries: ['tire shop', 'tyre service', 'auto tire'] },
+    { key: 'tir', mainType: 'NAKLIYE', subType: 'tir', tags: ['tir', 'freight'], queries: ['semi truck transport', 'trailer logistics', 'freight trucking'] },
+    { key: 'kamyon', mainType: 'NAKLIYE', subType: 'kamyon', tags: ['kamyon', 'freight'], queries: ['truck transport company', 'cargo truck service', 'freight carrier'] },
+    { key: 'kamyonet', mainType: 'NAKLIYE', subType: 'kamyonet', tags: ['kamyonet', 'van'], queries: ['cargo van service', 'delivery van company', 'light truck transport'] },
+    { key: 'evden_eve', mainType: 'NAKLIYE', subType: 'evden_eve', tags: ['evden_eve', 'moving'], queries: ['moving company', 'house removals', 'home relocation service'] },
+    { key: 'yurt_disi_nakliye', mainType: 'NAKLIYE', subType: 'yurt_disi_nakliye', tags: ['yurt_disi_nakliye', 'international'], queries: ['international logistics', 'cross border shipping', 'international freight forwarder'] },
+    { key: 'minibus', mainType: 'YOLCU', subType: 'minibus', tags: ['yolcu_tasima', 'minibus'], queries: ['minibus rental', 'minibus transfer', 'minibus charter'] },
+    { key: 'midibus', mainType: 'YOLCU', subType: 'midibus', tags: ['yolcu_tasima', 'midibus'], queries: ['midibus rental', 'mini coach charter', 'midibus transfer'] },
+    { key: 'otobus', mainType: 'YOLCU', subType: 'otobus', tags: ['yolcu_tasima', 'otobus'], queries: ['bus charter', 'coach rental', 'bus transfer service'] },
+    { key: 'vip_tasima', mainType: 'YOLCU', subType: 'vip_tasima', tags: ['yolcu_tasima', 'vip_tasima'], queries: ['vip transfer', 'chauffeur service', 'executive transport'] },
+    { key: 'istasyon', mainType: 'SARJ', subType: 'istasyon', tags: ['sarj', 'ev_charging'], queries: ['ev charging station', 'electric vehicle charging', 'charging point'] },
+    { key: 'seyyar_sarj', mainType: 'SARJ', subType: 'seyyar_sarj', tags: ['sarj', 'mobil_sarj'], queries: ['mobile ev charging', 'on demand ev charging', 'portable ev charger service'] },
+  ];
 
   constructor(
     @InjectModel(Profile.name) private oldProfileModel: Model<Profile>,
@@ -410,6 +442,130 @@ export class DataService {
 
     return stats;
   }
+
+  async importAbroadFromGoogle(options: ImportAbroadOptions = {}) {
+    const apiKey = (
+      process.env.GOOGLE_PLACES_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY ||
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      ''
+    ).trim();
+    const includeEurope = options.includeEurope !== false;
+    const includeUs = options.includeUs !== false;
+    const perServiceLimit = Math.max(1, Math.min(3, Number(options.perServiceLimit || 1)));
+    const dryRun = Boolean(options.dryRun);
+
+    const cityRows = [
+      ...(includeEurope ? european_data : []),
+      ...(includeUs ? us_data : []),
+    ];
+
+    const start = Math.max(0, Number(options.start || 0));
+    const endRaw = Number.isFinite(Number(options.end)) ? Number(options.end) : cityRows.length;
+    const end = Math.min(cityRows.length, Math.max(start + 1, endRaw));
+    const selectedCities = cityRows.slice(start, end);
+    const seenPlaceIds = new Set<string>();
+
+    const stats = {
+      scannedCities: 0,
+      scannedServices: 0,
+      scannedPlaces: 0,
+      insertedOrUpdated: 0,
+      skippedDuplicates: 0,
+      failed: 0,
+      citiesWithNoResults: 0,
+      keyMissing: false,
+      dryRun,
+      start,
+      end,
+      perServiceLimit,
+      includeEurope,
+      includeUs,
+    };
+
+    if (!apiKey) {
+      stats.keyMissing = true;
+      if (dryRun) return stats;
+      throw new Error('GOOGLE_PLACES_API_KEY (veya GOOGLE_MAPS_API_KEY) tanımlı değil.');
+    }
+
+    this.logger.log(`🌍 Abroad import başladı. Şehir aralığı: ${start}-${end} / ${cityRows.length}`);
+
+    for (const row of selectedCities) {
+      const city = String(row?.city || '').trim();
+      if (!city) continue;
+      stats.scannedCities++;
+      let cityHit = 0;
+
+      for (const serviceDef of this.abroadServiceDefs) {
+        stats.scannedServices++;
+        let places: any[] = [];
+        try {
+          places = await this.searchAbroadPlacesByService(city, serviceDef.queries, apiKey, perServiceLimit);
+        } catch (error: any) {
+          stats.failed++;
+          this.logger.warn(`⚠️ Abroad arama hatası (${city}/${serviceDef.subType}): ${error?.message || error}`);
+          continue;
+        }
+        if (!places.length) continue;
+
+        for (const place of places) {
+          const placeId = String(place?.place_id || '').trim();
+          if (!placeId) continue;
+          if (seenPlaceIds.has(placeId)) {
+            stats.skippedDuplicates++;
+            continue;
+          }
+          seenPlaceIds.add(placeId);
+          stats.scannedPlaces++;
+
+          try {
+            const details = await this.fetchGooglePlaceDetails(placeId, apiKey);
+            const phone = this.normalizePhone(details?.formatted_phone_number || details?.international_phone_number || '');
+            const website = String(details?.website || '');
+            const businessName = String(place?.name || '').trim() || `${city} ${serviceDef.subType}`;
+            const coords: [number, number] = [
+              Number(place?.geometry?.location?.lng || 28.9784),
+              Number(place?.geometry?.location?.lat || 41.0082),
+            ];
+            const fullAddress = String(place?.formatted_address || city);
+
+            if (dryRun) {
+              cityHit++;
+              continue;
+            }
+
+            await this.upsertSeedProvider({
+              key: `abroad_${this.slugify(city)}_${serviceDef.key}_${placeId}`,
+              businessName,
+              phoneNumber: phone,
+              website,
+              fullAddress,
+              city,
+              district: 'Merkez',
+              mainType: serviceDef.mainType,
+              subType: serviceDef.subType,
+              tags: [...serviceDef.tags, `abroad_city:${this.slugify(city)}`, `google_place_id:${placeId}`],
+              location: coords,
+            });
+            stats.insertedOrUpdated++;
+            cityHit++;
+          } catch (error: any) {
+            stats.failed++;
+            this.logger.warn(`⚠️ Abroad kayıt atlandı (${city}/${serviceDef.subType}): ${error?.message || error}`);
+          }
+        }
+        await this.sleep(120);
+      }
+
+      if (cityHit === 0) {
+        stats.citiesWithNoResults++;
+      }
+    }
+
+    this.logger.log(`✅ Abroad import tamamlandı. Eklenen/Güncellenen: ${stats.insertedOrUpdated}`);
+    return stats;
+  }
   
   // --- VIP EKLEME ---
   async injectPremiumChargers() {
@@ -713,6 +869,56 @@ export class DataService {
     } catch (error: any) {
       this.logger.warn(`⚠️ Lastik Nearby fallback başarısız (${city}/${district}): ${(error as any)?.message || error}`);
       return [];
+    }
+    return [];
+  }
+
+  private async searchAbroadPlacesByService(
+    city: string,
+    serviceQueries: string[],
+    apiKey: string,
+    perServiceLimit: number
+  ): Promise<any[]> {
+    for (const serviceQuery of serviceQueries) {
+      const query = `${serviceQuery} in ${city}`;
+      try {
+        const response = await axios.post(
+          'https://places.googleapis.com/v1/places:searchText',
+          {
+            textQuery: query,
+            languageCode: 'en',
+            maxResultCount: perServiceLimit,
+          },
+          {
+            headers: {
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
+            },
+            timeout: 15000,
+          }
+        );
+
+        const places = Array.isArray(response?.data?.places) ? response.data.places : [];
+        if (!places.length) continue;
+
+        const mapped = places
+          .map((p: any) => ({
+            place_id: p?.id || '',
+            name: String(p?.displayName?.text || '').trim(),
+            formatted_address: String(p?.formattedAddress || '').trim(),
+            geometry: {
+              location: {
+                lat: Number(p?.location?.latitude),
+                lng: Number(p?.location?.longitude),
+              },
+            },
+          }))
+          .filter((p: any) => p.place_id && Number.isFinite(p.geometry?.location?.lat) && Number.isFinite(p.geometry?.location?.lng));
+
+        if (mapped.length > 0) return mapped.slice(0, perServiceLimit);
+      } catch (error: any) {
+        this.logger.warn(`⚠️ Abroad Places(New) denemesi başarısız (${city} / ${serviceQuery}): ${error?.message || error}`);
+      }
     }
     return [];
   }
