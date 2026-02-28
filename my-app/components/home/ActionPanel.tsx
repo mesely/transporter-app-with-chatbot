@@ -705,17 +705,17 @@ function ActionPanel({
 
       <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-1 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-2">
-          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
-            <Wrench size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
+          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
+            <Wrench size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
-            <Truck size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.nakliye}</span>
+          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
+            <Truck size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.nakliye}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
-            <Zap size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.sarj}</span>
+          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
+            <Zap size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.sarj}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
-            <Users size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.yolcu}</span>
+          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
+            <Users size={16} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.yolcu}</span>
           </button>
         </div>
 
