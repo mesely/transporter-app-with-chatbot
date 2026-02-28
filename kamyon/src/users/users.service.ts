@@ -105,7 +105,7 @@ export class UsersService implements OnModuleInit {
         const t = (data.service?.subType || data.serviceType).toUpperCase();
         if (['NAKLIYE', 'SARJ', 'KURTARICI', 'YOLCU'].includes(t)) mainType = t;
         else if (['TIR', 'KAMYON', 'KAMYONET', 'YURT_DISI_NAKLIYE', 'EVDEN_EVE'].includes(t)) mainType = 'NAKLIYE';
-        else if (['OTO_KURTARMA', 'VINC'].includes(t)) mainType = 'KURTARICI';
+        else if (['OTO_KURTARMA', 'VINC', 'LASTIK'].includes(t)) mainType = 'KURTARICI';
         else if (['ISTASYON', 'SEYYAR_SARJ', 'MOBIL_UNIT'].includes(t)) mainType = 'SARJ';
         else if (['YOLCU_TASIMA', 'MINIBUS', 'OTOBUS', 'MIDIBUS', 'VIP_TASIMA'].includes(t)) mainType = 'YOLCU';
       }
@@ -428,7 +428,7 @@ export class UsersService implements OnModuleInit {
     const rawSubType = (data.serviceType || data.service?.subType || existing.service?.subType || '').toLowerCase().trim();
     let mainType = (data.service?.mainType || data.mainType || existing.service?.mainType || 'KURTARICI').toUpperCase();
 
-    if (['oto_kurtarma', 'vinc'].includes(rawSubType)) mainType = 'KURTARICI';
+    if (['oto_kurtarma', 'vinc', 'lastik'].includes(rawSubType)) mainType = 'KURTARICI';
     else if (['istasyon', 'seyyar_sarj', 'mobil_unit'].includes(rawSubType)) mainType = 'SARJ';
     else if (['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu'].includes(rawSubType)) mainType = 'YOLCU';
     else if (['yurt_disi_nakliye'].includes(rawSubType)) mainType = 'YURT_DISI';

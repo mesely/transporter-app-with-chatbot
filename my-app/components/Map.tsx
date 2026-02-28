@@ -43,6 +43,7 @@ interface MapProps {
 const SERVICE_COLORS: Record<string, string> = {
   oto_kurtarma: '#dc2626',
   vinc: '#7f1d1d',
+  lastik: '#be123c',
   kurtarici: '#dc2626',
   nakliye: '#7e22ce',
   evden_eve: '#7e22ce',
@@ -63,6 +64,7 @@ const SERVICE_COLORS: Record<string, string> = {
 const SERVICE_ICONS: Record<string, string> = {
   oto_kurtarma: '🚗',
   vinc: '🏗',
+  lastik: '🛞',
   kurtarici: '🚨',
   nakliye: '🚚',
   evden_eve: '🏠',
@@ -87,6 +89,7 @@ const MARKER_SCALE = 0.75;
 const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Depannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Ewakuator', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
   vinc: { tr: 'Vinc', en: 'Crane', de: 'Kran', fr: 'Grue', it: 'Gru', es: 'Grua', pt: 'Guindaste', ru: 'Kran', zh: '吊车', ja: 'クレーン', ko: '크레인', ar: 'رافعة' },
+  lastik: { tr: 'Lastik', en: 'Tire Service', de: 'Reifenservice', fr: 'Service pneus', it: 'Servizio gomme', es: 'Servicio de neumaticos', pt: 'Servico de pneus', ru: 'Shinomontazh', zh: '轮胎服务', ja: 'タイヤサービス', ko: '타이어 서비스', ar: 'خدمة إطارات' },
   kurtarici: { tr: 'Kurtarici', en: 'Recovery', de: 'Bergung', fr: 'Remorquage', it: 'Recupero', es: 'Rescate', pt: 'Resgate', ru: 'Evakuaciya', zh: '救援', ja: '救援', ko: '구난', ar: 'إنقاذ' },
   nakliye: { tr: 'Nakliye', en: 'Transport', de: 'Transport', fr: 'Transport', it: 'Trasporto', es: 'Transporte', pt: 'Transporte', ru: 'Perevozka', zh: '运输', ja: '輸送', ko: '운송', ar: 'نقل' },
   evden_eve: { tr: 'Evden Eve', en: 'Home Moving', de: 'Umzug', fr: 'Demenagement', it: 'Trasloco', es: 'Mudanza', pt: 'Mudanca', ru: 'Pereezd', zh: '搬家', ja: '引っ越し', ko: '이사', ar: 'نقل منزلي' },

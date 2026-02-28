@@ -1,4 +1,4 @@
-import { Controller, Post, Res, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, Res, HttpStatus } from '@nestjs/common';
 import { DataService } from './data.service';
 
 @Controller('admin/migration')
@@ -21,6 +21,29 @@ export class MigrationController {
     return res.status(HttpStatus.OK).json({
       message: 'Nakliye -> Evden Eve dönüşümü tamamlandı.',
       data: result
+    });
+  }
+
+  @Post('import-lastik-google')
+  async importLastikGoogle(@Body() body: any, @Res() res) {
+    const result = await this.dataService.importLastikFromGoogle({
+      start: body?.start,
+      end: body?.end,
+      perDistrictLimit: body?.perDistrictLimit,
+      dryRun: body?.dryRun,
+    });
+    return res.status(HttpStatus.OK).json({
+      message: 'Google üzerinden lastikçi import işlemi tamamlandı.',
+      data: result,
+    });
+  }
+
+  @Post('import-yolcu-static')
+  async importYolcuStatic(@Res() res) {
+    const result = await this.dataService.importStaticYolcuFirms();
+    return res.status(HttpStatus.OK).json({
+      message: 'Yolcu taşıma firmaları seed işlemi tamamlandı.',
+      data: result,
     });
   }
 }

@@ -2,10 +2,29 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose'; 
 import * as bcrypt from 'bcrypt';
+import axios from 'axios';
 
 import { NewUser, NewUserDocument } from './schemas/new-user.schema';
 import { NewProvider, NewProviderDocument } from './schemas/new-provider.schema';
 import { Profile } from '../users/schemas/profile.schema';
+import { TURKEY_DATA } from './turkey_data';
+
+type ImportLastikOptions = {
+  start?: number;
+  end?: number;
+  perDistrictLimit?: number;
+  dryRun?: boolean;
+};
+
+type StaticPassengerFirm = {
+  name: string;
+  categories: Array<'otobus' | 'midibus' | 'minibus' | 'vip_tasima'>;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  district: string;
+};
 
 @Injectable()
 export class DataService {
@@ -199,6 +218,193 @@ export class DataService {
     this.logger.log(`✅ İşlem tamamlandı. Güncellenen kayıt sayısı: ${result.modifiedCount}`);
     return { success: true, updatedCount: result.modifiedCount };
   }
+
+  async importLastikFromGoogle(options: ImportLastikOptions = {}) {
+    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    if (!apiKey) {
+      throw new Error('GOOGLE_MAPS_API_KEY tanımlı değil.');
+    }
+
+    const start = Math.max(0, Number(options.start || 0));
+    const endRaw = Number.isFinite(Number(options.end)) ? Number(options.end) : TURKEY_DATA.length;
+    const end = Math.min(TURKEY_DATA.length, Math.max(start + 1, endRaw));
+    const perDistrictLimit = Math.max(1, Math.min(8, Number(options.perDistrictLimit || 2)));
+    const dryRun = Boolean(options.dryRun);
+    const seenPlaceIds = new Set<string>();
+
+    const stats = {
+      scannedDistricts: 0,
+      scannedPlaces: 0,
+      insertedOrUpdated: 0,
+      skippedDuplicates: 0,
+      failed: 0,
+      dryRun,
+      start,
+      end,
+      perDistrictLimit,
+    };
+
+    const districts = TURKEY_DATA.slice(start, end);
+    this.logger.log(`🛞 Lastik import başladı. İlçe aralığı: ${start}-${end} / ${TURKEY_DATA.length}`);
+
+    for (const district of districts) {
+      stats.scannedDistricts++;
+      const query = `${district.ilce}, ${district.il} lastikçi`;
+      let places: any[] = [];
+      try {
+        const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+          params: {
+            query,
+            language: 'tr',
+            region: 'tr',
+            key: apiKey,
+          },
+          timeout: 15000,
+        });
+        places = Array.isArray(response?.data?.results) ? response.data.results.slice(0, perDistrictLimit) : [];
+      } catch (error) {
+        stats.failed++;
+        this.logger.warn(`⚠️ Places arama hatası (${query}): ${(error as any)?.message || error}`);
+        continue;
+      }
+
+      for (const place of places) {
+        const placeId = String(place?.place_id || '').trim();
+        if (!placeId) continue;
+        if (seenPlaceIds.has(placeId)) {
+          stats.skippedDuplicates++;
+          continue;
+        }
+        seenPlaceIds.add(placeId);
+        stats.scannedPlaces++;
+
+        try {
+          const details = await this.fetchGooglePlaceDetails(placeId, apiKey);
+          const phone = this.normalizePhone(details?.formatted_phone_number || details?.international_phone_number || '');
+          const website = String(details?.website || '');
+          const businessName = String(place?.name || '').trim() || `Lastikçi ${district.ilce}`;
+          const coords: [number, number] = [
+            Number(place?.geometry?.location?.lng || 28.9784),
+            Number(place?.geometry?.location?.lat || 41.0082),
+          ];
+          const fullAddress = String(place?.formatted_address || `${district.ilce}, ${district.il}`);
+
+          if (dryRun) continue;
+
+          await this.upsertSeedProvider({
+            key: `google_lastik_${placeId}`,
+            businessName,
+            phoneNumber: phone,
+            website,
+            fullAddress,
+            city: district.il,
+            district: district.ilce,
+            mainType: 'KURTARICI',
+            subType: 'lastik',
+            tags: ['lastik', '7/24', `google_place_id:${placeId}`],
+            location: coords,
+          });
+          stats.insertedOrUpdated++;
+        } catch (error) {
+          stats.failed++;
+          this.logger.warn(`⚠️ Lastik kaydı atlandı (${district.il}/${district.ilce}): ${(error as any)?.message || error}`);
+        }
+      }
+
+      await this.sleep(170);
+    }
+
+    this.logger.log(`✅ Lastik import tamamlandı. Eklenen/Güncellenen: ${stats.insertedOrUpdated}`);
+    return stats;
+  }
+
+  async importStaticYolcuFirms() {
+    const firms: StaticPassengerFirm[] = [
+      {
+        name: 'Gürsel Turizm',
+        categories: ['otobus', 'midibus', 'minibus', 'vip_tasima'],
+        phone: '02165753355',
+        email: 'info@gurseltur.com.tr',
+        address: 'İçerenköy Mah. Çayır Cad. No:1 Ataşehir / İstanbul',
+        city: 'İstanbul',
+        district: 'Ataşehir',
+      },
+      {
+        name: 'Altur Turizm',
+        categories: ['otobus', 'midibus', 'minibus', 'vip_tasima'],
+        phone: '02124115000',
+        email: 'altur@alturturizm.com.tr',
+        address: 'Yenibosna, Cemal Ulusoy Cad. No:1 Bahçelievler / İstanbul',
+        city: 'İstanbul',
+        district: 'Bahçelievler',
+      },
+      {
+        name: 'Turex Turizm',
+        categories: ['otobus', 'midibus', 'minibus', 'vip_tasima'],
+        phone: '02126992055',
+        email: 'info@turexturizm.com.tr',
+        address: 'Zafer Mah. 140. Sok. No:35 Esenyurt / İstanbul',
+        city: 'İstanbul',
+        district: 'Esenyurt',
+      },
+      {
+        name: 'Platform Turizm',
+        categories: ['otobus', 'midibus', 'minibus', 'vip_tasima'],
+        phone: '02125384445',
+        email: 'iletisim@platformturizm.com',
+        address: 'Yenidoğan Mah. Kızılay Sok. No:39 Bayrampaşa / İstanbul',
+        city: 'İstanbul',
+        district: 'Bayrampaşa',
+      },
+      {
+        name: 'Buskirala',
+        categories: ['otobus', 'midibus', 'minibus', 'vip_tasima'],
+        phone: '4445072',
+        email: 'info@buskirala.com',
+        address: 'Dijital Ulusal Kiralama ve Garaj Ağı',
+        city: 'İstanbul',
+        district: 'Merkez',
+      },
+      {
+        name: 'Progo Travel',
+        categories: ['minibus', 'vip_tasima'],
+        phone: '08503080444',
+        email: 'support@progotravel.com',
+        address: 'Şerifali Hendem Cad. No:38 Ümraniye / İstanbul',
+        city: 'İstanbul',
+        district: 'Ümraniye',
+      },
+    ];
+
+    const stats = { firms: firms.length, insertedOrUpdated: 0, failed: 0 };
+
+    for (const firm of firms) {
+      for (const subType of firm.categories) {
+        try {
+          const coords = await this.geocodeAddressFallback(firm.address, firm.city, firm.district);
+          await this.upsertSeedProvider({
+            key: `yolcu_${this.slugify(firm.name)}_${subType}`,
+            businessName: firm.name,
+            phoneNumber: this.normalizePhone(firm.phone),
+            website: '',
+            fullAddress: firm.address,
+            city: firm.city,
+            district: firm.district,
+            mainType: 'YOLCU',
+            subType,
+            tags: ['turkiye_geneli', 'yolcu_tasima', subType],
+            location: coords,
+          }, firm.email);
+          stats.insertedOrUpdated++;
+        } catch (error) {
+          stats.failed++;
+          this.logger.warn(`⚠️ Yolcu seed hatası (${firm.name}/${subType}): ${(error as any)?.message || error}`);
+        }
+      }
+    }
+
+    return stats;
+  }
   
   // --- VIP EKLEME ---
   async injectPremiumChargers() {
@@ -254,9 +460,130 @@ export class DataService {
 
   private mapToNewCategory(oldType: string): { main: string, sub: string } {
     const t = (oldType || '').toLowerCase();
-    if (['kurtarici', 'oto_kurtarma', 'vinc', 'yol_yardim'].includes(t)) return { main: 'KURTARICI', sub: t };
+    if (['kurtarici', 'oto_kurtarma', 'vinc', 'yol_yardim', 'lastik'].includes(t)) return { main: 'KURTARICI', sub: t };
     if (['nakliye', 'kamyon', 'kamyonet', 'tir', 'evden_eve', 'yurt_disi_nakliye'].includes(t)) return { main: 'NAKLIYE', sub: t };
     if (['sarj_istasyonu'].includes(t)) return { main: 'SARJ', sub: 'istasyon' };
     return { main: 'KURTARICI', sub: 'genel' };
+  }
+
+  private normalizePhone(value: string): string {
+    return String(value || '').replace(/\D/g, '');
+  }
+
+  private slugify(value: string): string {
+    return String(value || '')
+      .toLocaleLowerCase('tr')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 60);
+  }
+
+  private async ensureProviderUser(emailSeed: string): Promise<Types.ObjectId> {
+    const email = emailSeed.includes('@') ? emailSeed : `${emailSeed}@transporter.app`;
+    const existing = await this.newUserModel.findOne({ email }).exec();
+    if (existing?._id) return existing._id as Types.ObjectId;
+
+    const created = await new this.newUserModel({
+      email,
+      password: await bcrypt.hash('Transporter2026!', 10),
+      role: 'provider',
+      isActive: true,
+    }).save();
+    return created._id as Types.ObjectId;
+  }
+
+  private async upsertSeedProvider(
+    payload: {
+      key: string;
+      businessName: string;
+      phoneNumber: string;
+      website: string;
+      fullAddress: string;
+      city: string;
+      district: string;
+      mainType: 'KURTARICI' | 'NAKLIYE' | 'SARJ' | 'YOLCU' | 'YURT_DISI';
+      subType: string;
+      tags: string[];
+      location: [number, number];
+    },
+    forcedEmail?: string
+  ) {
+    const email = forcedEmail || `${payload.key}@transporter.app`;
+    const userId = await this.ensureProviderUser(email);
+
+    return this.newProviderModel.findOneAndUpdate(
+      { user: userId, 'service.subType': payload.subType },
+      {
+        $set: {
+          user: userId,
+          businessName: payload.businessName,
+          phoneNumber: payload.phoneNumber,
+          website: payload.website,
+          link: payload.website,
+          address: {
+            fullText: payload.fullAddress,
+            city: payload.city,
+            district: payload.district,
+          },
+          service: {
+            mainType: payload.mainType,
+            subType: payload.subType,
+            tags: payload.tags,
+          },
+          pricing: {
+            openingFee: payload.mainType === 'YOLCU' ? 0 : 150,
+            pricePerUnit: payload.mainType === 'YOLCU' ? 0 : 30,
+          },
+          location: {
+            type: 'Point',
+            coordinates: payload.location,
+          },
+          isVerified: true,
+        },
+      },
+      { upsert: true, new: true }
+    ).exec();
+  }
+
+  private async fetchGooglePlaceDetails(placeId: string, apiKey: string): Promise<any | null> {
+    try {
+      const response = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+        params: {
+          place_id: placeId,
+          language: 'tr',
+          fields: 'formatted_phone_number,international_phone_number,website,url',
+          key: apiKey,
+        },
+        timeout: 15000,
+      });
+      return response?.data?.result || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async geocodeAddressFallback(address: string, city: string, district: string): Promise<[number, number]> {
+    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    if (!apiKey) return [28.9784, 41.0082];
+    const query = `${address}, ${district}, ${city}, Türkiye`;
+    try {
+      const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+        params: { address: query, language: 'tr', region: 'tr', key: apiKey },
+        timeout: 15000,
+      });
+      const loc = response?.data?.results?.[0]?.geometry?.location;
+      if (loc && Number.isFinite(loc.lng) && Number.isFinite(loc.lat)) {
+        return [Number(loc.lng), Number(loc.lat)];
+      }
+      return [28.9784, 41.0082];
+    } catch {
+      return [28.9784, 41.0082];
+    }
+  }
+
+  private async sleep(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

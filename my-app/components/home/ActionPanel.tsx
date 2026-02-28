@@ -24,7 +24,8 @@ import {
   Layers,
   Box,
   Archive,
-  Snowflake
+  Snowflake,
+  Disc3
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import ViewRatingsModal from '../ViewRatingsModal';
@@ -73,6 +74,7 @@ const FAVORITES_KEY = 'Transport_favorites_v1';
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
   { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'bg-rose-600', subs: [] },
+  { id: 'lastik', label: 'LASTİK', icon: Disc3, color: 'bg-rose-700', subs: [] },
   { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'bg-indigo-600', subs: [] },
   {
     id: 'tir', label: 'TIR', icon: Container, color: 'bg-violet-600',
@@ -174,7 +176,7 @@ const TAG_DETAILS_EN: Record<string, { tasima: string, kapasite: string }> = {
 };
 
 const PANEL_TEXT: Record<AppLang, Record<string, string>> = {
-  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "GOOGLE MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeler', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
+  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', lastik: 'Lastik', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "GOOGLE MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeler', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
   en: { kurtarici: 'Recovery', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger', otoKurtarma: 'Roadside Recovery', vinc: 'Crane', domestic: 'Domestic', international: 'International', homeMoving: 'Home Moving', trailer: 'Trailer', truck: 'Truck', van: 'Van', station: 'Station', geziciSarj: 'Mobile Charge', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE', tapCall: 'Tap To Get Price And Call', verifiedPrice: 'Verified Price', mapsOpen: 'OPEN IN GOOGLE MAPS', call: 'CALL', message: 'MESSAGE', site: 'GO TO SITE', listVehicles: 'List Vehicles', viewPhotos: 'View Vehicle Photos', noVehicles: 'No registered vehicle info.', noPhotos: 'No registered photos.', reviewsAndReports: 'Reviews & Reports', noRating: 'Not rated yet', scoreText: 'Score', viewRatings: 'View Reviews', viewReports: 'View Reports', turkeyWide: 'Nationwide', transport: 'Transport', capacity: 'Capacity', close: 'Close', vehicle: 'Vehicle', photo: 'Photo', vehiclePhoto: 'Vehicle photo', previewPhoto: 'Large vehicle photo preview' },
   de: { kurtarici: 'Bergung', nakliye: 'Transport', sarj: 'Laden', yolcu: 'Passagier', otoKurtarma: 'Pannenhilfe', vinc: 'Kran', domestic: 'Inland', international: 'International', homeMoving: 'Umzug', trailer: 'Auflieger', truck: 'LKW', van: 'Transporter', station: 'Station', geziciSarj: 'Mobiles Laden', loading: 'Lädt...', score: 'PUNKT', allTurkey: 'GANZE TÜRKEI', tapCall: 'Tippen für Preis und Anruf', verifiedPrice: 'Verifizierter Preis', mapsOpen: 'IN GOOGLE MAPS ÖFFNEN', call: 'ANRUFEN', message: 'NACHRICHT', site: 'ZUR WEBSEITE', listVehicles: 'Fahrzeuge anzeigen', viewPhotos: 'Fahrzeugfotos anzeigen', noVehicles: 'Keine Fahrzeugdaten vorhanden.', noPhotos: 'Keine Fotos vorhanden.', reviewsAndReports: 'Bewertungen & Beschwerden', noRating: 'Noch keine Bewertung', scoreText: 'Punkt', viewRatings: 'Bewertungen anzeigen', viewReports: 'Beschwerden anzeigen', turkeyWide: 'Landesweit', transport: 'Transport', capacity: 'Kapazität', close: 'Schließen', vehicle: 'Fahrzeug', photo: 'Foto', vehiclePhoto: 'Fahrzeugfoto', previewPhoto: 'Große Fahrzeugfoto-Vorschau' },
   fr: { kurtarici: 'Dépannage', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passager', otoKurtarma: 'Assistance routière', vinc: 'Grue', domestic: 'National', international: 'International', homeMoving: 'Déménagement', trailer: 'Semi-remorque', truck: 'Camion', van: 'Fourgon', station: 'Station', geziciSarj: 'Charge mobile', loading: 'Chargement...', score: 'NOTE', allTurkey: 'TOUTE LA TURQUIE', tapCall: 'Touchez pour le prix et appeler', verifiedPrice: 'Prix vérifié', mapsOpen: 'OUVRIR DANS GOOGLE MAPS', call: 'APPELER', message: 'MESSAGE', site: 'ALLER AU SITE', listVehicles: 'Voir les véhicules', viewPhotos: 'Voir les photos du véhicule', noVehicles: 'Aucune information véhicule.', noPhotos: 'Aucune photo enregistrée.', reviewsAndReports: 'Avis & Réclamations', noRating: 'Pas encore évalué', scoreText: 'Note', viewRatings: 'Voir les avis', viewReports: 'Voir les réclamations', turkeyWide: 'Dans toute la Turquie', transport: 'Transport', capacity: 'Capacité', close: 'Fermer', vehicle: 'Véhicule', photo: 'Photo', vehiclePhoto: 'Photo du véhicule', previewPhoto: 'Aperçu photo grand format' },
@@ -279,7 +281,7 @@ function ActionPanel({
   const activeThemeColor = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'bg-cyan-600';
     if (actionType.includes('sarj') || actionType === 'istasyon') return 'bg-blue-600';
-    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc') return 'bg-red-600';
+    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc' || actionType === 'lastik') return 'bg-red-600';
     if (actionType.includes('yolcu') || ['minibus','otobus','midibus','vip_tasima'].includes(actionType)) return 'bg-emerald-600';
     return 'bg-purple-600';
   }, [actionType]);
@@ -287,7 +289,7 @@ function ActionPanel({
   const activeThemeText = useMemo(() => {
     if (actionType === 'seyyar_sarj') return 'text-cyan-600';
     if (actionType.includes('sarj') || actionType === 'istasyon') return 'text-blue-600';
-    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc') return 'text-red-600';
+    if (actionType.includes('kurtarici') || actionType === 'oto_kurtarma' || actionType === 'vinc' || actionType === 'lastik') return 'text-red-600';
     if (actionType.includes('yolcu') || ['minibus','otobus','midibus','vip_tasima'].includes(actionType)) return 'text-emerald-600';
     return 'text-purple-600';
   }, [actionType]);
@@ -667,47 +669,48 @@ function ActionPanel({
         onTouchStart={(e) => { e.stopPropagation(); dragStartY.current = e.touches[0].clientY; }}
         onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
         onClick={(e) => { e.stopPropagation(); setPanelState(p => p === 3 ? 1 : p + 1 as 0|1|2|3); }}
-        className="relative w-full flex justify-center py-5 cursor-grab active:cursor-grabbing shrink-0 z-[2001] hover:opacity-80 transition-opacity"
+        className="relative w-full flex justify-center py-3 cursor-grab active:cursor-grabbing shrink-0 z-[2001] hover:opacity-80 transition-opacity"
       >
         <div className="w-16 h-1.5 bg-gray-400/50 rounded-full shadow-sm"></div>
 
         <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-1 z-[2002]">
           <button
             onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.max(p - 1, 0) as 0|1|2|3); }}
-            className={`p-1.5 rounded-full bg-white shadow-md transition-colors ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
+            className={`p-1 rounded-full bg-white shadow-md transition-colors ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
           >
-            <ChevronDown size={18} strokeWidth={3} />
+            <ChevronDown size={15} strokeWidth={3} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setPanelState(p => Math.min(p + 1, 3) as 0|1|2|3); }}
-            className={`p-1.5 rounded-full bg-white shadow-md transition-colors ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
+            className={`p-1 rounded-full bg-white shadow-md transition-colors ${activeThemeText} hover:${activeThemeColor} hover:text-white`}
           >
-            <ChevronUp size={18} strokeWidth={3} />
+            <ChevronUp size={15} strokeWidth={3} />
           </button>
         </div>
       </div>
 
-      <div onClick={(e) => e.stopPropagation()} className={`px-6 pb-6 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
-        <div className="flex gap-2 shrink-0 mb-3">
-          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-3 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
-            <Wrench size={20} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.kurtarici}</span>
+      <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-3 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
+        <div className="flex gap-2 shrink-0 mb-2">
+          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
+            <Wrench size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.kurtarici}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-3 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
-            <Truck size={20} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.nakliye}</span>
+          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
+            <Truck size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.nakliye}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-3 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
-            <Zap size={20} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.sarj}</span>
+          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
+            <Zap size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.sarj}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-3 rounded-[2rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
-            <Users size={20} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.yolcu}</span>
+          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
+            <Users size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.yolcu}</span>
           </button>
         </div>
 
-        <div className="space-y-3 shrink-0 mb-2">
+        <div className="space-y-2 shrink-0 mb-1">
           {panelState > 1 && showTowRow && (
-            <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={12}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`flex-1 py-2.5 rounded-2xl text-[9px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={12}/> {tx.vinc}</button>
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={11}/> {tx.otoKurtarma}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-900 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}><Anchor size={11}/> {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-2 rounded-2xl text-[8px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}><Disc3 size={11}/> {tx.lastik} 🛞</button>
             </div>
           )}
           {panelState > 1 && (showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
@@ -754,7 +757,7 @@ function ActionPanel({
         </div>
 
         {panelState > 1 && (
-          <div className="flex items-center gap-2 mb-4 py-2 shrink-0 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 mb-2 py-1 shrink-0 overflow-x-auto no-scrollbar">
               <div className="relative shrink-0 w-[130px] shadow-lg rounded-2xl transition-transform">
                 <select
                   value={selectedCity}
@@ -848,6 +851,7 @@ function ActionPanel({
                 if (isStation) iconBg = 'bg-blue-800';
                 else if (isMobileCharge) iconBg = 'bg-cyan-600';
                 else if (sub === 'vinc') iconBg = 'bg-rose-900';
+                else if (sub === 'lastik') iconBg = 'bg-rose-700';
                 else if (sub.includes('kurtarma')) iconBg = 'bg-red-600';
                 else if (isPassenger) iconBg = 'bg-emerald-600';
                 else if (sub === 'yurt_disi_nakliye') iconBg = 'bg-indigo-900';
@@ -871,6 +875,8 @@ function ActionPanel({
                 const uniquePhotoUrls = Array.from(new Set(allPhotoUrls));
                 const hintColorClass = sub === 'vinc'
                   ? 'text-rose-800'
+                  : sub === 'lastik'
+                  ? 'text-rose-700'
                   : sub.includes('kurtarma')
                   ? 'text-red-600'
                   : isPassenger
@@ -889,6 +895,19 @@ function ActionPanel({
                       softStart: 'rgba(136,19,55,0.30)',
                       softEnd: 'rgba(76,5,25,0.30)',
                       text: 'text-rose-900',
+                      star: 'fill-rose-600 text-rose-600',
+                      starOff: 'text-rose-200',
+                      ring: 'border-rose-500 ring-rose-300/30',
+                    }
+                  : sub === 'lastik'
+                  ? {
+                      start: '#e11d48',
+                      end: '#9f1239',
+                      darkStart: '#be123c',
+                      darkEnd: '#881337',
+                      softStart: 'rgba(251,113,133,0.28)',
+                      softEnd: 'rgba(190,24,93,0.28)',
+                      text: 'text-rose-800',
                       star: 'fill-rose-600 text-rose-600',
                       starOff: 'text-rose-200',
                       ring: 'border-rose-500 ring-rose-300/30',
