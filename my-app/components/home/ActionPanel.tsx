@@ -266,6 +266,14 @@ function ActionPanel({
   const cityScopedCacheRef = useRef<Record<string, { ts: number; data: any[] }>>({});
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
+  const normalizeCityText = useCallback((value: string) => {
+    return String(value || '')
+      .toLocaleLowerCase('tr')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }, []);
+
   useEffect(() => {
     if (typeof collapseRequestToken !== 'number') return;
     if (typeof lastCollapseTokenRef.current !== 'number') {
@@ -456,7 +464,13 @@ function ActionPanel({
   };
 
   const displayDrivers = useMemo(() => {
-    const sourceList = selectedCity ? cityScopedDrivers : drivers;
+    const selectedCityNorm = normalizeCityText(selectedCity);
+    const localCityFiltered = selectedCity
+      ? (drivers || []).filter((d: any) => normalizeCityText(d?.address?.city || '') === selectedCityNorm)
+      : [];
+    const sourceList = selectedCity
+      ? (cityScopedDrivers.length > 0 ? cityScopedDrivers : localCityFiltered.length > 0 ? localCityFiltered : drivers)
+      : drivers;
     let list = Array.isArray(sourceList) ? [...sourceList] : [];
 
     if (activeTransportFilter && SUB_FILTERS[activeTransportFilter]) {
@@ -469,7 +483,7 @@ function ActionPanel({
       return (a.distance || 0) - (b.distance || 0);
     });
     return list;
-  }, [drivers, cityScopedDrivers, sortMode, selectedCity, actionType, activeTransportFilter]);
+  }, [drivers, cityScopedDrivers, sortMode, selectedCity, actionType, activeTransportFilter, normalizeCityText]);
 
   useEffect(() => {
     setRenderedCount(28);
@@ -730,8 +744,8 @@ function ActionPanel({
           {panelState > 1 && activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => (
-                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-0.5 rounded-xl text-[5px] font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
-                        {activeTags.includes(sub.id) && <Check size={8} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
+                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-sm flex items-center justify-center gap-0.5 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
+                        {activeTags.includes(sub.id) && <Check size={9} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                     </button>
                 ))}
              </div>

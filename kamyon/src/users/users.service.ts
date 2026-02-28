@@ -69,6 +69,27 @@ export class UsersService implements OnModuleInit {
       .trim();
   }
 
+  private cityVariants(city: string): string[] {
+    const raw = String(city || '').trim();
+    if (!raw) return [];
+    const normalized = raw
+      .toLocaleLowerCase('tr')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    const titleRaw = raw
+      .split(' ')
+      .filter(Boolean)
+      .map((p) => p.charAt(0).toLocaleUpperCase('tr') + p.slice(1).toLocaleLowerCase('tr'))
+      .join(' ');
+    const titleNormalized = normalized
+      .split(' ')
+      .filter(Boolean)
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(' ');
+    return Array.from(new Set([raw, normalized, titleRaw, titleNormalized])).filter(Boolean);
+  }
+
   // --- 1. CREATE VEYA UPDATE ---
   async create(data: any) {
     try {
@@ -337,7 +358,8 @@ export class UsersService implements OnModuleInit {
     const filter: any = this.buildServiceFilter(rawType);
     const normalizedCity = (city || '').trim();
     if (normalizedCity) {
-      filter['address.city'] = new RegExp(`^${normalizedCity}$`, 'i');
+      const variants = this.cityVariants(normalizedCity);
+      filter.$or = variants.map((v) => ({ 'address.city': new RegExp(`^${v}$`, 'i') }));
     }
 
     const limit = Math.max(20, Math.min(Number(requestedLimit || 350), 1500));
