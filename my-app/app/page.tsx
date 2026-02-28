@@ -140,6 +140,8 @@ export default function Home() {
   const fetchSeqRef = useRef(0);
   const blockMapMoveFetchUntilRef = useRef(0);
   const driversRef = useRef<any[]>([]);
+  const filterRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFilterTypeRef = useRef('kurtarici');
 
   useEffect(() => {
     driversRef.current = drivers;
@@ -351,6 +353,7 @@ export default function Home() {
     return () => {
       if (fetchAbortRef.current) fetchAbortRef.current.abort();
       if (mapMoveDebounceRef.current) clearTimeout(mapMoveDebounceRef.current);
+      if (filterRetryRef.current) clearTimeout(filterRetryRef.current);
     };
   }, []);
 
@@ -600,23 +603,43 @@ export default function Home() {
       clearTimeout(mapMoveDebounceRef.current);
       mapMoveDebounceRef.current = null;
     }
+    if (filterRetryRef.current) {
+      clearTimeout(filterRetryRef.current);
+      filterRetryRef.current = null;
+    }
+    lastFilterTypeRef.current = type;
     setActionType(type);
     setActiveTags([]);
     const typeCached = readTypeCache(type);
     if (typeCached && typeCached.length > 0) {
       setDrivers(typeCached);
     }
+    const baseCoords = searchCoordsRef.current;
+    const baseLat = baseCoords?.[0] ?? DEFAULT_LAT;
+    const baseLng = baseCoords?.[1] ?? DEFAULT_LNG;
     const zoom = lastMapFetchRef.current?.zoom ?? 9;
     const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, 2200);
     listEndFetchLimitRef.current = requestedLimit;
-    fetchDrivers(searchCoords?.[0] ?? DEFAULT_LAT, searchCoords?.[1] ?? DEFAULT_LNG, type, {
+    fetchDrivers(baseLat, baseLng, type, {
       // Broader first fetch to avoid "second click loads all" behavior on category switches.
       zoom: Math.min(zoom, 8.9),
       limit: requestedLimit,
       force: true,
       countryFallback: true,
     });
-  }, [fetchDrivers, readTypeCache, searchCoords]);
+
+    // Safety refresh for very fast category toggles (e.g. vinc -> kurtarici).
+    filterRetryRef.current = setTimeout(() => {
+      if (lastFilterTypeRef.current !== type) return;
+      const retryCoords = searchCoordsRef.current;
+      fetchDrivers(retryCoords?.[0] ?? DEFAULT_LAT, retryCoords?.[1] ?? DEFAULT_LNG, type, {
+        zoom: Math.min(lastMapFetchRef.current?.zoom ?? 9, 8.9),
+        limit: requestedLimit,
+        force: true,
+        countryFallback: true,
+      });
+    }, 420);
+  }, [fetchDrivers, readTypeCache]);
 
   const handleSelectDriver = useCallback((id: string | null, openPopup: boolean) => {
     setActiveDriverId(id);
@@ -861,19 +884,19 @@ export default function Home() {
       />
 
       <div
-        className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto scale-[0.75] sm:scale-[0.75] origin-top"
+        className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto origin-top"
         style={{
           top: TOP_UI_OFFSET,
-          width: 'min(540px, calc(100vw - 140px))'
+          width: 'min(760px, calc(100vw - 110px))'
         }}
       >
         <div className="relative rounded-2xl border border-gray-100 bg-white/95 shadow-lg backdrop-blur-md">
-          <div className="flex min-h-[52px] items-center gap-2 px-4 py-2">
+          <div className="flex min-h-[44px] items-center gap-2 px-3 py-1.5">
             <input
               value={mapSearchQuery}
               onChange={(e) => setMapSearchQuery(e.target.value)}
               placeholder="Firma veya hizmet ara"
-              className="flex-1 bg-transparent text-[14px] font-semibold text-slate-800 outline-none"
+              className="flex-1 bg-transparent text-[13px] font-semibold text-slate-800 outline-none"
             />
             {mapSearchQuery && (
               <button onClick={() => setMapSearchQuery('')} className="rounded-lg p-1.5 text-slate-500">
