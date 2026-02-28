@@ -14,6 +14,25 @@ export default function LocationRequiredPage() {
   const [selectedCity, setSelectedCity] = useState('İstanbul');
   const [selectedDistrict, setSelectedDistrict] = useState('Tuzla');
 
+  const openSettings = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+
+    try {
+      if (isIOS) {
+        window.location.href = 'app-settings:';
+      } else if (isAndroid) {
+        window.location.href = 'app-settings:';
+      } else {
+        alert('Lutfen tarayici/cihaz ayarlarindan konum iznini acin.');
+      }
+    } catch {
+      alert('Lutfen cihaz ayarlarindan konum iznini acin.');
+    }
+  }, []);
+
   const checkAndGo = useCallback(() => {
     if (!navigator?.geolocation) return;
     setChecking(true);
@@ -123,64 +142,83 @@ export default function LocationRequiredPage() {
   }, [checkAndGo]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_15%,rgba(239,68,68,0.16),transparent_35%),radial-gradient(circle_at_80%_85%,rgba(220,38,38,0.14),transparent_40%),#fff7f7] p-6 flex items-center justify-center">
-      <div className="mx-auto w-full max-w-2xl rounded-[2.6rem] border border-white/70 bg-white/92 p-10 md:p-12 shadow-2xl backdrop-blur-xl text-center">
-        <div className="mx-auto mb-6 inline-flex rounded-3xl bg-gradient-to-br from-red-50 to-red-100 p-4 text-red-600 shadow-sm">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_18%_12%,rgba(220,38,38,0.08),transparent_34%),radial-gradient(circle_at_82%_88%,rgba(59,130,246,0.08),transparent_40%),#f8fafc] p-6 flex items-center justify-center">
+      <div className="mx-auto w-full max-w-2xl rounded-[2.6rem] border border-slate-200/80 bg-white/92 p-8 md:p-10 shadow-2xl backdrop-blur-xl text-center">
+        <div className="mx-auto mb-5 inline-flex rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 p-4 text-red-600 shadow-sm ring-1 ring-slate-200">
           <MapPin size={34} />
         </div>
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-wide text-red-700">KONUM İZNİNİ AÇIN</h1>
-        <p className="mt-4 text-lg md:text-xl font-extrabold text-slate-700">{message}</p>
+        <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wide text-slate-900">Konum Iznini Acin</h1>
+        <p className="mt-3 text-base md:text-lg font-extrabold text-slate-700">{message}</p>
+        <p className="mt-3 text-sm md:text-base font-bold text-slate-600">
+          Konum acmadan devam etmek icin kullanmak istediginiz il ve ilceyi secin.
+        </p>
 
-        <div className="mt-8 space-y-4 rounded-3xl border border-slate-200 bg-slate-50/90 p-6 text-left">
+        <div className="mt-6 space-y-3 rounded-3xl border border-slate-200 bg-slate-50/90 p-5 text-left">
           <div className="flex items-start gap-3 text-slate-700">
-            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-sm font-black text-red-700">1</span>
-            <p className="text-base font-black leading-snug">Ayarlar &gt; Uygulamalar &gt; Transport 245 &gt; İzinler &gt; Konum</p>
+            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-black text-red-700 ring-1 ring-red-200">1</span>
+            <p className="text-sm md:text-base font-black leading-snug">Ayarlar &gt; Uygulamalar &gt; Transport 245 &gt; Izinler &gt; Konum</p>
           </div>
           <div className="flex items-start gap-3 text-slate-700">
-            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-sm font-black text-red-700">2</span>
-            <p className="text-base font-black leading-snug">Konum iznini "İzin Ver" olarak ayarlayın.</p>
+            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-black text-red-700 ring-1 ring-red-200">2</span>
+            <p className="text-sm md:text-base font-black leading-snug">Konum iznini "Izin Ver" olarak ayarlayin.</p>
           </div>
           <div className="flex items-start gap-3 text-slate-700">
-            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-sm font-black text-red-700">3</span>
-            <p className="text-base font-black leading-snug">Aşağıdaki butona basın. Konum açıldığında ana ekrana otomatik dönecek.</p>
+            <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-black text-red-700 ring-1 ring-red-200">3</span>
+            <p className="text-sm md:text-base font-black leading-snug">Konum acildiginda ana ekrana otomatik donecek.</p>
           </div>
         </div>
 
-        <button
-          onClick={checkAndGo}
-          disabled={checking}
-          className="mt-9 w-full rounded-[1.8rem] bg-gradient-to-r from-red-600 via-red-600 to-red-700 px-6 py-5 text-base font-black uppercase tracking-wide text-white shadow-xl disabled:opacity-70"
-        >
-          {checking ? 'Kontrol Ediliyor...' : 'Tekrar Kontrol Et'}
-        </button>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <button
+            onClick={checkAndGo}
+            disabled={checking}
+            className="w-full rounded-[1.3rem] bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 text-sm font-black uppercase tracking-wide text-white shadow-xl disabled:opacity-70"
+          >
+            {checking ? 'Kontrol Ediliyor...' : 'Tekrar Dene'}
+          </button>
+          <button
+            onClick={openSettings}
+            className="w-full rounded-[1.3rem] bg-white px-6 py-4 text-sm font-black uppercase tracking-wide text-red-700 shadow-lg ring-1 ring-red-200"
+          >
+            Ayarlara Git
+          </button>
+        </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-3 text-left md:grid-cols-2">
-          <select
-            value={selectedCity}
-            onChange={(e) => setSelectedCity(e.target.value)}
-            className="rounded-2xl border border-white/50 bg-white/80 p-4 text-sm font-black text-slate-800 outline-none backdrop-blur-sm"
-          >
-            {Object.keys(cityData).map((city) => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </select>
-          <select
-            value={selectedDistrict}
-            onChange={(e) => setSelectedDistrict(e.target.value)}
-            className="rounded-2xl border border-white/50 bg-white/80 p-4 text-sm font-black text-slate-800 outline-none backdrop-blur-sm"
-          >
-            {availableDistricts.map((district) => (
-              <option key={district} value={district}>{district}</option>
-            ))}
-          </select>
+        <div className="mt-5 rounded-3xl border border-slate-200 bg-white/85 p-4 md:p-5 text-left">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+              Il
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-black text-slate-800 outline-none"
+              >
+                {Object.keys(cityData).map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+              Ilce
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-black text-slate-800 outline-none"
+              >
+                {availableDistricts.map((district) => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <button
           onClick={handleContinueWithSelection}
           disabled={checking || !selectedCity || !selectedDistrict}
-          className="mt-4 w-full rounded-[1.6rem] bg-white px-6 py-4 text-sm font-black uppercase tracking-wide text-red-700 shadow-lg ring-1 ring-red-200 disabled:opacity-70"
+          className="mt-4 w-full rounded-[1.4rem] bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 text-sm font-black uppercase tracking-wide text-white shadow-lg disabled:opacity-70"
         >
-          {checking ? 'Hazırlanıyor...' : 'Seçilen İl/İlçe Merkeziyle Devam Et'}
+          {checking ? 'Hazirlaniyor...' : 'Secilen Il/Ilce Ile Devam Et'}
         </button>
       </div>
     </main>
