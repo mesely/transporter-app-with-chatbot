@@ -650,7 +650,7 @@ function ActionPanel({
     dragStartY.current = null;
   };
 
-  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-36' : 'h-14';
+  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-28' : 'h-14';
 
   const formatTitle = (name?: string) => {
     if (!name) return '';
@@ -689,19 +689,19 @@ function ActionPanel({
         </div>
       </div>
 
-      <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-3 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
+      <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-2 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-2">
-          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
-            <Wrench size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.kurtarici}</span>
+          <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
+            <Wrench size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
-            <Truck size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.nakliye}</span>
+          <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
+            <Truck size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.nakliye}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
-            <Zap size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.sarj}</span>
+          <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
+            <Zap size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.sarj}</span>
           </button>
-          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-2 rounded-[1.6rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
-            <Users size={16} className="mb-0.5" /> <span className="text-[9px] font-black uppercase leading-none">{tx.yolcu}</span>
+          <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
+            <Users size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.yolcu}</span>
           </button>
         </div>
 
@@ -1006,7 +1006,7 @@ function ActionPanel({
                         setLocalSelectedId(driver._id);
                         onSelectDriver(driver._id);
                     }}
-                    className={`bg-white/90 rounded-[2.2rem] p-4 mb-3 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
+                    className={`bg-white/90 rounded-[2.2rem] p-3 mb-2.5 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >
                     {driver.isVerified && Number(driver?.pricing?.pricePerUnit) > 0 && (
                       <div className="absolute top-4 right-4 text-right">
@@ -1026,20 +1026,20 @@ function ActionPanel({
                     )}
                     <div className="flex justify-between items-start text-gray-900">
                         <div className="flex gap-4 flex-1 overflow-hidden">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
-                               {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-6 h-6 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={20} strokeWidth={2.5} /> )}
+                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${iconBg} text-white`}>
+                               {isMobileCharge ? ( <img src="/icons/GeziciIcon.png" className="w-5 h-5 invert brightness-200" alt="G" /> ) : ( <DisplayIcon size={18} strokeWidth={2.5} /> )}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <h4 className="font-black text-[11px] sm:text-xs uppercase truncate leading-tight w-full" title={driver.businessName}>
+                                <h4 className="font-black text-[10px] sm:text-[11px] uppercase truncate leading-tight w-full" title={driver.businessName}>
                                     {formatTitle(driver.businessName)}
                                 </h4>
                                 <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                    {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
+                                    {[1,2,3,4,5].map(s => <Star key={s} size={9} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
 
-                                    {!isSpecialCategory && driver.distance && <span className="text-[9px] text-gray-400 font-bold ml-1 shrink-0">{(driver.distance / 1000).toFixed(1)} km</span>}
+                                    {!isSpecialCategory && driver.distance && <span className="text-[8px] text-gray-400 font-bold ml-1 shrink-0">{(driver.distance / 1000).toFixed(1)} km</span>}
 
                                     {!isSpecialCategory && driver.address?.fullText && (
-                                        <span className="text-[9px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
+                                        <span className="text-[8px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
                                             {driver.address.fullText}
                                         </span>
                                     )}
