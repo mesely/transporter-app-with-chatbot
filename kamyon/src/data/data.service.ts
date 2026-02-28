@@ -548,6 +548,9 @@ export class DataService {
   }
 
   private async fetchGooglePlaceDetails(placeId: string, apiKey: string): Promise<any | null> {
+    const newApi = await this.fetchGooglePlaceDetailsNew(placeId, apiKey);
+    if (newApi) return newApi;
+
     try {
       const response = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
         params: {
@@ -559,6 +562,27 @@ export class DataService {
         timeout: 15000,
       });
       return response?.data?.result || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async fetchGooglePlaceDetailsNew(placeId: string, apiKey: string): Promise<any | null> {
+    try {
+      const response = await axios.get(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,internationalPhoneNumber,nationalPhoneNumber,websiteUri,googleMapsUri',
+        },
+        timeout: 15000,
+      });
+      const p = response?.data || {};
+      return {
+        formatted_phone_number: p?.nationalPhoneNumber || '',
+        international_phone_number: p?.internationalPhoneNumber || '',
+        website: p?.websiteUri || '',
+        url: p?.googleMapsUri || '',
+      };
     } catch {
       return null;
     }
@@ -577,6 +601,50 @@ export class DataService {
       `${district}, ${city} oto lastikçi`,
     ];
 
+    // Prefer Places API (New) first.
+    for (const query of queries) {
+      try {
+        const response = await axios.post(
+          'https://places.googleapis.com/v1/places:searchText',
+          {
+            textQuery: query,
+            languageCode: 'tr',
+            regionCode: 'TR',
+            maxResultCount: perDistrictLimit,
+          },
+          {
+            headers: {
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
+            },
+            timeout: 15000,
+          }
+        );
+
+        const places = Array.isArray(response?.data?.places) ? response.data.places : [];
+        if (!places.length) continue;
+
+        const mapped = places
+          .map((p: any) => ({
+            place_id: p?.id || '',
+            name: String(p?.displayName?.text || '').trim(),
+            formatted_address: String(p?.formattedAddress || '').trim(),
+            geometry: {
+              location: {
+                lat: Number(p?.location?.latitude),
+                lng: Number(p?.location?.longitude),
+              },
+            },
+          }))
+          .filter((p: any) => p.place_id && Number.isFinite(p.geometry?.location?.lat) && Number.isFinite(p.geometry?.location?.lng));
+
+        if (mapped.length > 0) return mapped.slice(0, perDistrictLimit);
+      } catch (error: any) {
+        this.logger.warn(`⚠️ Lastik Places(New) denemesi başarısız (${city}/${district}): ${(error as any)?.message || error}`);
+      }
+    }
+
+    // Fallback to legacy endpoint if project still supports it.
     for (const query of queries) {
       try {
         const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
