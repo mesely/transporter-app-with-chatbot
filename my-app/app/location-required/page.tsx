@@ -172,13 +172,13 @@ export default function LocationRequiredPage() {
           <button
             onClick={checkAndGo}
             disabled={checking}
-            className="w-full rounded-[1.3rem] bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 text-sm font-black uppercase tracking-wide text-white shadow-xl disabled:opacity-70"
+            className="w-full rounded-[1.3rem] bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 text-sm font-black uppercase tracking-wide text-white shadow-xl disabled:opacity-70"
           >
             {checking ? 'Kontrol Ediliyor...' : 'Tekrar Dene'}
           </button>
           <button
             onClick={openSettings}
-            className="w-full rounded-[1.3rem] bg-white px-6 py-4 text-sm font-black uppercase tracking-wide text-red-700 shadow-lg ring-1 ring-red-200"
+            className="w-full rounded-[1.3rem] bg-white px-6 py-4 text-sm font-black uppercase tracking-wide text-cyan-700 shadow-lg ring-1 ring-cyan-200"
           >
             Ayarlara Git
           </button>
@@ -216,7 +216,7 @@ export default function LocationRequiredPage() {
         <button
           onClick={handleContinueWithSelection}
           disabled={checking || !selectedCity || !selectedDistrict}
-          className="mt-4 w-full rounded-[1.4rem] bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 text-sm font-black uppercase tracking-wide text-white shadow-lg disabled:opacity-70"
+          className="mt-4 w-full rounded-[1.4rem] bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-4 text-sm font-black uppercase tracking-wide text-white shadow-lg disabled:opacity-70"
         >
           {checking ? 'Hazirlaniyor...' : 'Secilen Il/Ilce Ile Devam Et'}
         </button>
