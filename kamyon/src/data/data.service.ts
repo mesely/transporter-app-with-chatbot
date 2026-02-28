@@ -220,10 +220,7 @@ export class DataService {
   }
 
   async importLastikFromGoogle(options: ImportLastikOptions = {}) {
-    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
-    if (!apiKey) {
-      throw new Error('GOOGLE_MAPS_API_KEY tanımlı değil.');
-    }
+    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
 
     const start = Math.max(0, Number(options.start || 0));
     const endRaw = Number.isFinite(Number(options.end)) ? Number(options.end) : TURKEY_DATA.length;
@@ -238,11 +235,20 @@ export class DataService {
       insertedOrUpdated: 0,
       skippedDuplicates: 0,
       failed: 0,
+      keyMissing: false,
       dryRun,
       start,
       end,
       perDistrictLimit,
     };
+
+    if (!apiKey) {
+      stats.keyMissing = true;
+      if (dryRun) {
+        return stats;
+      }
+      throw new Error('GOOGLE_MAPS_API_KEY (veya NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) tanımlı değil.');
+    }
 
     const districts = TURKEY_DATA.slice(start, end);
     this.logger.log(`🛞 Lastik import başladı. İlçe aralığı: ${start}-${end} / ${TURKEY_DATA.length}`);
@@ -565,7 +571,7 @@ export class DataService {
   }
 
   private async geocodeAddressFallback(address: string, city: string, district: string): Promise<[number, number]> {
-    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
     if (!apiKey) return [28.9784, 41.0082];
     const query = `${address}, ${district}, ${city}, Türkiye`;
     try {

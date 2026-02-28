@@ -26,16 +26,22 @@ export class MigrationController {
 
   @Post('import-lastik-google')
   async importLastikGoogle(@Body() body: any, @Res() res) {
-    const result = await this.dataService.importLastikFromGoogle({
-      start: body?.start,
-      end: body?.end,
-      perDistrictLimit: body?.perDistrictLimit,
-      dryRun: body?.dryRun,
-    });
-    return res.status(HttpStatus.OK).json({
-      message: 'Google üzerinden lastikçi import işlemi tamamlandı.',
-      data: result,
-    });
+    try {
+      const result = await this.dataService.importLastikFromGoogle({
+        start: body?.start,
+        end: body?.end,
+        perDistrictLimit: body?.perDistrictLimit,
+        dryRun: body?.dryRun,
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Google üzerinden lastikçi import işlemi tamamlandı.',
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        message: error?.message || 'Lastik import işlemi başarısız.',
+      });
+    }
   }
 
   @Post('import-yolcu-static')

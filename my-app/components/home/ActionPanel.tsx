@@ -650,7 +650,7 @@ function ActionPanel({
     dragStartY.current = null;
   };
 
-  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-28' : 'h-14';
+  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-24' : 'h-14';
 
   const formatTitle = (name?: string) => {
     if (!name) return '';
@@ -689,7 +689,7 @@ function ActionPanel({
         </div>
       </div>
 
-      <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-2 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
+      <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-1 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-2">
           <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-1.5 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
             <Wrench size={15} className="mb-0.5" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
@@ -757,35 +757,35 @@ function ActionPanel({
         </div>
 
         {panelState > 1 && (
-          <div className="flex items-center gap-2 mb-2 py-1 shrink-0 overflow-x-auto no-scrollbar">
-              <div className="relative shrink-0 w-[130px] shadow-lg rounded-2xl transition-transform">
+          <div className="flex items-center gap-1.5 mb-1 py-0.5 shrink-0 overflow-x-auto no-scrollbar">
+              <div className="relative shrink-0 w-[106px] shadow-lg rounded-xl transition-transform">
                 <select
                   value={selectedCity}
                   onChange={handleCityChange}
-                  className={`w-full appearance-none ${activeThemeColor} text-white pl-3 pr-8 py-3 rounded-2xl text-[9px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
+                  className={`w-full appearance-none ${activeThemeColor} text-white pl-2.5 pr-7 py-1.5 rounded-xl text-[7px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
                 >
                   <option value="">{tx.allTurkey}</option>
                   {Object.keys(CITY_COORDINATES).map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
                 </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={12} /></div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={10} /></div>
               </div>
 
-              <div className="flex bg-white/80 p-1 rounded-2xl shrink-0 border border-white/40 shadow-sm gap-1">
-                <button onClick={() => setSortMode(m => m === 'rating' ? 'distance' : 'rating')} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-colors flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500`}`}><ThumbsUp size={12}/> {tx.score}</button>
+              <div className="flex bg-white/80 p-0.5 rounded-xl shrink-0 border border-white/40 shadow-sm gap-0.5">
+                <button onClick={() => setSortMode(m => m === 'rating' ? 'distance' : 'rating')} className={`px-2 py-1.5 rounded-lg text-[7px] font-black uppercase transition-colors flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500`}`}><ThumbsUp size={10}/> {tx.score}</button>
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-1.5">
                 <button
                   onClick={() => setShowFavorites((v) => !v)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-2xl shadow-lg shrink-0 transition-colors border ${
+                  className={`w-8 h-8 flex items-center justify-center rounded-xl shadow-lg shrink-0 transition-colors border ${
                     showFavorites
                       ? `${activeThemeColor} text-white border-transparent`
                       : 'bg-white text-slate-500 border-slate-200'
                   }`}
                 >
-                  <Heart size={16} className={showFavorites ? 'fill-white' : ''} />
+                  <Heart size={13} className={showFavorites ? 'fill-white' : ''} />
                 </button>
-                <button onClick={handleLocateClick} className={`w-10 h-10 flex items-center justify-center text-white rounded-2xl shadow-lg shrink-0 transition-colors ${activeThemeColor}`}><LocateFixed size={16} /></button>
+                <button onClick={handleLocateClick} className={`w-8 h-8 flex items-center justify-center text-white rounded-xl shadow-lg shrink-0 transition-colors ${activeThemeColor}`}><LocateFixed size={13} /></button>
               </div>
           </div>
         )}
