@@ -1,12 +1,22 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { Metadata } from "next";
+import AuthGate from "../components/auth/AuthGate";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Transport 245 | Geleceğin Lojistik Ağı",
   description: "Kurtarıcı, nakliye ve mobil şarj hizmetlerine anında erişin. Transport 245 ile lojistik süreçleriniz güvende.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon", sizes: "any" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" }
+    ],
+    apple: [{ url: "/playstore.png", sizes: "512x512", type: "image/png" }],
+  },
   openGraph: {
     title: "Transport 245 | Geleceğin Lojistik Ağı",
     description: "Türkiye'nin en gelişmiş dijital lojistik pazaryeri.",
@@ -48,8 +58,7 @@ export default function RootLayout({
         className={`${inter.className} h-full bg-[#fdfdfd] antialiased`}
         suppressHydrationWarning
       >
-
-        {children}
+        <AuthGate>{children}</AuthGate>
       </body>
     </html>
   );
