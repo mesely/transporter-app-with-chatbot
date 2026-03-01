@@ -110,6 +110,54 @@ index 0000000..dd86e15
 +    }
 +}
 +#endif
+diff --git a/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthentication.swift b/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthentication.swift
+index ddb12e3..6688130 100644
+--- a/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthentication.swift
++++ b/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthentication.swift
+@@ -151,6 +151,10 @@ public typealias AuthStateChangedObserver = () -> Void
+     }
+ 
+     @objc func linkWithApple(_ call: CAPPluginCall) {
++        guard self.appleAuthProviderHandler != nil else {
++            call.reject("Apple provider is not initialized. Ensure FirebaseAuthentication.providers includes apple.com.")
++            return
++        }
+         self.savedCall = call
+         self.appleAuthProviderHandler?.link(call: call)
+     }
+@@ -230,6 +234,10 @@ public typealias AuthStateChangedObserver = () -> Void
+     }
+ 
+     @objc func linkWithGoogle(_ call: CAPPluginCall) {
++        guard self.googleAuthProviderHandler != nil else {
++            call.reject("Google provider is not initialized. Ensure FirebaseAuthentication.providers includes google.com.")
++            return
++        }
+         self.savedCall = call
+         self.googleAuthProviderHandler?.link(call: call)
+     }
+@@ -358,6 +366,10 @@ public typealias AuthStateChangedObserver = () -> Void
+     }
+ 
+     @objc func signInWithApple(_ call: CAPPluginCall) {
++        guard self.appleAuthProviderHandler != nil else {
++            call.reject("Apple provider is not initialized. Ensure FirebaseAuthentication.providers includes apple.com.")
++            return
++        }
+         self.savedCall = call
+         self.appleAuthProviderHandler?.signIn(call: call)
+     }
+@@ -455,6 +467,10 @@ public typealias AuthStateChangedObserver = () -> Void
+     }
+ 
+     @objc func signInWithGoogle(_ call: CAPPluginCall) {
++        guard self.googleAuthProviderHandler != nil else {
++            call.reject("Google provider is not initialized. Ensure FirebaseAuthentication.providers includes google.com.")
++            return
++        }
+         self.savedCall = call
+         self.googleAuthProviderHandler?.signIn(call: call)
+     }
 diff --git a/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationHelper.swift b/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationHelper.swift
 index d6104ae..cd7177e 100644
 --- a/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationHelper.swift
