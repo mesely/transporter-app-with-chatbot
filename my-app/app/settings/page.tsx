@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   BookText,
   Heart,
-  Mail,
   Phone,
   Shield,
   Star,
@@ -70,6 +69,7 @@ export default function SettingsPage() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
 
@@ -215,10 +215,30 @@ export default function SettingsPage() {
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Profil ve Aktiviteler</h1>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Ayarlar</h1>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+            <button
+              onClick={() => setActiveTab('general')}
+              className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide ${
+                activeTab === 'general' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'
+              }`}
+            >
+              Genel
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide ${
+                activeTab === 'history' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'
+              }`}
+            >
+              Geçmiş Siparişler
+            </button>
           </div>
         </header>
 
+        {activeTab === 'general' && (
+        <>
         <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <UserCircle2 className="text-cyan-700" size={20} />
@@ -255,13 +275,12 @@ export default function SettingsPage() {
             <BookText className="text-indigo-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Sözleşme ve İletişim</p>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <button
               onClick={() => setShowAgreementModal(true)}
               className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
             >
               <p className="text-[10px] font-black uppercase text-slate-400">Kullanıcı Sözleşmesi</p>
-              <p className="mt-1 text-sm font-black text-slate-900">Metni Gör</p>
             </button>
 
             <button
@@ -269,19 +288,20 @@ export default function SettingsPage() {
               className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
             >
               <p className="text-[10px] font-black uppercase text-slate-400">KVKK Aydınlatma</p>
-              <p className="mt-1 text-sm font-black text-slate-900">Metni Gör</p>
             </button>
-
-            <a
-              href="mailto:iletisimtransporter@gmail.com"
-              className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
-            >
-              <p className="text-[10px] font-black uppercase text-slate-400">İletişim</p>
-              <p className="mt-1 text-sm font-black text-slate-900 break-all">iletisimtransporter@gmail.com</p>
+          </div>
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[10px] font-black uppercase text-slate-400">İletişim</p>
+            <a href="mailto:iletisimtransporter@gmail.com" className="mt-1 block text-sm font-black text-slate-900 break-all">
+              iletisimtransporter@gmail.com
             </a>
           </div>
         </section>
+        </>
+        )}
 
+        {activeTab === 'history' && (
+        <>
         <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <Phone className="text-blue-600" size={20} />
@@ -410,10 +430,12 @@ export default function SettingsPage() {
             )}
           </div>
         </section>
+        </>
+        )}
 
         <footer className="rounded-[2rem] border border-white/70 bg-white/70 p-4 text-center shadow-lg backdrop-blur-xl">
-          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
-            <Mail size={14} /> Onay süreçleri admin panelinden yönetilir.
+          <p className="text-xs font-black uppercase tracking-wider text-slate-500">
+            Net gelirin %10&apos;una kadar yardım kuruluşlarına bağışlanır.
           </p>
         </footer>
       </div>

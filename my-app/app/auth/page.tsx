@@ -16,6 +16,8 @@ import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import Image from 'next/image';
 import { auth, appleProvider, googleProvider } from '../../lib/firebase';
 import { DEFAULT_PHONE_COUNTRY_ISO2, PHONE_COUNTRIES, type PhoneCountry } from '../../utils/phone-countries';
+import KVKKModal from '../../components/KVKKModal';
+import UserAgreementModal from '../../components/UserAgreementModal';
 
 function GoogleLogo() {
   return (
@@ -109,6 +111,8 @@ export default function AuthPage() {
   const [targetPhone, setTargetPhone] = useState('');
   const [selectedCountryIso2, setSelectedCountryIso2] = useState(DEFAULT_PHONE_COUNTRY_ISO2);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [showKvkkModal, setShowKvkkModal] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
 
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
@@ -585,10 +589,25 @@ export default function AuthPage() {
           >
             Giriş yapmadan devam et (Önerilmez)
           </button>
+
+          <p className="pt-1 text-center text-[11px] font-semibold text-slate-500">
+            Devam ederek{' '}
+            <button onClick={() => setShowAgreementModal(true)} className="font-black underline">
+              Kullanıcı Sözleşmesi
+            </button>{' '}
+            ve{' '}
+            <button onClick={() => setShowKvkkModal(true)} className="font-black underline">
+              KVKK
+            </button>{' '}
+            metinlerini onaylıyorum.
+          </p>
         </div>
 
         <div id="phone-recaptcha" className="hidden" />
       </section>
+
+      <KVKKModal isOpen={showKvkkModal} onClose={() => setShowKvkkModal(false)} readOnly />
+      <UserAgreementModal isOpen={showAgreementModal} onClose={() => setShowAgreementModal(false)} readOnly />
     </main>
   );
 }

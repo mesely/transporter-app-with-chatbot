@@ -914,7 +914,7 @@ export default function Home() {
         onSearchQueryChange={setMapSearchQuery}
         suggestions={suggestions}
         onPickSuggestion={handleSearchPick}
-          onProfileClick={() => router.push('/settings')}
+          onProfileClick={() => router.push('/profile')}
       />
 
       <div className="absolute inset-0 z-0">
