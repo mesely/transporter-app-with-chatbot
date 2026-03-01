@@ -64,8 +64,10 @@ function mapAuthErrorMessage(err: any) {
     return 'Telefon doğrulama ayarlarında eksik olabilir. Firebase Phone provider ayarını kontrol edin.';
   }
   if (code.includes('internal-error')) return 'Native auth hatası. Firebase yapılandırması eksik olabilir.';
-  if (code.includes('operation-not-allowed')) return 'Sağlayıcı Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden açın.';
-  return err?.message || 'Kimlik doğrulama başarısız.';
+  if (code.includes('operation-not-allowed')) {
+    return `Bu giriş yöntemi Firebase'de aktif değil (code: ${code || 'operation-not-allowed'}). Firebase proje/uygulama eşleşmesini kontrol edin.`;
+  }
+  return `${err?.message || 'Kimlik doğrulama başarısız.'}${code ? ` (code: ${code})` : ''}`;
 }
 
 function persistLocalUser(user: any) {
@@ -356,9 +358,8 @@ export default function AuthPage() {
           FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber: fullPhone }),
           25000,
         );
-        setPhoneStage('code');
+        // Native tarafta başarılı akış "phoneCodeSent" listener'ından yönetilir.
         setResendCooldown(30);
-        setError('Doğrulama kodu gönderildi.');
         return;
       }
 
