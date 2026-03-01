@@ -5,6 +5,7 @@ import { getRedirectResult, signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import Image from 'next/image';
 import { auth, appleProvider, googleProvider } from '../../lib/firebase';
 
 function GoogleLogo() {
@@ -94,6 +95,7 @@ export default function AuthPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [logoSrc, setLogoSrc] = useState('/favicon.ico');
   const isNative = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
   const showAppleButton = !isNative || platform === 'ios';
@@ -215,7 +217,16 @@ export default function AuthPage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_10%,rgba(6,182,212,0.18),transparent_32%),radial-gradient(circle_at_86%_88%,rgba(37,99,235,0.2),transparent_38%),#f8fafc] flex items-center justify-center p-5">
       <section className="w-full max-w-md rounded-[2.2rem] border border-white/70 bg-white/90 p-6 shadow-2xl backdrop-blur-xl">
         <div className="text-center">
-          <img src="/playstore.png" alt="Transport 245" className="mx-auto h-16 w-16 rounded-2xl shadow-lg ring-1 ring-slate-200" />
+          <div className="relative mx-auto h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg ring-1 ring-slate-200">
+            <Image
+              src={logoSrc}
+              alt="Transport 245"
+              fill
+              priority
+              onError={() => setLogoSrc('/playstore.png')}
+              className="object-contain p-1"
+            />
+          </div>
           <h1 className="mt-4 text-2xl font-black uppercase tracking-wide text-slate-900">Giriş Yap</h1>
           <p className="mt-2 text-sm font-semibold text-slate-600">Uygulamaya Google veya Apple hesabınızla giriş yapabilirsiniz.</p>
         </div>
