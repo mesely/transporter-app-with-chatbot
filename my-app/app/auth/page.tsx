@@ -1,12 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getRedirectResult, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ConfirmationResult } from 'firebase/auth';
+import {
+  getRedirectResult,
+  GoogleAuthProvider,
+  RecaptchaVerifier,
+  signInWithCredential,
+  signInWithPhoneNumber,
+  signInWithPopup,
+} from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import Image from 'next/image';
 import { auth, appleProvider, googleProvider } from '../../lib/firebase';
+import { DEFAULT_PHONE_COUNTRY_ISO2, PHONE_COUNTRIES, type PhoneCountry } from '../../utils/phone-countries';
 
 function GoogleLogo() {
   return (
@@ -46,31 +55,14 @@ function mapAuthErrorMessage(err: any) {
   if (code.includes('too-many-requests')) return 'Çok fazla deneme yapıldı. Biraz sonra tekrar deneyin.';
   if (code.includes('canceled')) return 'Giriş işlemi iptal edildi.';
   if (code.includes('not-supported')) return 'Bu cihaz/işletim sistemi bu giriş yöntemini desteklemiyor.';
-  if (code.includes('missing-client-identifier')) return 'Apple için client identifier eksik.';
-  if (message.toLocaleLowerCase('tr').includes("doesn't support credential manager")) {
-    return 'Bu cihaz Credential Manager desteklemiyor. Google giriş için klasik hesap seçimi kullanılacak.';
-  }
-  if (message.toLocaleLowerCase('tr').includes('credential manager')) {
-    return 'Credential Manager bu cihazda kullanılamadı. Tekrar deneyin.';
-  }
-  if (code.includes('no-credentials') || message.toLocaleLowerCase('tr').includes('no credentials available')) {
-    return 'Bu cihazda uygun Google hesabı bulunamadı. Hesap ekleyip tekrar deneyin.';
-  }
-  if (
-    code.includes('10') ||
-    message.includes('10:') ||
-    message.toLocaleLowerCase('tr').includes('developer_error')
-  ) {
-    return 'Google giriş yapılandırma hatası (kod 10). Firebase Android uygulamasına SHA-1/SHA-256 ekleyip google-services.json dosyasını tekrar indirmeniz gerekiyor.';
-  }
-  if (message.toLocaleLowerCase('tr').includes('apple')) {
-    return 'Apple giriş yapılandırması eksik/hatalı olabilir. Apple Developer ve Firebase ayarlarını kontrol edin.';
-  }
   if (message.toLocaleLowerCase('tr').includes('simulator')) {
-    return 'iOS simülatörde native kimlik doğrulama sınırlı olabilir. Gerçek cihazda deneyin.';
+    return 'iOS simülatörde sosyal giriş sınırlı olabilir. Gerçek cihazda deneyin.';
   }
-  if (code.includes('internal-error')) return 'Native auth hatası. Firebase yapılandırması (google-services.json / GoogleService-Info.plist, SHA ve OAuth istemcisi) eksik olabilir.';
-  if (code.includes('operation-not-allowed')) return 'Sağlayıcı Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden Google ve Apple sağlayıcılarını açın.';
+  if (message.toLocaleLowerCase('tr').includes('phone')) {
+    return 'Telefon doğrulama ayarlarında eksik olabilir. Firebase Phone provider ayarını kontrol edin.';
+  }
+  if (code.includes('internal-error')) return 'Native auth hatası. Firebase yapılandırması eksik olabilir.';
+  if (code.includes('operation-not-allowed')) return 'Sağlayıcı Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden açın.';
   return err?.message || 'Kimlik doğrulama başarısız.';
 }
 
@@ -82,12 +74,12 @@ function persistLocalUser(user: any) {
 
   localStorage.removeItem('Transport_guest_mode');
   localStorage.setItem('Transport_auth_logged_in', '1');
-  if (displayName || fallbackName) localStorage.setItem('Transport_user_name', displayName || fallbackName);
+  localStorage.setItem('Transport_user_name', displayName || fallbackName || 'Kullanıcı');
   if (email) localStorage.setItem('Transport_user_email', email);
   if (phoneNumber) localStorage.setItem('Transport_user_phone', phoneNumber);
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs = 15000): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 20000): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -101,11 +93,28 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs = 15000): Promise<T
   }
 }
 
+type NativeListenerHandle = { remove: () => Promise<void> };
+
+type PhoneStage = 'entry' | 'code';
+
 export default function AuthPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [logoSrc, setLogoSrc] = useState('/favicon.ico');
+  const [phoneStage, setPhoneStage] = useState<PhoneStage>('entry');
+  const [phoneValue, setPhoneValue] = useState('');
+  const [smsCode, setSmsCode] = useState('');
+  const [verificationId, setVerificationId] = useState('');
+  const [targetPhone, setTargetPhone] = useState('');
+  const [selectedCountryIso2, setSelectedCountryIso2] = useState(DEFAULT_PHONE_COUNTRY_ISO2);
+
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const phoneCodeSentRef = useRef<NativeListenerHandle | null>(null);
+  const phoneVerificationCompletedRef = useRef<NativeListenerHandle | null>(null);
+  const phoneVerificationFailedRef = useRef<NativeListenerHandle | null>(null);
+
   const isNative = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
   const isIosSimulator =
@@ -116,6 +125,12 @@ export default function AuthPage() {
         ' ' +
         (typeof navigator !== 'undefined' ? navigator.platform : ''),
     );
+
+  const selectedCountry = useMemo<PhoneCountry>(() => {
+    return PHONE_COUNTRIES.find((country) => country.iso2 === selectedCountryIso2) || PHONE_COUNTRIES[0];
+  }, [selectedCountryIso2]);
+
+  const showGoogleButton = !isNative || platform === 'android';
   const showAppleButton = !isNative || platform === 'ios';
 
   const continueAsGuest = () => {
@@ -128,6 +143,52 @@ export default function AuthPage() {
     localStorage.removeItem('Transport_user_name');
     router.replace('/');
   };
+
+  useEffect(() => {
+    if (!isNative) return;
+    let mounted = true;
+
+    FirebaseAuthentication.addListener('phoneCodeSent', (event: any) => {
+      if (!mounted) return;
+      const incomingVerificationId = String(event?.verificationId || '');
+      if (incomingVerificationId) setVerificationId(incomingVerificationId);
+      setPhoneStage('code');
+      setLoading(false);
+      setError('');
+    }).then((listener) => {
+      phoneCodeSentRef.current = listener;
+    }).catch(() => {});
+
+    FirebaseAuthentication.addListener('phoneVerificationCompleted', (event: any) => {
+      if (!mounted) return;
+      if (event?.user) {
+        persistLocalUser(event.user);
+        router.replace('/');
+        return;
+      }
+      setLoading(false);
+    }).then((listener) => {
+      phoneVerificationCompletedRef.current = listener;
+    }).catch(() => {});
+
+    FirebaseAuthentication.addListener('phoneVerificationFailed', (event: any) => {
+      if (!mounted) return;
+      setError(String(event?.message || 'Telefon doğrulama başarısız.'));
+      setLoading(false);
+    }).then((listener) => {
+      phoneVerificationFailedRef.current = listener;
+    }).catch(() => {});
+
+    return () => {
+      mounted = false;
+      phoneCodeSentRef.current?.remove().catch(() => {});
+      phoneVerificationCompletedRef.current?.remove().catch(() => {});
+      phoneVerificationFailedRef.current?.remove().catch(() => {});
+      phoneCodeSentRef.current = null;
+      phoneVerificationCompletedRef.current = null;
+      phoneVerificationFailedRef.current = null;
+    };
+  }, [isNative, router]);
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -159,6 +220,10 @@ export default function AuthPage() {
 
     return () => {
       active = false;
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
     };
   }, [router]);
 
@@ -178,32 +243,16 @@ export default function AuthPage() {
       if (Capacitor.isNativePlatform() && !isIosSimulator) {
         if (provider === 'google') {
           let nativeResult: any;
-          try {
-            if (platform === 'android') {
-              nativeResult = await withTimeout(
-                FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
-                20000,
-              );
-            } else {
-              nativeResult = await withTimeout(
-                FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),
-                20000,
-              );
-            }
-          } catch (firstErr: any) {
-            const firstMessage = String(firstErr?.message || '').toLocaleLowerCase('tr');
-            if (
-              firstMessage.includes('no credentials available') ||
-              firstMessage.includes("doesn't support credential manager") ||
-              firstMessage.includes('credential manager')
-            ) {
-              nativeResult = await withTimeout(
-                FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
-                20000,
-              );
-            } else {
-              throw firstErr;
-            }
+          if (platform === 'android') {
+            nativeResult = await withTimeout(
+              FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
+              20000,
+            );
+          } else {
+            nativeResult = await withTimeout(
+              FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),
+              20000,
+            );
           }
 
           if (platform === 'ios') {
@@ -256,25 +305,139 @@ export default function AuthPage() {
       }
       throw new Error(provider === 'google' ? 'Google giriş tamamlanamadı.' : 'Apple giriş tamamlanamadı.');
     } catch (err: any) {
-      if (err?.code) console.error('AUTH_SOCIAL_ERROR', err.code, err);
-      if (String(err?.code || '').includes('operation-not-allowed')) {
-        setError(
-          provider === 'apple'
-            ? 'Apple provider açık görünüyor; genelde eksik Apple ayarı (Service ID / Key ID / Team ID / .p8) veya yanlış Bundle/Service kimliği bu hatayı üretir.'
-            : 'Google girişi Firebase’de kapalı. Firebase Console > Authentication > Sign-in method > Google bölümünü açın.',
-        );
-        return;
-      }
       if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
-        setError('Giriş işlemi zaman aşımına uğradı. Tekrar deneyin veya "Giriş Yapmadan Devam Et" ile devam edin.');
-        return;
+        setError('Giriş işlemi zaman aşımına uğradı. Tekrar deneyin.');
+      } else {
+        setError(mapAuthErrorMessage(err));
       }
-      setError(mapAuthErrorMessage(err));
     } finally {
       clearTimeout(failSafeTimer);
       setLoading(false);
     }
   };
+
+  const sendPhoneCode = async () => {
+    if (loading) return;
+    setError('');
+
+    const localDigits = phoneValue.replace(/\D/g, '').replace(/^0+/, '');
+    if (localDigits.length < 6) {
+      setError('Telefon numarasını eksiksiz girin.');
+      return;
+    }
+
+    const fullPhone = `${selectedCountry.dialCode}${localDigits}`;
+    setTargetPhone(fullPhone);
+    setLoading(true);
+
+    try {
+      if (Capacitor.isNativePlatform() && !isIosSimulator) {
+        await withTimeout(
+          FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber: fullPhone }),
+          25000,
+        );
+        setPhoneStage('code');
+        setError('Doğrulama kodu gönderildi.');
+        return;
+      }
+
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'phone-recaptcha', {
+          size: 'invisible',
+        });
+        await recaptchaVerifierRef.current.render();
+      }
+
+      const confirmationResult = await withTimeout(
+        signInWithPhoneNumber(auth, fullPhone, recaptchaVerifierRef.current),
+        25000,
+      );
+      confirmationResultRef.current = confirmationResult;
+      setPhoneStage('code');
+    } catch (err: any) {
+      if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
+        setError('Kod gönderimi zaman aşımına uğradı. Tekrar deneyin.');
+      } else {
+        setError(mapAuthErrorMessage(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyPhoneCode = async () => {
+    if (loading) return;
+    setError('');
+
+    const code = smsCode.replace(/\D/g, '');
+    if (code.length < 4) {
+      setError('Doğrulama kodunu girin.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (Capacitor.isNativePlatform() && !isIosSimulator) {
+        if (!verificationId) {
+          setError('Kod doğrulama bilgisi henüz gelmedi. Lütfen tekrar kod gönderin.');
+          setLoading(false);
+          return;
+        }
+
+        const result = await withTimeout(
+          FirebaseAuthentication.confirmVerificationCode({
+            verificationId,
+            verificationCode: code,
+          }),
+          25000,
+        );
+
+        if (result?.user) {
+          persistLocalUser(result.user);
+          router.replace('/');
+          return;
+        }
+
+        const currentUser = await FirebaseAuthentication.getCurrentUser();
+        if (currentUser?.user) {
+          persistLocalUser(currentUser.user);
+          router.replace('/');
+          return;
+        }
+
+        throw new Error('Telefon doğrulama tamamlanamadı.');
+      }
+
+      if (!confirmationResultRef.current) {
+        throw new Error('Kod doğrulama oturumu bulunamadı. Lütfen tekrar kod gönderin.');
+      }
+
+      const result = await withTimeout(confirmationResultRef.current.confirm(code), 25000);
+      if (result?.user) {
+        persistLocalUser(result.user);
+        router.replace('/');
+        return;
+      }
+
+      throw new Error('Telefon doğrulama tamamlanamadı.');
+    } catch (err: any) {
+      if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
+        setError('Kod doğrulama zaman aşımına uğradı. Tekrar deneyin.');
+      } else {
+        setError(mapAuthErrorMessage(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const authHint = useMemo(() => {
+    const hints: string[] = [];
+    if (showGoogleButton) hints.push('Google');
+    if (showAppleButton) hints.push('Apple');
+    hints.push('Telefon');
+    return `Uygulamaya ${hints.join(', ')} ile giriş yapabilirsiniz.`;
+  }, [showAppleButton, showGoogleButton]);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_10%,rgba(6,182,212,0.18),transparent_32%),radial-gradient(circle_at_86%_88%,rgba(37,99,235,0.2),transparent_38%),#f8fafc] flex items-center justify-center p-5">
@@ -291,23 +454,22 @@ export default function AuthPage() {
             />
           </div>
           <h1 className="mt-4 text-2xl font-black uppercase tracking-wide text-slate-900">Giriş Yap</h1>
-          <p className="mt-2 text-sm font-semibold text-slate-600">
-            {showAppleButton
-              ? 'Uygulamaya Google veya Apple hesabınızla giriş yapabilirsiniz.'
-              : 'Uygulamaya Google hesabınızla giriş yapabilirsiniz.'}
-          </p>
+          <p className="mt-2 text-sm font-semibold text-slate-600">{authHint}</p>
         </div>
 
         {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
 
         <div className="mt-5 space-y-2">
-          <button
-            onClick={() => socialLogin('google')}
-            disabled={loading}
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
-          </button>
+          {showGoogleButton && (
+            <button
+              onClick={() => socialLogin('google')}
+              disabled={loading}
+              className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
+            </button>
+          )}
+
           {showAppleButton && (
             <button
               onClick={() => socialLogin('apple')}
@@ -318,13 +480,77 @@ export default function AuthPage() {
             </button>
           )}
 
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Telefon ile Giriş</p>
+            <div className="mt-2 flex gap-2">
+              <select
+                value={selectedCountryIso2}
+                onChange={(e) => setSelectedCountryIso2(e.target.value)}
+                className="w-40 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-bold text-slate-700 outline-none"
+              >
+                {PHONE_COUNTRIES.map((country) => (
+                  <option key={`${country.iso2}-${country.dialCode}`} value={country.iso2}>
+                    {country.flag} {country.iso2} ({country.dialCode})
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="tel"
+                value={phoneValue}
+                onChange={(e) => setPhoneValue(e.target.value)}
+                placeholder="Telefon numaranız"
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none"
+              />
+            </div>
+
+            {phoneStage === 'code' && (
+              <div className="mt-2 space-y-2">
+                <p className="text-[10px] font-bold text-slate-500">
+                  {targetPhone ? `${targetPhone} numarasına gelen kodu girin.` : 'SMS doğrulama kodunu girin.'}
+                </p>
+                <input
+                  type="tel"
+                  value={smsCode}
+                  onChange={(e) => setSmsCode(e.target.value)}
+                  placeholder="SMS kodu"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={phoneStage === 'entry' ? sendPhoneCode : verifyPhoneCode}
+              disabled={loading}
+              className="mt-2 w-full rounded-xl border border-cyan-200 bg-cyan-50 py-2.5 text-xs font-black uppercase tracking-wide text-cyan-700 disabled:opacity-60"
+            >
+              {loading ? 'İşleniyor...' : phoneStage === 'entry' ? 'Kodu Gönder' : 'Kodu Doğrula'}
+            </button>
+
+            {phoneStage === 'code' && (
+              <button
+                onClick={() => {
+                  setPhoneStage('entry');
+                  setSmsCode('');
+                  setVerificationId('');
+                  setError('');
+                }}
+                className="mt-1 w-full text-[11px] font-bold text-slate-500 underline"
+              >
+                Numarayı değiştir
+              </button>
+            )}
+          </div>
+
           <button
             onClick={continueAsGuest}
-            className="w-full rounded-2xl border border-blue-200 bg-blue-50 py-3 text-sm font-black tracking-wide text-blue-700 disabled:opacity-60"
+            className="w-full bg-transparent py-1 text-[12px] font-bold tracking-wide text-blue-700 underline underline-offset-2"
           >
-            Giriş Yapmadan Devam Et (Önerilmez)
+            Giriş yapmadan devam et (Önerilmez)
           </button>
         </div>
+
+        <div id="phone-recaptcha" className="hidden" />
       </section>
     </main>
   );

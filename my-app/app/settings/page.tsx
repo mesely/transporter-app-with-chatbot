@@ -1,8 +1,22 @@
 'use client';
 
-import { AlertTriangle, ArrowLeft, Heart, Mail, Star, UserCircle2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  BookText,
+  Heart,
+  Mail,
+  Phone,
+  Shield,
+  Star,
+  UserCircle2,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import KVKKModal from '../../components/KVKKModal';
+import UserAgreementModal from '../../components/UserAgreementModal';
+import RatingModal from '../../components/RatingModal';
+import ReportModal from '../../components/ReportModal';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const FAVORITES_KEY = 'Transport_favorites_v1';
@@ -15,6 +29,30 @@ type FavoriteItem = {
   rating?: number;
 };
 
+type OrderItem = {
+  _id: string;
+  serviceType?: string;
+  status?: string;
+  createdAt?: string;
+  driver?: {
+    _id?: string;
+    businessName?: string;
+    phoneNumber?: string;
+  };
+};
+
+function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  let id = localStorage.getItem('Transport_device_id');
+  if (!id) {
+    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('Transport_device_id', id);
+  }
+  return id;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [name, setName] = useState('Kullanıcı');
@@ -24,7 +62,14 @@ export default function SettingsPage() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [myRatings, setMyRatings] = useState<any[]>([]);
   const [myReports, setMyReports] = useState<any[]>([]);
+  const [orderHistory, setOrderHistory] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [showKvkkModal, setShowKvkkModal] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
 
@@ -78,15 +123,85 @@ export default function SettingsPage() {
     loadActivity();
   }, [normalizedPhone]);
 
+  useEffect(() => {
+    const loadOrders = async () => {
+      setOrdersLoading(true);
+      try {
+        const customerId = getOrCreateDeviceId();
+        if (!customerId) {
+          setOrderHistory([]);
+          return;
+        }
+        const response = await fetch(`${API_URL}/orders?customerId=${encodeURIComponent(customerId)}`);
+        const data = await response.json();
+        setOrderHistory(Array.isArray(data) ? data : []);
+      } catch {
+        setOrderHistory([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, []);
+
   const getStatusChip = (statusRaw: string) => {
     const status = String(statusRaw || '').toUpperCase();
-    if (status === 'APPROVED' || status === 'RESOLVED') {
-      return { label: 'Yayınlandı', className: 'bg-emerald-100 text-emerald-700' };
+    if (status === 'APPROVED' || status === 'RESOLVED' || status === 'COMPLETED') {
+      return { label: 'Tamamlandı', className: 'bg-emerald-100 text-emerald-700' };
     }
-    if (status === 'REJECTED' || status === 'CLOSED') {
-      return { label: 'Reddedildi', className: 'bg-slate-200 text-slate-600' };
+    if (status === 'REJECTED' || status === 'CLOSED' || status === 'CANCELLED') {
+      return { label: 'Kapandı', className: 'bg-slate-200 text-slate-600' };
     }
-    return { label: 'Admin Onayı Bekliyor', className: 'bg-amber-100 text-amber-700' };
+    if (status === 'PENDING') {
+      return { label: 'Bekliyor', className: 'bg-amber-100 text-amber-700' };
+    }
+    return { label: 'İşlemde', className: 'bg-blue-100 text-blue-700' };
+  };
+
+  const handleOpenRating = (order: OrderItem) => {
+    setSelectedOrder(order);
+    setShowRatingModal(true);
+  };
+
+  const handleOpenReport = (order: OrderItem) => {
+    setSelectedOrder(order);
+    setShowReportModal(true);
+  };
+
+  const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
+    const providerId = selectedOrder?.driver?._id;
+    if (!providerId) {
+      alert('Bu sipariş için firma bilgisi bulunamadı.');
+      return;
+    }
+
+    const reporterPhone = normalizedPhone;
+    if (!reporterPhone) {
+      alert('Değerlendirme için profil telefon bilgisi gerekli.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/users/${providerId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating: data.rating,
+          comment: data.comment,
+          tags: data.tags,
+          orderId: selectedOrder?._id,
+          reporterPhone,
+          reporterName: name,
+          reporterEmail: email,
+        }),
+      });
+
+      if (!response.ok) throw new Error('rating_failed');
+      alert('Değerlendirme admin onayına gönderildi.');
+    } catch {
+      alert('Değerlendirme gönderilemedi. Lütfen tekrar deneyin.');
+    }
   };
 
   return (
@@ -132,6 +247,91 @@ export default function SettingsPage() {
               <p className="text-[10px] font-black uppercase text-slate-400">E-posta</p>
               <p className="mt-1 text-sm font-black text-slate-900 break-all">{email || '-'}</p>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <BookText className="text-indigo-600" size={20} />
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Sözleşme ve İletişim</p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <button
+              onClick={() => setShowAgreementModal(true)}
+              className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
+            >
+              <p className="text-[10px] font-black uppercase text-slate-400">Kullanıcı Sözleşmesi</p>
+              <p className="mt-1 text-sm font-black text-slate-900">Metni Gör</p>
+            </button>
+
+            <button
+              onClick={() => setShowKvkkModal(true)}
+              className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
+            >
+              <p className="text-[10px] font-black uppercase text-slate-400">KVKK Aydınlatma</p>
+              <p className="mt-1 text-sm font-black text-slate-900">Metni Gör</p>
+            </button>
+
+            <a
+              href="mailto:iletisimtransporter@gmail.com"
+              className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
+            >
+              <p className="text-[10px] font-black uppercase text-slate-400">İletişim</p>
+              <p className="mt-1 text-sm font-black text-slate-900 break-all">iletisimtransporter@gmail.com</p>
+            </a>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <Phone className="text-blue-600" size={20} />
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Geçmiş Siparişler</p>
+          </div>
+          <div className="mt-4 space-y-2">
+            {ordersLoading ? (
+              <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
+            ) : orderHistory.length === 0 ? (
+              <p className="text-xs font-bold text-slate-500">Henüz geçmiş sipariş yok.</p>
+            ) : (
+              orderHistory.map((order) => {
+                const chip = getStatusChip(String(order.status || ''));
+                const createdAtText = order.createdAt
+                  ? new Date(order.createdAt).toLocaleString('tr-TR')
+                  : '-';
+
+                return (
+                  <div key={order._id} className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-black uppercase text-slate-800">
+                        {order.driver?.businessName || 'Firma'}
+                      </p>
+                      <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase ${chip.className}`}>
+                        {chip.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                      Hizmet: {order.serviceType || '-'}
+                    </p>
+                    <p className="text-[11px] font-semibold text-slate-600">Tarih: {createdAtText}</p>
+
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => handleOpenRating(order)}
+                        className="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-[10px] font-black uppercase text-white"
+                      >
+                        Değerlendirme
+                      </button>
+                      <button
+                        onClick={() => handleOpenReport(order)}
+                        className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-[10px] font-black uppercase text-white"
+                      >
+                        Şikayet
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -217,6 +417,16 @@ export default function SettingsPage() {
           </p>
         </footer>
       </div>
+
+      <KVKKModal isOpen={showKvkkModal} onClose={() => setShowKvkkModal(false)} readOnly />
+      <UserAgreementModal isOpen={showAgreementModal} onClose={() => setShowAgreementModal(false)} readOnly />
+      <RatingModal isOpen={showRatingModal} onClose={() => setShowRatingModal(false)} onRate={handleRateOrder} />
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        orderId={selectedOrder?._id || null}
+        driverId={selectedOrder?.driver?._id || null}
+      />
     </main>
   );
 }
