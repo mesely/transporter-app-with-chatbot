@@ -90,7 +90,7 @@ export default function AuthPage() {
         (typeof navigator !== 'undefined' ? navigator.platform : ''),
     );
 
-  const showGoogleButton = true;
+  const showGoogleButton = !isNative || platform === 'android';
   const showAppleButton = !isNative || platform === 'ios';
 
   const continueAsGuest = () => {
