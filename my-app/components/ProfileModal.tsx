@@ -2,6 +2,9 @@
 
 import { X, UserCircle2, Save, Heart } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { signOut } from 'firebase/auth';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { auth } from '../lib/firebase';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -44,6 +47,24 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     setTimeout(() => setSaved(false), 1200);
   };
 
+  const handleLogout = async () => {
+    try {
+      await FirebaseAuthentication.signOut();
+    } catch {}
+    try {
+      await signOut(auth);
+    } catch {}
+    localStorage.removeItem('Transport_auth_logged_in');
+    localStorage.removeItem('Transport_guest_mode');
+    localStorage.removeItem('Transport_user_email');
+    localStorage.removeItem('Transport_user_phone');
+    localStorage.removeItem('Transport_user_name');
+    localStorage.removeItem('Transport_user_city');
+    localStorage.removeItem('Transport_user_country_code');
+    onClose();
+    window.location.assign('/auth');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -78,6 +99,12 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           <Save size={16} /> Kaydet
         </button>
         {saved && <p className="mt-2 text-center text-xs font-bold text-emerald-700">Profil güncellendi.</p>}
+        <button
+          onClick={handleLogout}
+          className="w-full rounded-2xl bg-slate-900 py-3 mt-2 text-xs font-black uppercase tracking-widest text-white shadow-lg"
+        >
+          Çıkış Yap
+        </button>
 
         <div className="mt-5">
           <div className="flex items-center gap-2 mb-2">

@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { deleteUser, signOut } from 'firebase/auth';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { auth } from '../../lib/firebase';
 import KVKKModal from '../../components/KVKKModal';
 import UserAgreementModal from '../../components/UserAgreementModal';
 import RatingModal from '../../components/RatingModal';
@@ -73,6 +76,55 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
+
+  const clearLocalSession = () => {
+    localStorage.removeItem('Transport_auth_logged_in');
+    localStorage.removeItem('Transport_guest_mode');
+    localStorage.removeItem('Transport_user_email');
+    localStorage.removeItem('Transport_user_phone');
+    localStorage.removeItem('Transport_user_name');
+    localStorage.removeItem('Transport_user_city');
+    localStorage.removeItem('Transport_user_country_code');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await FirebaseAuthentication.signOut();
+    } catch {}
+    try {
+      await signOut(auth);
+    } catch {}
+    clearLocalSession();
+    router.replace('/auth');
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');
+    if (!confirmed) return;
+
+    let deleteOk = false;
+    try {
+      if (auth.currentUser) {
+        await deleteUser(auth.currentUser);
+        deleteOk = true;
+      }
+    } catch {}
+
+    try {
+      await FirebaseAuthentication.signOut();
+    } catch {}
+    try {
+      await signOut(auth);
+    } catch {}
+    clearLocalSession();
+
+    if (!deleteOk) {
+      alert('Hesap cihazdan kapatıldı. Firebase hesabını silmek için tekrar giriş yapıp yeniden deneyin.');
+    } else {
+      alert('Hesap silindi.');
+    }
+    router.replace('/auth');
+  };
 
   useEffect(() => {
     const storedName = localStorage.getItem('Transport_user_name') || 'Kullanıcı';
@@ -281,6 +333,20 @@ export default function SettingsPage() {
               <p className="text-[10px] font-black uppercase text-slate-400">E-posta</p>
               <p className="mt-1 text-sm font-black text-slate-900 break-all">{email || '-'}</p>
             </div>
+          </div>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            <button
+              onClick={handleLogout}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
+            >
+              Çıkış Yap
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
+            >
+              Hesabı Sil
+            </button>
           </div>
         </section>
 

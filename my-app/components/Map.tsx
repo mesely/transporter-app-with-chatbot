@@ -546,7 +546,7 @@ function MapView({
 
       map.addSource('search-point', {
         type: 'geojson',
-        data: createUserPointGeoJson(searchApproximate ? null : searchCoords) as any,
+        data: createUserPointGeoJson(searchCoords || focusCoords || null) as any,
       });
 
       map.addLayer({
@@ -682,12 +682,12 @@ function MapView({
     const map = mapRef.current;
     if (!map || !map.getSource('search-point')) return;
     const pointSource = map.getSource('search-point') as maplibregl.GeoJSONSource;
-    pointSource.setData(createUserPointGeoJson(searchApproximate ? null : searchCoords) as any);
+    pointSource.setData(createUserPointGeoJson(searchCoords || focusCoords || null) as any);
     const rangeSource = map.getSource('search-range') as maplibregl.GeoJSONSource | undefined;
     if (rangeSource) {
       rangeSource.setData(createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any);
     }
-  }, [searchApproxRadiusKm, searchApproximate, searchCoords]);
+  }, [focusCoords, searchApproxRadiusKm, searchApproximate, searchCoords]);
 
   useEffect(() => {
     const map = mapRef.current;
