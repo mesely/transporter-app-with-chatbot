@@ -31,6 +31,7 @@ const LAST_RESULTS_BY_TYPE_KEY = 'Transport_last_results_by_type_v1';
 const RATE_REMINDERS_KEY = 'Transport_rate_reminders_v1';
 const FAVORITES_KEY = 'Transport_favorites_v1';
 const MANUAL_LOCATION_KEY = 'Transport_manual_location_v1';
+const SKIP_SPLASH_ONCE_KEY = 'Transport_skip_splash_once';
 const TURKEY_BBOX = {
   minLat: 35.45,
   minLng: 25.4,
@@ -216,6 +217,13 @@ export default function Home() {
   }, [favorites]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const skipOnce = sessionStorage.getItem(SKIP_SPLASH_ONCE_KEY) === '1';
+    if (skipOnce) {
+      sessionStorage.removeItem(SKIP_SPLASH_ONCE_KEY);
+      setShowSplash(false);
+      return;
+    }
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, SPLASH_DURATION_MS);
@@ -554,6 +562,19 @@ export default function Home() {
     return mapDrivers.filter(matchesActiveFilters);
   }, [mapDrivers, matchesActiveFilters]);
 
+  const selectedDriverForFocus = useMemo(() => {
+    if (!activeDriverId) return null;
+    const merged = [...filteredDrivers, ...filteredMapDrivers, ...drivers, ...mapDrivers];
+    return merged.find((d: any) => d?._id === activeDriverId) || null;
+  }, [activeDriverId, drivers, filteredDrivers, filteredMapDrivers, mapDrivers]);
+
+  const mapRenderDrivers = useMemo(() => {
+    if (!selectedDriverForFocus) return filteredMapDrivers;
+    const exists = filteredMapDrivers.some((d: any) => d?._id === selectedDriverForFocus._id);
+    if (exists) return filteredMapDrivers;
+    return [...filteredMapDrivers, selectedDriverForFocus];
+  }, [filteredMapDrivers, selectedDriverForFocus]);
+
   const handleCreateOrder = useCallback(async (driver: any, method: 'call' | 'message') => {
     try {
       const deviceId = getOrCreateDeviceId();
@@ -705,12 +726,23 @@ export default function Home() {
   const handleSelectDriver = useCallback((id: string | null, openPopup: boolean) => {
     setActiveDriverId(id);
     setPopupDriverId(openPopup ? id : null);
+    if (!id) {
+      setFocusCoords(null);
+      return;
+    }
+    const merged = [...filteredDrivers, ...filteredMapDrivers, ...drivers, ...mapDrivers];
+    const selected = merged.find((d: any) => d?._id === id);
+    const coords = selected?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      // Keep user's blue location marker fixed; only move camera focus to selected provider.
+      setFocusCoords([coords[1], coords[0]]);
+    }
     if (id) {
       suppressNextMapMoveFetchRef.current = true;
-      setMapFocusZoom(12.8);
+      setMapFocusZoom(13.2);
       setMapFocusToken((v) => v + 1);
     }
-  }, []);
+  }, [drivers, filteredDrivers, filteredMapDrivers, mapDrivers]);
 
   const handleReachListEnd = useCallback(() => {
     const base = searchCoordsRef.current;
@@ -927,7 +959,7 @@ export default function Home() {
           focusCoords={focusCoords}
           focusRequestToken={mapFocusToken}
           focusRequestZoom={mapFocusZoom}
-          drivers={filteredMapDrivers}
+          drivers={mapRenderDrivers}
           activeDriverId={activeDriverId}
           popupDriverId={popupDriverId}
           onSelectDriver={(id) => handleSelectDriver(id, true)}

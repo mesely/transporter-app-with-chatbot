@@ -19,6 +19,7 @@ import ReportModal from '../../components/ReportModal';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const FAVORITES_KEY = 'Transport_favorites_v1';
+const SKIP_SPLASH_ONCE_KEY = 'Transport_skip_splash_once';
 
 type FavoriteItem = {
   _id: string;
@@ -210,7 +211,12 @@ export default function SettingsPage() {
         <header className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem(SKIP_SPLASH_ONCE_KEY, '1');
+                }
+                router.push('/');
+              }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
             >
               <ArrowLeft size={20} />
