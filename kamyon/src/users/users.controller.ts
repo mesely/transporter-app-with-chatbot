@@ -60,6 +60,26 @@ export class UsersController {
     return this.usersService.findFiltered(city, type);
   }
 
+  @Get('city-scope')
+  async findCityScoped(
+    @Query('city') city: string,
+    @Query('type') type?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('limit') limit?: string
+  ) {
+    const parsedLat = lat !== undefined ? Number(lat) : undefined;
+    const parsedLng = lng !== undefined ? Number(lng) : undefined;
+    const parsedLimit = limit !== undefined ? Number(limit) : undefined;
+    return this.usersService.findCityScoped(
+      city || '',
+      type || '',
+      Number.isFinite(parsedLat) ? parsedLat : undefined,
+      Number.isFinite(parsedLng) ? parsedLng : undefined,
+      Number.isFinite(parsedLimit) ? parsedLimit : undefined
+    );
+  }
+
   // --- 5. TİP ANALİZİ ---
   @Get('types')
   async getTypes() {
@@ -87,6 +107,30 @@ export class UsersController {
   }
 
   // --- 6. RATING ENDPOINTS ---
+  @Get('ratings/pending')
+  async getPendingRatings() {
+    return this.usersService.getPendingRatings();
+  }
+
+  @Get('ratings/by-reporter')
+  async getRatingsByReporter(@Query('phone') phone: string) {
+    if (!phone) throw new BadRequestException('phone query parametresi gerekli');
+    return this.usersService.getRatingsByReporter(phone);
+  }
+
+  @Put('ratings/:providerId/:entryId/moderate')
+  async moderateRating(
+    @Param('providerId') providerId: string,
+    @Param('entryId') entryId: string,
+    @Body() body: { action?: 'approve' | 'reject' }
+  ) {
+    const action = body?.action;
+    if (action !== 'approve' && action !== 'reject') {
+      throw new BadRequestException('action approve veya reject olmalı');
+    }
+    return this.usersService.moderateRating(providerId, entryId, action);
+  }
+
   @Post(':id/rate')
   async rateProvider(@Param('id') id: string, @Body() body: any) {
     return this.usersService.addRating(id, body);

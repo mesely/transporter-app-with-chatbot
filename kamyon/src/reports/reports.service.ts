@@ -22,23 +22,7 @@ export class ReportsService {
       reason: data.reason || (data.reasons && data.reasons.length > 0 ? data.reasons[0] : ''),
       details: data.description || data.details || '',
     });
-    const saved = await newReport.save();
-
-    // Increment reportCount on the provider if driver ID provided
-    if (data.reportedDriverId) {
-      try {
-        // Use dynamic import to avoid circular dependency
-        const mongoose = require('mongoose');
-        await mongoose.connection.collection('new_providers').updateOne(
-          { _id: new mongoose.Types.ObjectId(data.reportedDriverId) },
-          { $inc: { reportCount: 1 } }
-        );
-      } catch (e) {
-        // silent fail — count is cosmetic
-      }
-    }
-
-    return saved;
+    return newReport.save();
   }
 
   // 2. FIND ALL
@@ -56,15 +40,25 @@ export class ReportsService {
 
   // 3. FIND BY PROVIDER
   async findByProvider(providerId: string): Promise<ReportDocument[]> {
-    return this.reportModel.find({ reportedDriver: providerId })
+    return this.reportModel.find({ reportedDriver: providerId, status: 'RESOLVED' })
       .sort({ createdAt: -1 })
       .select('reportCategory reasons reason details userPhone createdAt status')
       .exec();
   }
 
+  async findByReporter(phone: string): Promise<ReportDocument[]> {
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    if (!normalizedPhone) return [];
+    const rows = await this.reportModel.find()
+      .sort({ createdAt: -1 })
+      .select('reportCategory reasons reason details userPhone createdAt status')
+      .exec();
+    return rows.filter((row: any) => String(row?.userPhone || '').replace(/\D/g, '') === normalizedPhone);
+  }
+
   // 4. COUNT BY PROVIDER
   async countByProvider(providerId: string): Promise<number> {
-    return this.reportModel.countDocuments({ reportedDriver: providerId }).exec();
+    return this.reportModel.countDocuments({ reportedDriver: providerId, status: 'RESOLVED' }).exec();
   }
 
   // 5. FIND ONE
@@ -80,11 +74,35 @@ export class ReportsService {
 
   // 6. UPDATE
   async update(id: string, data: UpdateReportDto): Promise<ReportDocument | null> {
-    return this.reportModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    const updated = await this.reportModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    if (updated?.reportedDriver) {
+      await this.syncProviderReportCount(String(updated.reportedDriver));
+    }
+    return updated;
   }
 
   // 7. DELETE
   async delete(id: string): Promise<ReportDocument | null> {
-    return this.reportModel.findByIdAndDelete(id).exec();
+    const deleted = await this.reportModel.findByIdAndDelete(id).exec();
+    if (deleted?.reportedDriver) {
+      await this.syncProviderReportCount(String(deleted.reportedDriver));
+    }
+    return deleted;
+  }
+
+  private async syncProviderReportCount(providerId: string) {
+    try {
+      const mongoose = require('mongoose');
+      const count = await this.reportModel.countDocuments({
+        reportedDriver: providerId,
+        status: 'RESOLVED',
+      });
+      await mongoose.connection.collection('new_providers').updateOne(
+        { _id: new mongoose.Types.ObjectId(providerId) },
+        { $set: { reportCount: count } }
+      );
+    } catch {
+      // cosmetic sync only
+    }
   }
 }

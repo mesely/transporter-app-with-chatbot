@@ -1,85 +1,168 @@
-/**
- * @file ComplaintModule.tsx
- * @description Transport 245 Yönetici Paneli - Vaka/Şikayet Yönetim Modülü.
- * UPDATE: Tasarıma Glassmorphism eklendi, ikonlar inceltildi (strokeWidth={1.5}) ve turkuaz (#49b5c2) tema rengine uyarlandı.
- */
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Phone, MessageCircle, CheckCircle, XCircle, FileWarning, Calendar, ShieldAlert, Clock, ArrowRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Clock3, ShieldAlert, Star, XCircle } from 'lucide-react';
 
-const API_URL = process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
 export default function ComplaintModule() {
   const [reports, setReports] = useState<any[]>([]);
+  const [pendingRatings, setPendingRatings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [reportsRes, ratingsRes] = await Promise.all([
+        fetch(`${API_URL}/reports`),
+        fetch(`${API_URL}/users/ratings/pending`),
+      ]);
+      const reportsData = await reportsRes.json();
+      const ratingsData = await ratingsRes.json();
+      setReports(Array.isArray(reportsData) ? reportsData : []);
+      setPendingRatings(Array.isArray(ratingsData) ? ratingsData : []);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetch(`${API_URL}/reports`)
-      .then(res => res.json())
-      .then(data => { if(Array.isArray(data)) setReports(data.reverse()); })
-      .finally(() => setLoading(false));
+    loadData();
   }, []);
 
+  const moderateReport = async (reportId: string, action: 'approve' | 'reject') => {
+    const busy = `report:${reportId}:${action}`;
+    setBusyKey(busy);
+    try {
+      await fetch(`${API_URL}/reports/${reportId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: action === 'approve' ? 'RESOLVED' : 'CLOSED',
+          adminNote: action === 'approve' ? 'Admin onayıyla yayınlandı.' : 'Admin tarafından reddedildi.',
+        }),
+      });
+      await loadData();
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const moderateRating = async (providerId: string, entryId: string, action: 'approve' | 'reject') => {
+    const busy = `rating:${providerId}:${entryId}:${action}`;
+    setBusyKey(busy);
+    try {
+      await fetch(`${API_URL}/users/ratings/${providerId}/${entryId}/moderate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      await loadData();
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const reportQueue = reports.filter((r) => ['OPEN', 'IN_PROGRESS'].includes(String(r?.status || '').toUpperCase()));
+
   return (
-    <div className="space-y-8 animate-in fade-in bg-[8ccde6] duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/60 backdrop-blur-xl p-10 rounded-[3rem] border border-white/50 shadow-xl">
-         <div>
-            <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none drop-shadow-sm">Vaka Merkezi</h2>
-            <p className="text-[11px] text-[#49b5c2] font-bold uppercase tracking-[0.3em] mt-3">Müşteri güvenliği ve kalite kontrol</p>
-         </div>
-         <div className="bg-red-500 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest border border-red-400 flex items-center gap-3 shadow-lg shadow-red-500/30">
-            <ShieldAlert size={20} strokeWidth={1.5} className="animate-pulse" /> {reports.filter(r=>r.status==='OPEN').length} Acil Çözüm Bekliyor
-         </div>
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-center gap-4 rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-lg backdrop-blur-xl">
+        <div className="flex items-center gap-3 rounded-xl bg-rose-50 px-4 py-2 text-xs font-black uppercase text-rose-700">
+          <ShieldAlert size={16} /> Bekleyen Şikayet: {reportQueue.length}
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-amber-50 px-4 py-2 text-xs font-black uppercase text-amber-700">
+          <Star size={16} /> Bekleyen Değerlendirme: {pendingRatings.length}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 pb-20">
-        {reports.length === 0 ? (
-          <div className="text-center py-40 bg-white/50 backdrop-blur-md rounded-[3rem] border-2 border-dashed border-white/50 shadow-sm">
-            <CheckCircle className="w-20 h-20 text-[#49b5c2] mx-auto mb-6 opacity-80" strokeWidth={1.5} />
-            <h3 className="text-gray-900 font-black text-2xl uppercase tracking-widest">Sistem Güvende</h3>
-            <p className="text-gray-600 font-bold text-xs mt-2 uppercase">Şu an incelenecek rapor bulunmuyor.</p>
+      <section className="rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-lg backdrop-blur-xl">
+        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Şikayet Moderasyonu</h3>
+        {loading ? (
+          <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
+        ) : reportQueue.length === 0 ? (
+          <p className="text-xs font-bold text-slate-500">Bekleyen şikayet yok.</p>
+        ) : (
+          <div className="space-y-3">
+            {reportQueue.map((r) => (
+              <div key={r._id} className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase text-slate-800">{r.reason || 'Şikayet'}</p>
+                  <span className="rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase text-slate-500">
+                    {new Date(r.createdAt).toLocaleDateString('tr-TR')}
+                  </span>
+                </div>
+                <p className="mb-3 text-xs font-semibold text-slate-600">{r.details || 'Detay girilmemiş.'}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => moderateReport(r._id, 'approve')}
+                    disabled={!!busyKey}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                  >
+                    <CheckCircle2 size={14} /> Onayla & Yayınla
+                  </button>
+                  <button
+                    onClick={() => moderateReport(r._id, 'reject')}
+                    disabled={!!busyKey}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                  >
+                    <XCircle size={14} /> Reddet
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        ) : reports.map((r) => (
-          <div key={r._id} className="group bg-white/60 backdrop-blur-xl rounded-[3rem] border border-white/50 p-10 shadow-xl hover:shadow-2xl transition-all duration-500 relative overflow-hidden ring-1 ring-white/20">
-            
-            {/* Durum Badge */}
-            <div className="absolute top-0 right-0 px-8 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl shadow-md">
-              İnceleme Altında
-            </div>
+        )}
+      </section>
 
-            <div className="flex flex-col lg:flex-row justify-between items-start gap-10">
-              <div className="flex-1 space-y-6">
-                <div>
-                  <div className="flex items-center gap-3 text-gray-500 text-[10px] font-black uppercase tracking-widest mb-2">
-                    <Clock size={14} strokeWidth={1.5} className="text-[#49b5c2]"/> {new Date(r.createdAt).toLocaleString('tr-TR')}
-                    <span className="text-[#49b5c2]">•</span>
-                    ID: #{r._id.substr(-6)}
+      <section className="rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-lg backdrop-blur-xl">
+        <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Değerlendirme Moderasyonu</h3>
+        {loading ? (
+          <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
+        ) : pendingRatings.length === 0 ? (
+          <p className="text-xs font-bold text-slate-500">Bekleyen değerlendirme yok.</p>
+        ) : (
+          <div className="space-y-3">
+            {pendingRatings.map((item) => (
+              <div key={`${item.providerId}-${item.entryId}`} className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase text-slate-800">{item.providerName}</p>
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase text-amber-700">
+                    <Clock3 size={12} /> {item.rating}/5
+                  </span>
+                </div>
+                {item.comment && <p className="mb-2 text-xs font-semibold text-slate-600">{item.comment}</p>}
+                {Array.isArray(item.tags) && item.tags.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-1">
+                    {item.tags.map((tag: string, i: number) => (
+                      <span key={`${item.entryId}-tag-${i}`} className="rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase text-slate-600">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Bildirilen Sorun: {r.reason}</h3>
-                </div>
-
-                <div className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-inner relative overflow-hidden border border-slate-800">
-                   <p className="text-sm font-medium leading-relaxed italic opacity-90 relative z-10">"{r.details || 'Müşteri ek detay belirtmedi.'}"</p>
-                   <ArrowRight size={80} strokeWidth={1.5} className="absolute -bottom-6 -right-6 text-white/5 z-0" />
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => moderateRating(item.providerId, item.entryId, 'approve')}
+                    disabled={!!busyKey}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                  >
+                    <CheckCircle2 size={14} /> Onayla & Yayınla
+                  </button>
+                  <button
+                    onClick={() => moderateRating(item.providerId, item.entryId, 'reject')}
+                    disabled={!!busyKey}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                  >
+                    <XCircle size={14} /> Reddet
+                  </button>
                 </div>
               </div>
-
-              <div className="w-full lg:w-72 space-y-4 shrink-0">
-                <div className="bg-white/50 backdrop-blur-sm p-6 rounded-3xl border border-white/40 shadow-sm">
-                   <span className="text-[10px] font-black text-[#49b5c2] uppercase block mb-3">Müşteri Hattı</span>
-                   <div className="flex items-center gap-3 font-black text-gray-900"><Phone size={16} strokeWidth={1.5} className="text-[#49b5c2]"/> {r.userPhone}</div>
-                </div>
-                <div className="grid grid-cols-1 gap-2">
-                   <button className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"><MessageCircle size={16} strokeWidth={1.5}/> WP Mesajı Gönder</button>
-                   <button className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 active:scale-95 transition-all">Çözüldü Olarak İşaretle</button>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </section>
     </div>
   );
 }

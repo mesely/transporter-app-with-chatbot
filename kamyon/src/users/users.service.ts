@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { NewUser, NewUserDocument } from '../data/schemas/new-user.schema';
 import { NewProvider, NewProviderDocument } from '../data/schemas/new-provider.schema';
@@ -290,41 +290,143 @@ export class UsersService implements OnModuleInit {
 
   // --- 3. ADD RATING ---
   async addRating(providerId: string, data: { rating: number; comment?: string; tags?: string[]; orderId?: string }) {
+    const safeRating = Math.max(1, Math.min(5, Number(data.rating || 0)));
+    if (!safeRating) return { success: false, message: 'Geçersiz puan' };
+
+    const reporterPhone = String((data as any).reporterPhone || '').replace(/\D/g, '');
     const ratingEntry = {
-      rating: data.rating,
+      entryId: new Types.ObjectId().toString(),
+      rating: safeRating,
       comment: data.comment || '',
       tags: data.tags || [],
       orderId: data.orderId,
+      reporterPhone,
+      reporterName: String((data as any).reporterName || ''),
+      reporterEmail: String((data as any).reporterEmail || ''),
+      status: 'PENDING',
       createdAt: new Date(),
     };
 
-    const provider = await this.providerModel.findByIdAndUpdate(
+    await this.providerModel.findByIdAndUpdate(
       providerId,
       {
         $push: { ratings: { $each: [ratingEntry], $slice: -50 } },
-        $inc: { ratingCount: 1 }
       },
       { new: true }
     ).exec();
 
-    if (provider && (provider as any).ratings && (provider as any).ratings.length > 0) {
-      const arr: any[] = (provider as any).ratings;
-      const avg = arr.reduce((sum: number, r: any) => sum + r.rating, 0) / arr.length;
-      await this.providerModel.findByIdAndUpdate(providerId, { rating: parseFloat(avg.toFixed(1)) }).exec();
-    }
-
-    return { success: true };
+    return { success: true, status: 'PENDING_REVIEW' };
   }
 
   // --- 4. GET PROVIDER RATINGS ---
   async getProviderRatings(providerId: string) {
     const provider = await this.providerModel.findById(providerId).select('ratings ratingCount rating').exec();
     if (!provider) return { ratings: [], ratingCount: 0, rating: 5.0 };
+
+    const approvedRatings = ((provider as any).ratings || []).filter((r: any) => {
+      const status = String(r?.status || 'APPROVED').toUpperCase();
+      return status === 'APPROVED';
+    });
+
+    const ratingCount = approvedRatings.length;
+    const rating = ratingCount
+      ? parseFloat((approvedRatings.reduce((sum: number, r: any) => sum + Number(r?.rating || 0), 0) / ratingCount).toFixed(1))
+      : 5.0;
+
     return {
-      ratings: (provider as any).ratings || [],
-      ratingCount: (provider as any).ratingCount || 0,
-      rating: (provider as any).rating || 5.0,
+      ratings: approvedRatings,
+      ratingCount,
+      rating,
     };
+  }
+
+  async getPendingRatings() {
+    return this.providerModel.aggregate([
+      { $unwind: { path: '$ratings', preserveNullAndEmptyArrays: false } },
+      {
+        $match: {
+          'ratings.status': { $in: ['PENDING', 'IN_REVIEW'] },
+        },
+      },
+      { $sort: { 'ratings.createdAt': -1 } },
+      {
+        $project: {
+          _id: 0,
+          providerId: '$_id',
+          providerName: '$businessName',
+          entryId: '$ratings.entryId',
+          rating: '$ratings.rating',
+          comment: '$ratings.comment',
+          tags: '$ratings.tags',
+          createdAt: '$ratings.createdAt',
+          reporterPhone: '$ratings.reporterPhone',
+          reporterName: '$ratings.reporterName',
+          reporterEmail: '$ratings.reporterEmail',
+          status: '$ratings.status',
+        },
+      },
+      { $limit: 500 },
+    ]).exec();
+  }
+
+  async getRatingsByReporter(phone: string) {
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    if (!normalizedPhone) return [];
+
+    return this.providerModel.aggregate([
+      { $unwind: { path: '$ratings', preserveNullAndEmptyArrays: false } },
+      {
+        $match: {
+          'ratings.reporterPhone': normalizedPhone,
+        },
+      },
+      { $sort: { 'ratings.createdAt': -1 } },
+      {
+        $project: {
+          _id: 0,
+          providerId: '$_id',
+          providerName: '$businessName',
+          entryId: '$ratings.entryId',
+          rating: '$ratings.rating',
+          comment: '$ratings.comment',
+          tags: '$ratings.tags',
+          createdAt: '$ratings.createdAt',
+          status: '$ratings.status',
+        },
+      },
+      { $limit: 500 },
+    ]).exec();
+  }
+
+  async moderateRating(providerId: string, entryId: string, action: 'approve' | 'reject') {
+    const provider = await this.providerModel.findById(providerId).exec();
+    if (!provider) return { success: false, message: 'Provider bulunamadı' };
+
+    const ratings: any[] = Array.isArray((provider as any).ratings) ? [...(provider as any).ratings] : [];
+    const targetIndex = ratings.findIndex((r) => String(r?.entryId || '') === String(entryId || ''));
+    if (targetIndex < 0) return { success: false, message: 'Değerlendirme bulunamadı' };
+
+    ratings[targetIndex] = {
+      ...ratings[targetIndex],
+      status: action === 'approve' ? 'APPROVED' : 'REJECTED',
+      moderatedAt: new Date(),
+    };
+
+    const approvedRatings = ratings.filter((r: any) => String(r?.status || '').toUpperCase() === 'APPROVED');
+    const nextCount = approvedRatings.length;
+    const nextAverage = nextCount
+      ? parseFloat((approvedRatings.reduce((sum: number, r: any) => sum + Number(r?.rating || 0), 0) / nextCount).toFixed(1))
+      : 5.0;
+
+    await this.providerModel.findByIdAndUpdate(providerId, {
+      $set: {
+        ratings,
+        ratingCount: nextCount,
+        rating: nextAverage,
+      },
+    }).exec();
+
+    return { success: true };
   }
 
   // --- 5. FIND BY PHONE ---

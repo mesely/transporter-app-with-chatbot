@@ -9,12 +9,10 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import TopBar from '../components/home/TopBar';
+import TopControls from '../components/home/TopControls';
 import ActionPanel from '../components/home/ActionPanel';
-import ProfileModal from '../components/ProfileModal';
 import ViewRatingsModal from '../components/ViewRatingsModal';
 import ViewReportsModal from '../components/ViewReportsModal';
 
@@ -96,10 +94,11 @@ export default function Home() {
   const BBOX_OVERSCAN_FACTOR = 0.45;
   const COUNTRY_MODE_ZOOM_THRESHOLD = 6.35;
   const COUNTRY_MODE_FETCH_LIMIT = 3200;
+  const ACTION_PANEL_QUERY_ZOOM = 6.2;
+  const ACTION_PANEL_QUERY_LIMIT = 3200;
   const TOP_UI_OFFSET = 'max(calc(env(safe-area-inset-top, 0px) + 22px), 34px)';
 
   const [showSplash, setShowSplash] = useState(true);
-  const [showProfile, setShowProfile] = useState(false);
 
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,6 +214,7 @@ export default function Home() {
       append?: boolean;
       force?: boolean;
       countryFallback?: boolean;
+      silent?: boolean;
     }
   ) => {
     const requestSeq = ++fetchSeqRef.current;
@@ -244,7 +244,7 @@ export default function Home() {
     fetchAbortRef.current = controller;
     inflightFetchKeyRef.current = key;
 
-    if (!cached || opts?.force) {
+    if (!opts?.silent && (!cached || opts?.force)) {
       const typeCached = readTypeCache(type);
       if (typeCached && typeCached.length > 0) {
         setDrivers(typeCached);
@@ -289,6 +289,7 @@ export default function Home() {
           force: true,
           append: false,
           countryFallback: false,
+          silent: opts?.silent,
         });
         return;
       }
@@ -345,7 +346,7 @@ export default function Home() {
       if (inflightFetchKeyRef.current === key) {
         inflightFetchKeyRef.current = null;
       }
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [DRIVERS_CACHE_MAX_ENTRIES, readTypeCache, writeTypeCache]);
 
@@ -437,12 +438,12 @@ export default function Home() {
   useEffect(() => {
     if (!searchCoords) {
       fetchDrivers(DEFAULT_LAT, DEFAULT_LNG, 'kurtarici', {
-        zoom: COUNTRY_MODE_ZOOM_THRESHOLD,
-        limit: 900,
+        zoom: ACTION_PANEL_QUERY_ZOOM,
+        limit: ACTION_PANEL_QUERY_LIMIT,
         bbox: TURKEY_BBOX,
       });
     }
-  }, [fetchDrivers, searchCoords]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, searchCoords]);
 
   useEffect(() => {
     if (searchCoords) return;
@@ -486,6 +487,7 @@ export default function Home() {
       if (!s) return false;
       let match = false;
       if (actionType === 'seyyar_sarj')    match = s.subType === 'seyyar_sarj';
+      else if (actionType === 'sarj')      match = s.mainType === 'SARJ';
       else if (actionType === 'kurtarici') match = s.mainType === 'KURTARICI';
       else if (actionType === 'nakliye')   match = s.mainType === 'NAKLIYE';
       else if (actionType === 'yolcu')     match = s.mainType === 'YOLCU';
@@ -568,8 +570,12 @@ export default function Home() {
 
     const anchorLat = preserveCurrentCoords ? (searchCoordsRef.current?.[0] ?? DEFAULT_LAT) : lat;
     const anchorLng = preserveCurrentCoords ? (searchCoordsRef.current?.[1] ?? DEFAULT_LNG) : lng;
-    fetchDrivers(anchorLat, anchorLng, actionTypeRef.current);
-  }, [fetchDrivers]);
+    fetchDrivers(anchorLat, anchorLng, actionTypeRef.current, {
+      zoom: ACTION_PANEL_QUERY_ZOOM,
+      limit: ACTION_PANEL_QUERY_LIMIT,
+      bbox: TURKEY_BBOX,
+    });
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
 
   useEffect(() => {
     if (searchCoords) return;
@@ -608,6 +614,7 @@ export default function Home() {
       filterRetryRef.current = null;
     }
     lastFilterTypeRef.current = type;
+    setLoading(true);
     setActionType(type);
     setActiveTags([]);
     const typeCached = readTypeCache(type);
@@ -617,13 +624,12 @@ export default function Home() {
     const baseCoords = searchCoordsRef.current;
     const baseLat = baseCoords?.[0] ?? DEFAULT_LAT;
     const baseLng = baseCoords?.[1] ?? DEFAULT_LNG;
-    const zoom = lastMapFetchRef.current?.zoom ?? 9;
-    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, 2200);
+    const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, ACTION_PANEL_QUERY_LIMIT);
     listEndFetchLimitRef.current = requestedLimit;
     fetchDrivers(baseLat, baseLng, type, {
-      // Broader first fetch to avoid "second click loads all" behavior on category switches.
-      zoom: Math.min(zoom, 8.9),
+      zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: requestedLimit,
+      bbox: TURKEY_BBOX,
       force: true,
       countryFallback: true,
     });
@@ -633,13 +639,14 @@ export default function Home() {
       if (lastFilterTypeRef.current !== type) return;
       const retryCoords = searchCoordsRef.current;
       fetchDrivers(retryCoords?.[0] ?? DEFAULT_LAT, retryCoords?.[1] ?? DEFAULT_LNG, type, {
-        zoom: Math.min(lastMapFetchRef.current?.zoom ?? 9, 8.9),
+        zoom: ACTION_PANEL_QUERY_ZOOM,
         limit: requestedLimit,
+        bbox: TURKEY_BBOX,
         force: true,
         countryFallback: true,
       });
     }, 420);
-  }, [fetchDrivers, readTypeCache]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, readTypeCache]);
 
   const handleSelectDriver = useCallback((id: string | null, openPopup: boolean) => {
     setActiveDriverId(id);
@@ -654,8 +661,7 @@ export default function Home() {
   const handleReachListEnd = useCallback(() => {
     const base = searchCoordsRef.current;
     if (!base) return;
-    const zoom = lastMapFetchRef.current?.zoom ?? 10;
-    const prevLimit = listEndFetchLimitRef.current || (zoom >= 10 ? 1400 : 1000);
+    const prevLimit = listEndFetchLimitRef.current || ACTION_PANEL_QUERY_LIMIT;
     const nextLimit = Math.min(5200, prevLimit + 700);
     listEndFetchLimitRef.current = nextLimit;
 
@@ -674,12 +680,12 @@ export default function Home() {
     }
 
     fetchDrivers(base[0], base[1], actionTypeRef.current, {
-      zoom,
+      zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: nextLimit,
-      bbox: expandedBbox,
+      bbox: TURKEY_BBOX,
       append: true,
     });
-  }, [fetchDrivers]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
 
   const suggestions = useMemo(() => {
     const q = normalizeText(mapSearchQuery);
@@ -803,29 +809,7 @@ export default function Home() {
 
       const hasMeaningfulPan = movedLat >= MIN_MOVE_DISTANCE_DEG || movedLng >= MIN_MOVE_DISTANCE_DEG;
       const hasMeaningfulZoom = zoomDelta >= MIN_ZOOM_DELTA;
-      let leftSafeViewport = false;
-
-      if (prev.bbox && bbox) {
-        const latSpan = Math.max(0.0001, prev.bbox.maxLat - prev.bbox.minLat);
-        const lngSpan = Math.max(0.0001, prev.bbox.maxLng - prev.bbox.minLng);
-        const latInset = latSpan * VIEWPORT_REFETCH_EDGE_RATIO;
-        const lngInset = lngSpan * VIEWPORT_REFETCH_EDGE_RATIO;
-
-        const inner = {
-          minLat: prev.bbox.minLat + latInset,
-          minLng: prev.bbox.minLng + lngInset,
-          maxLat: prev.bbox.maxLat - latInset,
-          maxLng: prev.bbox.maxLng - lngInset,
-        };
-
-        leftSafeViewport =
-          bbox.minLat < inner.minLat ||
-          bbox.minLng < inner.minLng ||
-          bbox.maxLat > inner.maxLat ||
-          bbox.maxLng > inner.maxLng;
-      }
-
-      if (!hasMeaningfulPan && !hasMeaningfulZoom && !leftSafeViewport) {
+      if (!hasMeaningfulPan && !hasMeaningfulZoom) {
         return;
       }
     }
@@ -836,33 +820,18 @@ export default function Home() {
       const anchor = searchCoordsRef.current;
       const baseLat = anchor?.[0] ?? lat;
       const baseLng = anchor?.[1] ?? lng;
-      let expandedBbox = bbox;
-      let requestedLimit: number | undefined;
-      if (bbox) {
-        const minPad = zoom >= 12 ? 0.1 : zoom >= 10 ? 0.08 : 0.05;
-        const latPad = Math.max(minPad, (bbox.maxLat - bbox.minLat) * BBOX_OVERSCAN_FACTOR);
-        const lngPad = Math.max(minPad, (bbox.maxLng - bbox.minLng) * BBOX_OVERSCAN_FACTOR);
-        expandedBbox = {
-          minLat: bbox.minLat - latPad,
-          minLng: bbox.minLng - lngPad,
-          maxLat: bbox.maxLat + latPad,
-          maxLng: bbox.maxLng + lngPad,
-        };
-        requestedLimit = zoom >= 10 ? 1400 : 1000;
-      }
-      if (zoom <= COUNTRY_MODE_ZOOM_THRESHOLD) {
-        expandedBbox = TURKEY_BBOX;
-        requestedLimit = COUNTRY_MODE_FETCH_LIMIT;
-      }
+      const requestedLimit = Math.max(ACTION_PANEL_QUERY_LIMIT, 2200);
       fetchDrivers(baseLat, baseLng, actionTypeRef.current, {
-        zoom,
-        limit: Math.max(requestedLimit || 0, zoom >= 10 ? 1800 : 1300),
-        // Do not constrain ActionPanel by viewport; keep nearby districts visible even in high zoom.
-        bbox: undefined,
+        zoom: ACTION_PANEL_QUERY_ZOOM,
+        limit: requestedLimit,
+        bbox: TURKEY_BBOX,
         append: true,
+        silent: true,
       });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
   }, [
+    ACTION_PANEL_QUERY_LIMIT,
+    ACTION_PANEL_QUERY_ZOOM,
     BBOX_OVERSCAN_FACTOR,
     COUNTRY_MODE_FETCH_LIMIT,
     COUNTRY_MODE_ZOOM_THRESHOLD,
@@ -870,58 +839,20 @@ export default function Home() {
     MAP_MOVE_FETCH_DEBOUNCE_MS,
     MIN_MOVE_DISTANCE_DEG,
     MIN_ZOOM_DELTA,
-    VIEWPORT_REFETCH_EDGE_RATIO,
   ]);
 
   return (
     <main className="relative w-full h-screen overflow-hidden bg-white">
       <SplashScreen visible={showSplash} />
 
-      {/* TopBar artık Settings butonu gösteriyor (Sidebar yerine) */}
-      <TopBar
-        onProfileClick={() => setShowProfile(true)}
+      <TopControls
         topOffset={TOP_UI_OFFSET}
+        searchQuery={mapSearchQuery}
+        onSearchQueryChange={setMapSearchQuery}
+        suggestions={suggestions}
+        onPickSuggestion={handleSearchPick}
+          onProfileClick={() => router.push('/settings')}
       />
-
-      <div
-        className="absolute left-1/2 z-[450] -translate-x-1/2 pointer-events-auto origin-top"
-        style={{
-          top: TOP_UI_OFFSET,
-          width: 'min(760px, calc(100vw - 110px))'
-        }}
-      >
-        <div className="relative rounded-2xl border border-gray-100 bg-white/95 shadow-lg backdrop-blur-md">
-          <div className="flex min-h-[44px] items-center gap-2 px-3 py-1.5">
-            <input
-              value={mapSearchQuery}
-              onChange={(e) => setMapSearchQuery(e.target.value)}
-              placeholder="Firma veya hizmet ara"
-              className="flex-1 bg-transparent text-[13px] font-semibold text-slate-800 outline-none"
-            />
-            {mapSearchQuery && (
-              <button onClick={() => setMapSearchQuery('')} className="rounded-lg p-1.5 text-slate-500">
-                <X size={17} />
-              </button>
-            )}
-          </div>
-          {suggestions.length > 0 && (
-            <div className="max-h-56 overflow-y-auto border-t border-slate-100">
-              {suggestions.map((d) => (
-                <button
-                  key={d._id}
-                  onClick={() => handleSearchPick(d)}
-                  className="w-full px-3 py-2 text-left hover:bg-slate-50"
-                >
-                  <div className="text-[12px] font-black uppercase text-slate-800">{d.businessName}</div>
-                  <div className="text-[10px] font-semibold text-slate-500">
-                    {(d.address?.city || '')} {(d.address?.district || '')}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
 
       <div className="absolute inset-0 z-0">
         <Map
@@ -972,7 +903,6 @@ export default function Home() {
         onReachListEnd={handleReachListEnd}
       />
 
-      <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
       <ViewRatingsModal
         isOpen={showRatingsModal}
         onClose={() => setShowRatingsModal(false)}

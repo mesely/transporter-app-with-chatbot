@@ -24,7 +24,10 @@ export class ReportsController {
 
   // GET /reports?providerId=X for provider complaints, or all reports
   @Get()
-  async getAllReports(@Query('providerId') providerId?: string) {
+  async getAllReports(@Query('providerId') providerId?: string, @Query('reporterPhone') reporterPhone?: string) {
+    if (reporterPhone) {
+      return this.reportsService.findByReporter(reporterPhone);
+    }
     if (providerId) {
       return this.reportsService.findByProvider(providerId);
     }
