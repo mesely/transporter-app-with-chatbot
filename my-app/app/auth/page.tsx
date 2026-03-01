@@ -108,6 +108,7 @@ export default function AuthPage() {
   const [verificationId, setVerificationId] = useState('');
   const [targetPhone, setTargetPhone] = useState('');
   const [selectedCountryIso2, setSelectedCountryIso2] = useState(DEFAULT_PHONE_COUNTRY_ISO2);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
@@ -227,6 +228,14 @@ export default function AuthPage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const socialLogin = async (provider: 'google' | 'apple') => {
     if (loading) return;
     setError('');
@@ -316,7 +325,7 @@ export default function AuthPage() {
     }
   };
 
-  const sendPhoneCode = async () => {
+  const sendPhoneCode = async (opts?: { isResend?: boolean }) => {
     if (loading) return;
     setError('');
 
@@ -332,7 +341,9 @@ export default function AuthPage() {
     }
 
     const fullPhone = `${selectedCountry.dialCode}${localDigits}`;
-    setTargetPhone(fullPhone);
+    if (!opts?.isResend) {
+      setTargetPhone(fullPhone);
+    }
     setLoading(true);
 
     try {
@@ -342,6 +353,7 @@ export default function AuthPage() {
           25000,
         );
         setPhoneStage('code');
+        setResendCooldown(30);
         setError('Doğrulama kodu gönderildi.');
         return;
       }
@@ -359,6 +371,7 @@ export default function AuthPage() {
       );
       confirmationResultRef.current = confirmationResult;
       setPhoneStage('code');
+      setResendCooldown(30);
     } catch (err: any) {
       if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
         setError('Kod gönderimi zaman aşımına uğradı. Tekrar deneyin.');
@@ -496,7 +509,7 @@ export default function AuthPage() {
               <select
                 value={selectedCountryIso2}
                 onChange={(e) => setSelectedCountryIso2(e.target.value)}
-                className="w-40 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-bold text-slate-700 outline-none"
+                className="w-[44%] min-w-[120px] max-w-[180px] rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-bold text-slate-700 outline-none"
               >
                 {PHONE_COUNTRIES.map((country) => (
                   <option key={`${country.iso2}-${country.dialCode}`} value={country.iso2}>
@@ -510,7 +523,7 @@ export default function AuthPage() {
                 value={phoneValue}
                 onChange={(e) => setPhoneValue(e.target.value)}
                 placeholder="Telefon numaranız"
-                className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none"
               />
             </div>
 
@@ -538,17 +551,31 @@ export default function AuthPage() {
             </button>
 
             {phoneStage === 'code' && (
-              <button
-                onClick={() => {
-                  setPhoneStage('entry');
-                  setSmsCode('');
-                  setVerificationId('');
-                  setError('');
-                }}
-                className="mt-1 w-full text-[11px] font-bold text-slate-500 underline"
-              >
-                Numarayı değiştir
-              </button>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <button
+                  onClick={() =>
+                    sendPhoneCode({ isResend: true }).catch(() => {
+                      // handled in sendPhoneCode
+                    })
+                  }
+                  disabled={loading || resendCooldown > 0}
+                  className="text-[11px] font-bold text-slate-500 underline disabled:opacity-50"
+                >
+                  {resendCooldown > 0 ? `Kodu yeniden gönder (${resendCooldown})` : 'Kodu yeniden gönder'}
+                </button>
+                <button
+                  onClick={() => {
+                    setPhoneStage('entry');
+                    setSmsCode('');
+                    setVerificationId('');
+                    setError('');
+                    setResendCooldown(0);
+                  }}
+                  className="text-[11px] font-bold text-slate-500 underline"
+                >
+                  Numarayı değiştir
+                </button>
+              </div>
             )}
           </div>
 
