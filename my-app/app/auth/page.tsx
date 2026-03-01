@@ -119,8 +119,13 @@ export default function AuthPage() {
   const showAppleButton = !isNative || platform === 'ios';
 
   const continueAsGuest = () => {
+    setError('');
+    setLoading(false);
     localStorage.setItem('Transport_guest_mode', '1');
     localStorage.removeItem('Transport_auth_logged_in');
+    localStorage.removeItem('Transport_user_email');
+    localStorage.removeItem('Transport_user_phone');
+    localStorage.removeItem('Transport_user_name');
     router.replace('/');
   };
 
@@ -158,11 +163,16 @@ export default function AuthPage() {
   }, [router]);
 
   const socialLogin = async (provider: 'google' | 'apple') => {
+    if (loading) return;
     setError('');
     setLoading(true);
+    const failSafeTimer = setTimeout(() => setLoading(false), 25000);
     try {
       if (provider === 'apple' && isNative && platform !== 'ios') {
         throw new Error('Apple ile giriş sadece iOS cihazlarda kullanılabilir.');
+      }
+      if (isIosSimulator) {
+        throw new Error('iOS simülatörde sosyal giriş çalışmayabilir. Lütfen gerçek iPhone cihazda deneyin.');
       }
 
       if (Capacitor.isNativePlatform() && !isIosSimulator) {
@@ -172,10 +182,10 @@ export default function AuthPage() {
             if (platform === 'android') {
               nativeResult = await withTimeout(
                 FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
-                60000,
+                20000,
               );
             } else {
-              nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 60000);
+              nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 20000);
             }
           } catch (firstErr: any) {
             const firstMessage = String(firstErr?.message || '').toLocaleLowerCase('tr');
@@ -186,7 +196,7 @@ export default function AuthPage() {
             ) {
               nativeResult = await withTimeout(
                 FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
-                60000,
+                20000,
               );
             } else {
               throw firstErr;
@@ -205,7 +215,7 @@ export default function AuthPage() {
         if (typeof nativeAuth?.signInWithApple !== 'function') {
           throw new Error('Bu sürümde Apple giriş native olarak desteklenmiyor.');
         }
-        const appleResult = await withTimeout(nativeAuth.signInWithApple(), 60000);
+        const appleResult = await withTimeout(nativeAuth.signInWithApple(), 20000);
         const appleUser = appleResult?.user;
         if (appleUser) {
           persistLocalUser(appleUser);
@@ -239,12 +249,13 @@ export default function AuthPage() {
         return;
       }
       if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
-        setError('Giriş işlemi zaman aşımına uğradı. Firebase OAuth ayarlarını kontrol edip tekrar deneyin.');
+        setError('Giriş işlemi zaman aşımına uğradı. Tekrar deneyin veya "Giriş Yapmadan Devam Et" ile devam edin.');
         return;
       }
       setError(mapAuthErrorMessage(err));
     } finally {
-      setTimeout(() => setLoading(false), 3500);
+      clearTimeout(failSafeTimer);
+      setLoading(false);
     }
   };
 
@@ -292,7 +303,6 @@ export default function AuthPage() {
 
           <button
             onClick={continueAsGuest}
-            disabled={loading}
             className="w-full rounded-2xl border border-blue-200 bg-blue-50 py-3 text-sm font-black tracking-wide text-blue-700 disabled:opacity-60"
           >
             Giriş Yapmadan Devam Et (Önerilmez)
