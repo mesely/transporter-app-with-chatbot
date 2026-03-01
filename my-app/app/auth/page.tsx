@@ -320,6 +320,11 @@ export default function AuthPage() {
     if (loading) return;
     setError('');
 
+    if (isIosSimulator) {
+      setError('iOS simülatör SMS alamaz. Telefon doğrulamasını gerçek cihazda test edin veya Firebase test numarası kullanın.');
+      return;
+    }
+
     const localDigits = phoneValue.replace(/\D/g, '').replace(/^0+/, '');
     if (localDigits.length < 6) {
       setError('Telefon numarasını eksiksiz girin.');
@@ -368,6 +373,11 @@ export default function AuthPage() {
   const verifyPhoneCode = async () => {
     if (loading) return;
     setError('');
+
+    if (isIosSimulator) {
+      setError('iOS simülatörde kod doğrulama test edilmez. Gerçek cihazda deneyin.');
+      return;
+    }
 
     const code = smsCode.replace(/\D/g, '');
     if (code.length < 4) {
