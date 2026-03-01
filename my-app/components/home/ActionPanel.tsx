@@ -432,7 +432,7 @@ function ActionPanel({
         forceFocus: true,
         targetZoom,
         clearActiveDriver: true,
-        preserveCurrentCoords: false,
+        preserveCurrentCoords: true,
       });
       return;
     }
@@ -465,7 +465,7 @@ function ActionPanel({
           forceFocus: true,
           targetZoom,
           clearActiveDriver: true,
-          preserveCurrentCoords: false,
+          preserveCurrentCoords: true,
         });
       })
       .catch(() => {});

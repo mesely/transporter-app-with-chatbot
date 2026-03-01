@@ -692,8 +692,10 @@ export default function Home() {
       setMapFocusToken((v) => v + 1);
     }
 
-    const anchorLat = preserveCurrentCoords ? (searchCoordsRef.current?.[0] ?? DEFAULT_LAT) : lat;
-    const anchorLng = preserveCurrentCoords ? (searchCoordsRef.current?.[1] ?? DEFAULT_LNG) : lng;
+    // Even when user location should stay fixed (preserveCurrentCoords),
+    // queries must target the focused city/provider coordinates.
+    const anchorLat = lat;
+    const anchorLng = lng;
     fetchDrivers(anchorLat, anchorLng, actionTypeRef.current, {
       zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: ACTION_PANEL_QUERY_LIMIT,
