@@ -1,13 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  getAuth,
-  initializeAuth,
-  indexedDBLocalPersistence,
-  browserLocalPersistence,
-  GoogleAuthProvider,
-  FacebookAuthProvider,
-} from 'firebase/auth';
-import { Capacitor } from '@capacitor/core';
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyAPiMeUrzeA4PzJLLAfOEq2MEgGcRPk5Is',
@@ -21,16 +13,7 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-const isNative = Capacitor.isNativePlatform();
-
-export const auth = (() => {
-  try {
-    return initializeAuth(app, {
-      persistence: isNative ? indexedDBLocalPersistence : browserLocalPersistence,
-    });
-  } catch {
-    return getAuth(app);
-  }
-})();
+export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
+export const appleProvider = new OAuthProvider('apple.com');

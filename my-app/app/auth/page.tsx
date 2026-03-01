@@ -1,22 +1,11 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { createUserWithEmailAndPassword, getRedirectResult, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
-import { Mail, Lock, User, Phone, Facebook } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getRedirectResult, signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
-import { auth, facebookProvider, googleProvider } from '../../lib/firebase';
-
-type CountryCodeOption = { code: string; flag: string; label: string };
-
-const COUNTRY_CODES: CountryCodeOption[] = [
-  { code: '+90', flag: '🇹🇷', label: 'Türkiye' },
-  { code: '+49', flag: '🇩🇪', label: 'Almanya' },
-  { code: '+33', flag: '🇫🇷', label: 'Fransa' },
-  { code: '+39', flag: '🇮🇹', label: 'İtalya' },
-  { code: '+44', flag: '🇬🇧', label: 'Birleşik Krallık' },
-  { code: '+1', flag: '🇺🇸', label: 'Amerika' },
-];
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { auth, appleProvider, googleProvider } from '../../lib/firebase';
 
 function GoogleLogo() {
   return (
@@ -29,94 +18,98 @@ function GoogleLogo() {
   );
 }
 
-function normalizePhone(value: string) {
-  return String(value || '').replace(/\D/g, '');
-}
-
-function buildEmailFromIdentifier(identifier: string, countryCode: string) {
-  const raw = String(identifier || '').trim();
-  if (!raw) return '';
-  if (raw.includes('@')) return raw.toLocaleLowerCase('tr');
-
-  const cc = normalizePhone(countryCode).replace(/^0+/, '');
-  let phone = normalizePhone(raw);
-  if (!phone) return '';
-  if (phone.startsWith('00')) phone = phone.slice(2);
-  if (phone.startsWith('0')) phone = phone.slice(1);
-  if (!phone.startsWith(cc)) phone = `${cc}${phone}`;
-  return `phone_${phone}@transport245.app`;
+function AppleLogo() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M16.365 1.43c0 1.14-.465 2.206-1.24 2.964-.79.78-2.01 1.28-3.127 1.192-.14-1.078.41-2.226 1.16-2.965.83-.82 2.15-1.405 3.207-1.19zM20.5 17.06c-.52 1.2-.76 1.73-1.43 2.76-.94 1.43-2.26 3.2-3.9 3.22-1.46.02-1.84-.95-3.82-.94-1.98.01-2.4.96-3.86.95-1.64-.03-2.9-1.62-3.84-3.05-2.62-3.98-2.9-8.65-1.28-11.14 1.15-1.78 2.98-2.83 4.7-2.83 1.75 0 2.85.96 4.3.96 1.4 0 2.26-.96 4.29-.96 1.53 0 3.15.83 4.3 2.26-3.77 2.06-3.15 7.52.54 8.77z" />
+    </svg>
+  );
 }
 
 function mapAuthErrorMessage(err: any) {
   const code = String(err?.code || '');
+  const message = String(err?.message || '');
   if (code.includes('popup-closed-by-user')) return 'Giriş penceresi kapatıldı. Tekrar deneyin.';
   if (code.includes('popup-blocked')) return 'Tarayıcı popup engelledi. Popup izni verip tekrar deneyin.';
+  if (code.includes('cancelled-popup-request')) return 'Açık giriş penceresi kapatıldı. Tekrar deneyin.';
   if (code.includes('unauthorized-domain')) return 'Bu domain Firebase yetkili domain listesinde değil.';
   if (code.includes('account-exists-with-different-credential')) return 'Bu hesap farklı giriş yöntemiyle kayıtlı.';
   if (code.includes('network-request-failed')) return 'Ağ hatası oluştu. İnternet bağlantısını kontrol edin.';
-  if (code.includes('internal-error')) return 'Android kimlik doğrulama hatası. Uygulamayı kapatıp açıp tekrar deneyin.';
-  if (code.includes('operation-not-allowed')) return 'Bu giriş yöntemi Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden etkinleştir.';
+  if (code.includes('web-storage-unsupported')) return 'Tarayıcı depolama (local/session) kapalı görünüyor.';
+  if (code.includes('missing-or-invalid-nonce')) return 'Apple güvenlik doğrulaması başarısız oldu (nonce).';
+  if (code.includes('credential-already-in-use')) return 'Bu Apple hesabı başka bir kullanıcıya bağlı.';
+  if (code.includes('invalid-credential')) return 'Sağlayıcıdan dönen oturum bilgisi geçersiz.';
+  if (code.includes('operation-not-supported-in-this-environment')) return 'Bu giriş yöntemi bu ortamda desteklenmiyor.';
+  if (code.includes('argument-error')) return 'Eksik/yanlış giriş parametresi.';
+  if (code.includes('invalid-oauth-client-id')) return 'OAuth Client ID hatalı.';
+  if (code.includes('too-many-requests')) return 'Çok fazla deneme yapıldı. Biraz sonra tekrar deneyin.';
+  if (code.includes('canceled')) return 'Giriş işlemi iptal edildi.';
+  if (code.includes('not-supported')) return 'Bu cihaz/işletim sistemi bu giriş yöntemini desteklemiyor.';
+  if (code.includes('missing-client-identifier')) return 'Apple için client identifier eksik.';
+  if (code.includes('no-credentials') || message.toLocaleLowerCase('tr').includes('no credentials available')) {
+    return 'Bu cihazda uygun Google hesabı bulunamadı. Hesap ekleyip tekrar deneyin.';
+  }
+  if (
+    code.includes('10') ||
+    message.includes('10:') ||
+    message.toLocaleLowerCase('tr').includes('developer_error')
+  ) {
+    return 'Google giriş yapılandırma hatası (kod 10). Firebase Android uygulamasına SHA-1/SHA-256 ekleyip google-services.json dosyasını tekrar indirmeniz gerekiyor.';
+  }
+  if (message.toLocaleLowerCase('tr').includes('apple')) {
+    return 'Apple giriş yapılandırması eksik/hatalı olabilir. Apple Developer ve Firebase ayarlarını kontrol edin.';
+  }
+  if (code.includes('internal-error')) return 'Native auth hatası. Firebase yapılandırması (google-services.json / GoogleService-Info.plist, SHA ve OAuth istemcisi) eksik olabilir.';
+  if (code.includes('operation-not-allowed')) return 'Sağlayıcı Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden Google ve Apple sağlayıcılarını açın.';
   return err?.message || 'Kimlik doğrulama başarısız.';
+}
+
+function persistLocalUser(user: any) {
+  const email = String(user?.email || '').trim();
+  const displayName = String(user?.displayName || '').trim();
+  const phoneNumber = String(user?.phoneNumber || '').trim();
+  const fallbackName = email.includes('@') ? email.split('@')[0] : '';
+
+  localStorage.setItem('Transport_auth_logged_in', '1');
+  if (displayName || fallbackName) localStorage.setItem('Transport_user_name', displayName || fallbackName);
+  if (email) localStorage.setItem('Transport_user_email', email);
+  if (phoneNumber) localStorage.setItem('Transport_user_phone', phoneNumber);
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 15000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('AUTH_TIMEOUT')), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export default function AuthPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'register'>('register');
-  const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
-  const [name, setName] = useState('');
-  const [identifier, setIdentifier] = useState('');
-  const [phone, setPhone] = useState('');
-  const [countryCode, setCountryCode] = useState('+90');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [lang, setLang] = useState<'tr' | 'en' | 'fr'>('tr');
-
-  const title = useMemo(() => (mode === 'register' ? 'Kayıt Ol' : 'Giriş Yap'), [mode]);
-  const identifierPlaceholder = useMemo(() => {
-    if (mode === 'login') {
-      if (loginMethod === 'phone') {
-        if (lang === 'fr') return 'Téléphone';
-        if (lang === 'en') return 'Phone';
-        return 'Telefon';
-      }
-      if (lang === 'fr') return 'E-mail';
-      if (lang === 'en') return 'Email';
-      return 'E-posta';
-    }
-    if (lang === 'fr') return 'E-mail ou téléphone';
-    if (lang === 'en') return 'Email or Phone';
-    return 'E-posta veya Telefon';
-  }, [lang, loginMethod, mode]);
-  const phonePlaceholder = useMemo(() => {
-    if (lang === 'fr') return `Téléphone (avec indicatif, ex: ${countryCode}537...)`;
-    if (lang === 'en') return `Phone (with country code, e.g. ${countryCode}537...)`;
-    return 'Telefon (0537...)';
-  }, [countryCode, lang]);
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+  const showAppleButton = !isNative || platform === 'ios';
 
   useEffect(() => {
-    const locale = String(globalThis?.navigator?.language || '').toLocaleLowerCase('tr');
-    if (locale.startsWith('fr')) {
-      setLang('fr');
-      if (countryCode === '+90') setCountryCode('+33');
+    if (Capacitor.isNativePlatform()) {
+      setLoading(false);
       return;
     }
-    if (locale.startsWith('en')) {
-      setLang('en');
-    }
-  }, [countryCode]);
 
-  useEffect(() => {
     let active = true;
     getRedirectResult(auth)
       .then((result) => {
         if (!active) return;
         if (result?.user) {
-          const email = String(result.user.email || '');
-          const name = String(result.user.displayName || '') || (email.includes('@') ? email.split('@')[0] : '');
-          if (name) localStorage.setItem('Transport_user_name', name);
-          if (email) localStorage.setItem('Transport_user_email', email);
-          if (result.user.phoneNumber) localStorage.setItem('Transport_user_phone', result.user.phoneNumber);
+          persistLocalUser(result.user);
           router.replace('/');
           return;
         }
@@ -124,88 +117,96 @@ export default function AuthPage() {
       })
       .catch((err) => {
         if (!active) return;
+        const code = String(err?.code || '');
+        if (code.includes('argument-error') || code.includes('no-auth-event')) {
+          setLoading(false);
+          return;
+        }
         setError(mapAuthErrorMessage(err));
         setLoading(false);
       });
+
     return () => {
       active = false;
     };
   }, [router]);
 
-  const onEmailSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const socialLogin = async (provider: 'google' | 'apple') => {
     setError('');
     setLoading(true);
     try {
-      const normalizedIdentifier = mode === 'login'
-        ? (loginMethod === 'phone'
-          ? String(phone || '')
-          : String(identifier || '').trim().toLocaleLowerCase('tr'))
-        : identifier;
-      const email = buildEmailFromIdentifier(normalizedIdentifier, countryCode);
-      if (!email) throw new Error('Lütfen geçerli bir e-posta veya telefon girin.');
-      if (mode === 'register') {
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        const fallbackEmailName = String(cred?.user?.email || '').includes('@') ? String(cred?.user?.email || '').split('@')[0] : '';
-        const resolvedName = String(name || '').trim() || String(cred?.user?.displayName || '').trim() || fallbackEmailName;
-        if (resolvedName) localStorage.setItem('Transport_user_name', resolvedName);
-        if (cred?.user?.email) localStorage.setItem('Transport_user_email', cred.user.email);
-        const normalizedPhone = normalizePhone(phone);
-        if (normalizedPhone) {
-          const cc = normalizePhone(countryCode);
-          localStorage.setItem('Transport_user_phone', `+${cc}${normalizedPhone.startsWith('0') ? normalizedPhone.slice(1) : normalizedPhone}`);
-        }
-        router.replace('/');
-      } else {
-        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-        const loginEmail = String(cred?.user?.email || '');
-        const loginName = String(cred?.user?.displayName || '') || (loginEmail.includes('@') ? loginEmail.split('@')[0] : '');
-        if (loginName) localStorage.setItem('Transport_user_name', loginName);
-        if (loginEmail) localStorage.setItem('Transport_user_email', loginEmail);
-        if (cred?.user?.phoneNumber) localStorage.setItem('Transport_user_phone', cred.user.phoneNumber);
-        router.replace('/');
+      if (provider === 'apple' && isNative && platform !== 'ios') {
+        throw new Error('Apple ile giriş sadece iOS cihazlarda kullanılabilir.');
       }
-    } catch (err: any) {
-      setError(mapAuthErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const socialLogin = async (provider: 'google' | 'facebook') => {
-    setError('');
-    setLoading(true);
-    try {
-      const p = provider === 'google' ? googleProvider : facebookProvider;
-      if (provider === 'google') p.setCustomParameters({ prompt: 'select_account' });
-      try {
-        const cred = await signInWithPopup(auth, p);
-        if (cred?.user) {
-          const socialEmail = String(cred.user.email || '');
-          const socialName = String(cred.user.displayName || '') || (socialEmail.includes('@') ? socialEmail.split('@')[0] : '');
-          if (socialName) localStorage.setItem('Transport_user_name', socialName);
-          if (socialEmail) localStorage.setItem('Transport_user_email', socialEmail);
-          if (cred.user.phoneNumber) localStorage.setItem('Transport_user_phone', cred.user.phoneNumber);
+      if (Capacitor.isNativePlatform()) {
+        if (provider === 'google') {
+          let nativeResult: any;
+          try {
+            nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 20000);
+          } catch (firstErr: any) {
+            const firstMessage = String(firstErr?.message || '').toLocaleLowerCase('tr');
+            if (firstMessage.includes('no credentials available')) {
+              nativeResult = await withTimeout(
+                FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
+                20000,
+              );
+            } else {
+              throw firstErr;
+            }
+          }
+
+          if (nativeResult?.user) {
+            persistLocalUser(nativeResult.user);
+            router.replace('/');
+            return;
+          }
+          throw new Error('Google giriş tamamlanamadı.');
+        }
+
+        const nativeAuth: any = FirebaseAuthentication;
+        if (typeof nativeAuth?.signInWithApple !== 'function') {
+          throw new Error('Bu sürümde Apple giriş native olarak desteklenmiyor.');
+        }
+        const appleResult = await withTimeout(nativeAuth.signInWithApple(), 20000);
+        const appleUser = appleResult?.user;
+        if (appleUser) {
+          persistLocalUser(appleUser);
           router.replace('/');
           return;
         }
-        setLoading(false);
-      } catch (popupErr: any) {
-        const popupCode = String(popupErr?.code || '');
-        if (
-          popupCode.includes('popup-closed-by-user') ||
-          popupCode.includes('popup-blocked') ||
-          popupCode.includes('internal-error')
-        ) {
-          await signInWithRedirect(auth, p);
-          return;
-        }
-        throw popupErr;
+        throw new Error('Apple giriş tamamlanamadı.');
       }
+
+      const selectedProvider = provider === 'google' ? googleProvider : appleProvider;
+      if (provider === 'google') {
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+      } else {
+        appleProvider.setCustomParameters({ locale: 'tr' });
+      }
+      const cred = await signInWithPopup(auth, selectedProvider);
+      if (cred?.user) {
+        persistLocalUser(cred.user);
+        router.replace('/');
+        return;
+      }
+      throw new Error(provider === 'google' ? 'Google giriş tamamlanamadı.' : 'Apple giriş tamamlanamadı.');
     } catch (err: any) {
+      if (err?.code) console.error('AUTH_SOCIAL_ERROR', err.code, err);
+      if (String(err?.code || '').includes('operation-not-allowed')) {
+        setError(
+          provider === 'apple'
+            ? 'Apple provider açık görünüyor; genelde eksik Apple ayarı (Service ID / Key ID / Team ID / .p8) veya yanlış Bundle/Service kimliği bu hatayı üretir.'
+            : 'Google girişi Firebase’de kapalı. Firebase Console > Authentication > Sign-in method > Google bölümünü açın.',
+        );
+        return;
+      }
+      if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
+        setError('Giriş işlemi zaman aşımına uğradı. Firebase OAuth ayarlarını kontrol edip tekrar deneyin.');
+        return;
+      }
       setError(mapAuthErrorMessage(err));
     } finally {
-      // Redirect bazı cihazlarda gecikebildiği için loading'in takılı kalmasını engeller.
       setTimeout(() => setLoading(false), 3500);
     }
   };
@@ -215,167 +216,29 @@ export default function AuthPage() {
       <section className="w-full max-w-md rounded-[2.2rem] border border-white/70 bg-white/90 p-6 shadow-2xl backdrop-blur-xl">
         <div className="text-center">
           <img src="/playstore.png" alt="Transport 245" className="mx-auto h-16 w-16 rounded-2xl shadow-lg ring-1 ring-slate-200" />
-          <h1 className="mt-4 text-2xl font-black uppercase tracking-wide text-slate-900">{title}</h1>
-          <p className="mt-2 text-sm font-semibold text-slate-600">Uygulamayı kullanmak için hesap gerekli.</p>
+          <h1 className="mt-4 text-2xl font-black uppercase tracking-wide text-slate-900">Giriş Yap</h1>
+          <p className="mt-2 text-sm font-semibold text-slate-600">Uygulamaya Google veya Apple hesabınızla giriş yapabilirsiniz.</p>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
-          <button
-            onClick={() => {
-              setMode('register');
-              setLoginMethod('phone');
-            }}
-            className={`rounded-xl py-2 text-xs font-black uppercase ${mode === 'register' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
-          >
-            Kayıt
-          </button>
-          <button
-            onClick={() => {
-              setMode('login');
-              setLoginMethod('phone');
-            }}
-            className={`rounded-xl py-2 text-xs font-black uppercase ${mode === 'login' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
-          >
-            Giriş
-          </button>
-        </div>
+        {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
 
-        {mode === 'login' && (
-          <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMethod('phone');
-                setIdentifier('');
-              }}
-              className={`rounded-xl py-2 text-[11px] font-black uppercase ${loginMethod === 'phone' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
-            >
-              Telefon ile Giriş
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMethod('email');
-                setIdentifier('');
-              }}
-              className={`rounded-xl py-2 text-[11px] font-black uppercase ${loginMethod === 'email' ? 'bg-white text-cyan-700 shadow' : 'text-slate-500'}`}
-            >
-              E-posta ile Giriş
-            </button>
-          </div>
-        )}
-
-        <form onSubmit={onEmailSubmit} className="mt-4 space-y-3">
-          {mode === 'register' && (
-            <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-              <User size={16} className="text-cyan-700" />
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="w-full bg-transparent text-sm font-semibold outline-none" />
-            </label>
-          )}
-          {mode === 'login' && loginMethod === 'email' ? (
-            <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-              <Mail size={16} className="text-cyan-700" />
-              <input
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={identifierPlaceholder}
-                required
-                className="w-full bg-transparent text-sm font-semibold outline-none"
-              />
-            </label>
-          ) : mode === 'login' && loginMethod === 'phone' ? (
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-              <span className="text-sm font-black text-slate-600">🌐</span>
-              <select
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-black text-slate-700 outline-none"
-              >
-                {COUNTRY_CODES.map((item) => (
-                  <option key={item.code} value={item.code}>
-                    {item.flag} {item.code}
-                  </option>
-                ))}
-              </select>
-              <div className="h-5 w-px bg-slate-200" />
-              <Phone size={16} className="text-cyan-700" />
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Telefon"
-                required
-                className="w-full bg-transparent text-sm font-semibold outline-none"
-              />
-            </div>
-          ) : (
-            <>
-              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                <Mail size={16} className="text-cyan-700" />
-                <input
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder={identifierPlaceholder}
-                  required
-                  className="w-full bg-transparent text-sm font-semibold outline-none"
-                />
-              </label>
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                <span className="text-sm font-black text-slate-600">🌐</span>
-                <select
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-black text-slate-700 outline-none"
-                >
-                  {COUNTRY_CODES.map((item) => (
-                    <option key={item.code} value={item.code}>
-                      {item.flag} {item.code}
-                    </option>
-                  ))}
-                </select>
-                <div className="h-5 w-px bg-slate-200" />
-                <Phone size={16} className="text-cyan-700" />
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Telefon"
-                  className="w-full bg-transparent text-sm font-semibold outline-none"
-                />
-              </div>
-            </>
-          )}
-          <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-            <Lock size={16} className="text-cyan-700" />
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Şifre" type="password" required className="w-full bg-transparent text-sm font-semibold outline-none" />
-          </label>
-
-          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg disabled:opacity-60"
-          >
-            {loading ? 'İşleniyor...' : mode === 'register' ? 'Kaydı Tamamla' : 'Giriş Yap'}
-          </button>
-        </form>
-
-        <div className="my-4 h-px bg-slate-200" />
-
-        <div className="space-y-2">
+        <div className="mt-5 space-y-2">
           <button
             onClick={() => socialLogin('google')}
             disabled={loading}
             className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <GoogleLogo /> {mode === 'register' ? 'Google ile Kayıt' : 'Google ile Giriş'}
+            <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
           </button>
-          <button
-            onClick={() => socialLogin('facebook')}
-            disabled={loading}
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <Facebook size={16} className="text-blue-600" /> {mode === 'register' ? 'Facebook ile Kayıt' : 'Facebook ile Giriş'}
-          </button>
+          {showAppleButton && (
+            <button
+              onClick={() => socialLogin('apple')}
+              disabled={loading}
+              className="w-full rounded-2xl border border-slate-900 bg-slate-900 py-3 text-sm font-black uppercase tracking-wide text-white shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <AppleLogo /> {loading ? 'İşleniyor...' : 'Apple ile Giriş'}
+            </button>
+          )}
         </div>
       </section>
     </main>
