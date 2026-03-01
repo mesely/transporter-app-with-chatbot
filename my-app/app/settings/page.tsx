@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [name, setName] = useState('Kullanıcı');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [isGuest, setIsGuest] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [myRatings, setMyRatings] = useState<any[]>([]);
   const [myReports, setMyReports] = useState<any[]>([]);
@@ -31,10 +32,12 @@ export default function SettingsPage() {
     const storedName = localStorage.getItem('Transport_user_name') || 'Kullanıcı';
     const storedEmail = localStorage.getItem('Transport_user_email') || '';
     const storedPhone = localStorage.getItem('Transport_user_phone') || '';
+    const guestMode = localStorage.getItem('Transport_guest_mode') === '1';
 
     setName(storedName);
     setEmail(storedEmail);
     setPhone(storedPhone);
+    setIsGuest(guestMode);
 
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
@@ -106,6 +109,20 @@ export default function SettingsPage() {
             <UserCircle2 className="text-cyan-700" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Hesap Bilgileri</p>
           </div>
+          {isGuest && (
+            <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-xs font-black uppercase text-blue-700">Misafir Modu</p>
+              <p className="mt-1 text-xs font-semibold text-blue-700">
+                Profil, değerlendirme ve şikayet işlemleri için giriş yapmanız gerekir.
+              </p>
+              <button
+                onClick={() => router.push('/auth')}
+                className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
+              >
+                Giriş Yap
+              </button>
+            </div>
+          )}
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase text-slate-400">Ad Soyad</p>

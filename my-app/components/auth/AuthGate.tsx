@@ -19,6 +19,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     if (Capacitor.isNativePlatform()) {
       const hasLocalSession = () =>
         Boolean(
+          localStorage.getItem('Transport_guest_mode') === '1' ||
           localStorage.getItem('Transport_auth_logged_in') ||
           localStorage.getItem('Transport_user_email') ||
           localStorage.getItem('Transport_user_phone') ||
@@ -31,6 +32,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         const phone = String(user?.phoneNumber || '').trim();
         const fallbackName = email.includes('@') ? email.split('@')[0] : '';
         const resolvedName = displayName || fallbackName;
+        localStorage.removeItem('Transport_guest_mode');
         localStorage.setItem('Transport_auth_logged_in', '1');
         if (resolvedName) localStorage.setItem('Transport_user_name', resolvedName);
         if (email) localStorage.setItem('Transport_user_email', email);
@@ -90,11 +92,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         const phone = String(user.phoneNumber || '').trim();
         const fallbackName = email.includes('@') ? email.split('@')[0] : '';
         const resolvedName = displayName || fallbackName;
+        localStorage.removeItem('Transport_guest_mode');
         if (resolvedName) localStorage.setItem('Transport_user_name', resolvedName);
         if (email) localStorage.setItem('Transport_user_email', email);
         if (phone) localStorage.setItem('Transport_user_phone', phone);
       }
-      setLoggedIn(!!user);
+      const guestMode = localStorage.getItem('Transport_guest_mode') === '1';
+      setLoggedIn(Boolean(user) || guestMode);
       setReady(true);
     });
     return () => unsub();

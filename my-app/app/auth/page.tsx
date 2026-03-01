@@ -80,6 +80,7 @@ function persistLocalUser(user: any) {
   const phoneNumber = String(user?.phoneNumber || '').trim();
   const fallbackName = email.includes('@') ? email.split('@')[0] : '';
 
+  localStorage.removeItem('Transport_guest_mode');
   localStorage.setItem('Transport_auth_logged_in', '1');
   if (displayName || fallbackName) localStorage.setItem('Transport_user_name', displayName || fallbackName);
   if (email) localStorage.setItem('Transport_user_email', email);
@@ -116,6 +117,12 @@ export default function AuthPage() {
         (typeof navigator !== 'undefined' ? navigator.platform : ''),
     );
   const showAppleButton = !isNative || platform === 'ios';
+
+  const continueAsGuest = () => {
+    localStorage.setItem('Transport_guest_mode', '1');
+    localStorage.removeItem('Transport_auth_logged_in');
+    router.replace('/');
+  };
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -282,6 +289,14 @@ export default function AuthPage() {
               <AppleLogo /> {loading ? 'İşleniyor...' : 'Apple ile Giriş'}
             </button>
           )}
+
+          <button
+            onClick={continueAsGuest}
+            disabled={loading}
+            className="w-full rounded-2xl border border-blue-200 bg-blue-50 py-3 text-sm font-black tracking-wide text-blue-700 disabled:opacity-60"
+          >
+            Giriş Yapmadan Devam Et (Önerilmez)
+          </button>
         </div>
       </section>
     </main>
