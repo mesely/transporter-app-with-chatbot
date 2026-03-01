@@ -483,26 +483,6 @@ export default function AuthPage() {
         {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
 
         <div className="mt-5 space-y-2">
-          {showGoogleButton && (
-            <button
-              onClick={() => socialLogin('google')}
-              disabled={loading}
-              className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
-            </button>
-          )}
-
-          {showAppleButton && (
-            <button
-              onClick={() => socialLogin('apple')}
-              disabled={loading}
-              className="w-full rounded-2xl border border-slate-900 bg-slate-900 py-3 text-sm font-black uppercase tracking-wide text-white shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <AppleLogo /> {loading ? 'İşleniyor...' : 'Apple ile Giriş'}
-            </button>
-          )}
-
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Telefon ile Giriş</p>
             <div className="mt-2 flex gap-2">
@@ -522,8 +502,8 @@ export default function AuthPage() {
                 type="tel"
                 value={phoneValue}
                 onChange={(e) => setPhoneValue(e.target.value)}
-                placeholder="Telefon numaranız"
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none"
+                placeholder="Telefon"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none"
               />
             </div>
 
@@ -578,6 +558,26 @@ export default function AuthPage() {
               </div>
             )}
           </div>
+
+          {showGoogleButton && (
+            <button
+              onClick={() => socialLogin('google')}
+              disabled={loading}
+              className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
+            </button>
+          )}
+
+          {showAppleButton && (
+            <button
+              onClick={() => socialLogin('apple')}
+              disabled={loading}
+              className="w-full rounded-2xl border border-slate-900 bg-slate-900 py-3 text-sm font-black uppercase tracking-wide text-white shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <AppleLogo /> {loading ? 'İşleniyor...' : 'Apple ile Giriş'}
+            </button>
+          )}
 
           <button
             onClick={continueAsGuest}
