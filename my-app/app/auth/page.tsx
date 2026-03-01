@@ -122,7 +122,7 @@ export default function AuthPage() {
     setError('');
     setLoading(false);
     localStorage.setItem('Transport_guest_mode', '1');
-    localStorage.removeItem('Transport_auth_logged_in');
+    localStorage.setItem('Transport_auth_logged_in', '1');
     localStorage.removeItem('Transport_user_email');
     localStorage.removeItem('Transport_user_phone');
     localStorage.removeItem('Transport_user_name');
