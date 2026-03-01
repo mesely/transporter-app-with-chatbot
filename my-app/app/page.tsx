@@ -15,6 +15,7 @@ import TopControls from '../components/home/TopControls';
 import ActionPanel from '../components/home/ActionPanel';
 import ViewRatingsModal from '../components/ViewRatingsModal';
 import ViewReportsModal from '../components/ViewReportsModal';
+import ProfileModal from '../components/ProfileModal';
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -127,6 +128,7 @@ export default function Home() {
   const [panelCollapseToken, setPanelCollapseToken] = useState(0);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [modalDriverId, setModalDriverId] = useState<string | null>(null);
   const [modalDriverName, setModalDriverName] = useState<string>('');
   const actionTypeRef = useRef(actionType);
@@ -914,7 +916,7 @@ export default function Home() {
         onSearchQueryChange={setMapSearchQuery}
         suggestions={suggestions}
         onPickSuggestion={handleSearchPick}
-          onProfileClick={() => router.push('/profile')}
+        onProfileClick={() => setShowProfileModal(true)}
       />
 
       <div className="absolute inset-0 z-0">
@@ -978,6 +980,7 @@ export default function Home() {
         driverId={modalDriverId}
         driverName={modalDriverName}
       />
+      <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
 
       {(offlineNotice || reminderNotice) && (
         <div className="fixed inset-x-0 bottom-3 z-[2600] flex justify-center pointer-events-none">

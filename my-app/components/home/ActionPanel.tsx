@@ -432,7 +432,7 @@ function ActionPanel({
         forceFocus: true,
         targetZoom,
         clearActiveDriver: true,
-        preserveCurrentCoords: true,
+        preserveCurrentCoords: false,
       });
       return;
     }
@@ -465,7 +465,7 @@ function ActionPanel({
           forceFocus: true,
           targetZoom,
           clearActiveDriver: true,
-          preserveCurrentCoords: true,
+          preserveCurrentCoords: false,
         });
       })
       .catch(() => {});
@@ -533,7 +533,7 @@ function ActionPanel({
         forceFocus: true,
         targetZoom: 13,
         clearActiveDriver: false,
-        preserveCurrentCoords: true,
+        preserveCurrentCoords: false,
       });
     }
     onSelectDriver(f?._id || null);
