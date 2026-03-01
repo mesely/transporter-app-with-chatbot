@@ -14,15 +14,26 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const isNative = Capacitor.isNativePlatform();
+  const hasGuestSession = () => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('Transport_guest_mode') === '1';
+  };
   const hasStoredSession = () => {
     if (typeof window === 'undefined') return false;
     return Boolean(
-      localStorage.getItem('Transport_guest_mode') === '1' ||
+      hasGuestSession() ||
       localStorage.getItem('Transport_auth_logged_in') ||
       localStorage.getItem('Transport_user_email') ||
       localStorage.getItem('Transport_user_phone') ||
       localStorage.getItem('Transport_user_name'),
     );
+  };
+  const clearStaleSession = () => {
+    localStorage.removeItem('Transport_auth_logged_in');
+    localStorage.removeItem('Transport_user_email');
+    localStorage.removeItem('Transport_user_phone');
+    localStorage.removeItem('Transport_user_name');
   };
 
   useEffect(() => {
@@ -59,10 +70,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           if (user) {
             applyNativeUser(user);
           } else {
-            setLoggedIn(hasStoredSession());
+            const guest = hasGuestSession();
+            if (!guest) clearStaleSession();
+            setLoggedIn(guest);
           }
         })
-        .catch(() => setLoggedIn(hasStoredSession()))
+        .catch(() => setLoggedIn(hasGuestSession()))
         .finally(() => setReady(true));
 
       FirebaseAuthentication.addListener('authStateChange', (event: any) => {
@@ -71,7 +84,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           setReady(true);
           return;
         }
-        setLoggedIn(hasStoredSession());
+        const guest = hasGuestSession();
+        if (!guest) clearStaleSession();
+        setLoggedIn(guest);
         setReady(true);
       })
         .then((listener) => {
@@ -108,7 +123,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     const currentPath = pathname || '/';
-    const sessionExists = hasStoredSession();
+    const sessionExists = isNative ? hasGuestSession() : hasStoredSession();
     if (!loggedIn && sessionExists) {
       setLoggedIn(true);
       return;

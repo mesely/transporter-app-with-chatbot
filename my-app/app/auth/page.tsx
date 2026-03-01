@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getRedirectResult, signInWithPopup } from 'firebase/auth';
+import { getRedirectResult, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
@@ -122,7 +122,7 @@ export default function AuthPage() {
     setError('');
     setLoading(false);
     localStorage.setItem('Transport_guest_mode', '1');
-    localStorage.setItem('Transport_auth_logged_in', '1');
+    localStorage.removeItem('Transport_auth_logged_in');
     localStorage.removeItem('Transport_user_email');
     localStorage.removeItem('Transport_user_phone');
     localStorage.removeItem('Transport_user_name');
@@ -185,7 +185,10 @@ export default function AuthPage() {
                 20000,
               );
             } else {
-              nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 20000);
+              nativeResult = await withTimeout(
+                FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),
+                20000,
+              );
             }
           } catch (firstErr: any) {
             const firstMessage = String(firstErr?.message || '').toLocaleLowerCase('tr');
@@ -200,6 +203,20 @@ export default function AuthPage() {
               );
             } else {
               throw firstErr;
+            }
+          }
+
+          if (platform === 'ios') {
+            const idToken = String(nativeResult?.credential?.idToken || '');
+            const accessToken = String(nativeResult?.credential?.accessToken || '');
+            if (idToken) {
+              const googleCred = GoogleAuthProvider.credential(idToken, accessToken || undefined);
+              const jsResult = await withTimeout(signInWithCredential(auth, googleCred), 20000);
+              if (jsResult?.user) {
+                persistLocalUser(jsResult.user);
+                router.replace('/');
+                return;
+              }
             }
           }
 
