@@ -47,6 +47,12 @@ function mapAuthErrorMessage(err: any) {
   if (code.includes('canceled')) return 'Giriş işlemi iptal edildi.';
   if (code.includes('not-supported')) return 'Bu cihaz/işletim sistemi bu giriş yöntemini desteklemiyor.';
   if (code.includes('missing-client-identifier')) return 'Apple için client identifier eksik.';
+  if (message.toLocaleLowerCase('tr').includes("doesn't support credential manager")) {
+    return 'Bu cihaz Credential Manager desteklemiyor. Google giriş için klasik hesap seçimi kullanılacak.';
+  }
+  if (message.toLocaleLowerCase('tr').includes('credential manager')) {
+    return 'Credential Manager bu cihazda kullanılamadı. Tekrar deneyin.';
+  }
   if (code.includes('no-credentials') || message.toLocaleLowerCase('tr').includes('no credentials available')) {
     return 'Bu cihazda uygun Google hesabı bulunamadı. Hesap ekleyip tekrar deneyin.';
   }
@@ -145,10 +151,21 @@ export default function AuthPage() {
         if (provider === 'google') {
           let nativeResult: any;
           try {
-            nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 60000);
+            if (platform === 'android') {
+              nativeResult = await withTimeout(
+                FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
+                60000,
+              );
+            } else {
+              nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 60000);
+            }
           } catch (firstErr: any) {
             const firstMessage = String(firstErr?.message || '').toLocaleLowerCase('tr');
-            if (firstMessage.includes('no credentials available')) {
+            if (
+              firstMessage.includes('no credentials available') ||
+              firstMessage.includes("doesn't support credential manager") ||
+              firstMessage.includes('credential manager')
+            ) {
               nativeResult = await withTimeout(
                 FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
                 60000,
