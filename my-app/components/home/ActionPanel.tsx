@@ -216,7 +216,7 @@ interface ActionPanelProps {
   drivers: any[];
   loading: boolean;
   activeDriverId: string | null;
-  onSelectDriver: (id: string | null) => void;
+  onSelectDriver: (id: string | null, driver?: any) => void;
   activeTags: string[];
   onTagsChange: (tags: string[] | ((prev: string[]) => string[])) => void;
   isSidebarOpen: boolean;
@@ -536,7 +536,7 @@ function ActionPanel({
         preserveCurrentCoords: false,
       });
     }
-    onSelectDriver(f?._id || null);
+    onSelectDriver(f?._id || null, f);
     setShowFavorites(false);
   }, [onSearchLocation, onSelectDriver]);
 
@@ -1177,7 +1177,7 @@ function ActionPanel({
                         }
                         if (panelState < 2) setPanelState(2);
                         setLocalSelectedId(driver._id);
-                        onSelectDriver(driver._id);
+                        onSelectDriver(driver._id, driver);
                     }}
                     className={`bg-white/90 rounded-[2.2rem] p-3 mb-2.5 shadow-md border transition-colors cursor-pointer relative ${isSelected ? `${theme.ring} ring-2` : 'border-white/40'}`}
                 >

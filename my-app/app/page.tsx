@@ -32,6 +32,7 @@ const RATE_REMINDERS_KEY = 'Transport_rate_reminders_v1';
 const FAVORITES_KEY = 'Transport_favorites_v1';
 const MANUAL_LOCATION_KEY = 'Transport_manual_location_v1';
 const SKIP_SPLASH_ONCE_KEY = 'Transport_skip_splash_once';
+const HOME_VIEW_STATE_KEY = 'Transport_home_view_state_v1';
 const TURKEY_BBOX = {
   minLat: 35.45,
   minLng: 25.4,
@@ -132,6 +133,8 @@ export default function Home() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [modalDriverId, setModalDriverId] = useState<string | null>(null);
   const [modalDriverName, setModalDriverName] = useState<string>('');
+  const [selectedDriverGhost, setSelectedDriverGhost] = useState<any | null>(null);
+  const [homeStateReady, setHomeStateReady] = useState(false);
   const actionTypeRef = useRef(actionType);
   const activeTagsRef = useRef(activeTags);
   const searchCoordsRef = useRef(searchCoords);
@@ -200,6 +203,47 @@ export default function Home() {
   useEffect(() => {
     searchCoordsRef.current = searchCoords;
   }, [searchCoords]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = sessionStorage.getItem(HOME_VIEW_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const lat = Number(parsed?.searchCoords?.[0]);
+      const lng = Number(parsed?.searchCoords?.[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setSearchCoords([lat, lng]);
+      }
+      if (typeof parsed?.actionType === 'string' && parsed.actionType) {
+        setActionType(parsed.actionType);
+      }
+      if (Array.isArray(parsed?.activeTags)) {
+        setActiveTags(parsed.activeTags.filter((t: any) => typeof t === 'string'));
+      }
+      if (typeof parsed?.mapSearchQuery === 'string') {
+        setMapSearchQuery(parsed.mapSearchQuery);
+      }
+    } catch {}
+    finally {
+      setHomeStateReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(
+        HOME_VIEW_STATE_KEY,
+        JSON.stringify({
+          searchCoords,
+          actionType,
+          activeTags,
+          mapSearchQuery,
+        }),
+      );
+    } catch {}
+  }, [searchCoords, actionType, activeTags, mapSearchQuery]);
 
   useEffect(() => {
     try {
@@ -492,6 +536,7 @@ export default function Home() {
   }, [router]);
 
   useEffect(() => {
+    if (!homeStateReady) return;
     if (!searchCoords) {
       fetchDrivers(DEFAULT_LAT, DEFAULT_LNG, 'kurtarici', {
         zoom: ACTION_PANEL_QUERY_ZOOM,
@@ -499,9 +544,10 @@ export default function Home() {
         bbox: TURKEY_BBOX,
       });
     }
-  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, searchCoords]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, homeStateReady, searchCoords]);
 
   useEffect(() => {
+    if (!homeStateReady) return;
     if (searchCoords) return;
     if (typeof window === 'undefined') return;
     const manual = readManualLocation();
@@ -535,7 +581,7 @@ export default function Home() {
     };
 
     useManualIfNeeded();
-  }, [searchCoords]);
+  }, [homeStateReady, searchCoords]);
 
   const matchesActiveFilters = useCallback((d: any) => {
       const s = d.service;
@@ -563,10 +609,13 @@ export default function Home() {
   }, [mapDrivers, matchesActiveFilters]);
 
   const selectedDriverForFocus = useMemo(() => {
+    if (selectedDriverGhost?._id && activeDriverId === selectedDriverGhost._id) {
+      return selectedDriverGhost;
+    }
     if (!activeDriverId) return null;
     const merged = [...filteredDrivers, ...filteredMapDrivers, ...drivers, ...mapDrivers];
     return merged.find((d: any) => d?._id === activeDriverId) || null;
-  }, [activeDriverId, drivers, filteredDrivers, filteredMapDrivers, mapDrivers]);
+  }, [activeDriverId, drivers, filteredDrivers, filteredMapDrivers, mapDrivers, selectedDriverGhost]);
 
   const mapRenderDrivers = useMemo(() => {
     if (!selectedDriverForFocus) return filteredMapDrivers;
@@ -723,21 +772,26 @@ export default function Home() {
     }, 420);
   }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, readTypeCache]);
 
-  const handleSelectDriver = useCallback((id: string | null, openPopup: boolean) => {
+  const handleSelectDriver = useCallback((id: string | null, openPopup: boolean, driverHint?: any) => {
     setActiveDriverId(id);
     setPopupDriverId(openPopup ? id : null);
     if (!id) {
+      setSelectedDriverGhost(null);
       setFocusCoords(null);
       return;
     }
+    if (driverHint && driverHint._id === id) {
+      setSelectedDriverGhost(driverHint);
+    }
     const merged = [...filteredDrivers, ...filteredMapDrivers, ...drivers, ...mapDrivers];
-    const selected = merged.find((d: any) => d?._id === id);
+    const selected = merged.find((d: any) => d?._id === id) || driverHint;
     const coords = selected?.location?.coordinates;
     if (Array.isArray(coords) && coords.length >= 2) {
       // Keep user's blue location marker fixed; only move camera focus to selected provider.
       setFocusCoords([coords[1], coords[0]]);
     }
     if (id) {
+      blockMapMoveFetchUntilRef.current = Date.now() + 3200;
       suppressNextMapMoveFetchRef.current = true;
       setMapFocusZoom(13.2);
       setMapFocusToken((v) => v + 1);
@@ -805,7 +859,7 @@ export default function Home() {
 
   const handleSearchPick = useCallback((driver: any) => {
     setMapSearchQuery(driver?.businessName || '');
-    handleSelectDriver(driver?._id || null, true);
+    handleSelectDriver(driver?._id || null, true, driver);
   }, [handleSelectDriver]);
 
   const isFavorite = useCallback((driverId: string) => {
@@ -880,6 +934,9 @@ export default function Home() {
     zoom: number,
     bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }
   ) => {
+    if (activeDriverId) {
+      return;
+    }
     if (Date.now() < blockMapMoveFetchUntilRef.current) {
       return;
     }
@@ -936,6 +993,7 @@ export default function Home() {
     MAP_MOVE_FETCH_DEBOUNCE_MS,
     MIN_MOVE_DISTANCE_DEG,
     MIN_ZOOM_DELTA,
+    activeDriverId,
   ]);
 
   return (
@@ -989,7 +1047,7 @@ export default function Home() {
         drivers={filteredDrivers}
         loading={loading}
         activeDriverId={activeDriverId}
-        onSelectDriver={(id) => handleSelectDriver(id, false)}
+        onSelectDriver={(id, driver) => handleSelectDriver(id, false, driver)}
         onStartOrder={handleCreateOrder}
         isSidebarOpen={false}
         collapseRequestToken={panelCollapseToken}

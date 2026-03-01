@@ -95,6 +95,14 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(SKIP_SPLASH_ONCE_KEY, '1');
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const loadActivity = async () => {
       if (!normalizedPhone) {
         setMyRatings([]);
