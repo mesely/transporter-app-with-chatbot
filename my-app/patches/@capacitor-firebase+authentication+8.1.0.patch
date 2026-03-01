@@ -154,6 +154,21 @@ index d6104ae..cd7177e 100644
          }
          result["providerId"] = additionalUserInfo.providerID
          if let username = additionalUserInfo.username {
+diff --git a/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationPlugin.swift b/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationPlugin.swift
+index 3ab1be8..ab882e1 100644
+--- a/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationPlugin.swift
++++ b/node_modules/@capacitor-firebase/authentication/ios/Plugin/FirebaseAuthenticationPlugin.swift
+@@ -723,8 +723,8 @@ public class FirebaseAuthenticationPlugin: CAPPlugin, CAPBridgedPlugin {
+         var config = FirebaseAuthenticationConfig()
+ 
+         config.skipNativeAuth = getConfig().getBoolean("skipNativeAuth", config.skipNativeAuth)
+-        if let providers = getConfig().getArray("providers") as? [String] {
+-            config.providers = providers
++        if let providers = getConfig().getArray("providers") {
++            config.providers = providers.compactMap { $0 as? String }
+         }
+ 
+         return config
 diff --git a/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/FacebookAuthProviderHandler.swift b/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/FacebookAuthProviderHandler.swift
 index d12967f..ec4e036 100644
 --- a/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/FacebookAuthProviderHandler.swift

@@ -145,13 +145,13 @@ export default function AuthPage() {
         if (provider === 'google') {
           let nativeResult: any;
           try {
-            nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 20000);
+            nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 60000);
           } catch (firstErr: any) {
             const firstMessage = String(firstErr?.message || '').toLocaleLowerCase('tr');
             if (firstMessage.includes('no credentials available')) {
               nativeResult = await withTimeout(
                 FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
-                20000,
+                60000,
               );
             } else {
               throw firstErr;
@@ -170,7 +170,7 @@ export default function AuthPage() {
         if (typeof nativeAuth?.signInWithApple !== 'function') {
           throw new Error('Bu sürümde Apple giriş native olarak desteklenmiyor.');
         }
-        const appleResult = await withTimeout(nativeAuth.signInWithApple(), 20000);
+        const appleResult = await withTimeout(nativeAuth.signInWithApple(), 60000);
         const appleUser = appleResult?.user;
         if (appleUser) {
           persistLocalUser(appleUser);
