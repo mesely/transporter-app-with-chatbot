@@ -81,6 +81,14 @@ function readManualLocation(): { lat: number; lng: number; city?: string; distri
   }
 }
 
+function isInsideBBox(
+  lat: number,
+  lng: number,
+  bbox: { minLat: number; minLng: number; maxLat: number; maxLng: number }
+) {
+  return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
+}
+
 export default function Home() {
   const router = useRouter();
   const SPLASH_DURATION_MS = 6800;
@@ -101,6 +109,7 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
 
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [mapDrivers, setMapDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchCoords, setSearchCoords] = useState<[number, number] | null>(null);
   const [isApproximateLocation, setIsApproximateLocation] = useState(false);
@@ -137,14 +146,22 @@ export default function Home() {
   const inflightFetchKeyRef = useRef<string | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
   const fetchSeqRef = useRef(0);
+  const inflightMapFetchKeyRef = useRef<string | null>(null);
+  const mapFetchAbortRef = useRef<AbortController | null>(null);
+  const mapFetchSeqRef = useRef(0);
   const blockMapMoveFetchUntilRef = useRef(0);
   const driversRef = useRef<any[]>([]);
+  const mapDriversRef = useRef<any[]>([]);
   const filterRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFilterTypeRef = useRef('kurtarici');
 
   useEffect(() => {
     driversRef.current = drivers;
   }, [drivers]);
+
+  useEffect(() => {
+    mapDriversRef.current = mapDrivers;
+  }, [mapDrivers]);
 
   const readTypeCache = useCallback((type: string): any[] | null => {
     try {
@@ -215,9 +232,18 @@ export default function Home() {
       force?: boolean;
       countryFallback?: boolean;
       silent?: boolean;
+      target?: 'panel' | 'map' | 'both';
     }
   ) => {
-    const requestSeq = ++fetchSeqRef.current;
+    const target = opts?.target || 'both';
+    const includePanel = target === 'panel' || target === 'both';
+    const includeMap = target === 'map' || target === 'both';
+    const isMapOnlyRequest = target === 'map';
+    const keyRef = isMapOnlyRequest ? inflightMapFetchKeyRef : inflightFetchKeyRef;
+    const abortRef = isMapOnlyRequest ? mapFetchAbortRef : fetchAbortRef;
+    const seqRef = isMapOnlyRequest ? mapFetchSeqRef : fetchSeqRef;
+
+    const requestSeq = ++seqRef.current;
     const key = [
       type,
       lat.toFixed(4),
@@ -226,12 +252,13 @@ export default function Home() {
       String(opts?.limit ? Math.round(opts.limit) : ''),
       String(opts?.bbox ? `${opts.bbox.minLat.toFixed(3)}:${opts.bbox.minLng.toFixed(3)}:${opts.bbox.maxLat.toFixed(3)}:${opts.bbox.maxLng.toFixed(3)}` : ''),
     ].join(':');
-    if (!opts?.force && inflightFetchKeyRef.current === key) return;
+    if (!opts?.force && keyRef.current === key) return;
 
     const now = Date.now();
     const cached = driversCacheRef.current[key];
     if (!opts?.force && cached) {
-      setDrivers(cached.data);
+      if (includePanel) setDrivers(cached.data);
+      if (includeMap) setMapDrivers(cached.data);
       setLoading(false);
       if (now - cached.ts < DRIVERS_CACHE_REVALIDATE_MS) return;
       if (now - cached.ts > DRIVERS_CACHE_TTL_MS) {
@@ -239,17 +266,18 @@ export default function Home() {
       }
     }
 
-    if (fetchAbortRef.current) fetchAbortRef.current.abort();
+    if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
-    fetchAbortRef.current = controller;
-    inflightFetchKeyRef.current = key;
+    abortRef.current = controller;
+    keyRef.current = key;
 
     if (!opts?.silent && (!cached || opts?.force)) {
       const typeCached = readTypeCache(type);
       if (typeCached && typeCached.length > 0) {
-        setDrivers(typeCached);
+        if (includePanel) setDrivers(typeCached);
+        if (includeMap) setMapDrivers(typeCached);
       }
-      setLoading(true);
+      if (includePanel) setLoading(true);
     }
     try {
       const params = new URLSearchParams({
@@ -273,7 +301,7 @@ export default function Home() {
           : `${API_URL}/users/nearby?${params.toString()}`;
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
-      if (requestSeq !== fetchSeqRef.current) return;
+      if (requestSeq !== seqRef.current) return;
       const normalizedData = Array.isArray(data) ? data : [];
 
       if (
@@ -282,14 +310,16 @@ export default function Home() {
         opts?.countryFallback !== false &&
         type !== 'seyyar_sarj'
       ) {
+        const fallbackBbox = isInsideBBox(lat, lng, TURKEY_BBOX) ? TURKEY_BBOX : undefined;
         await fetchDrivers(lat, lng, type, {
           zoom: 6.2,
           limit: 3200,
-          bbox: TURKEY_BBOX,
+          bbox: fallbackBbox,
           force: true,
           append: false,
           countryFallback: false,
           silent: opts?.silent,
+          target,
         });
         return;
       }
@@ -307,10 +337,10 @@ export default function Home() {
         const purge = sorted.slice(0, keys.length - DRIVERS_CACHE_MAX_ENTRIES);
         for (const item of purge) delete driversCacheRef.current[item.k];
       }
-      if (normalizedData.length === 0 && Array.isArray(driversRef.current) && driversRef.current.length > 0 && !!opts?.bbox) {
-        // Keep current visible list if a move query returns empty to avoid sudden blank panel.
-      } else {
-        if (opts?.append) {
+      if (includePanel) {
+        if (normalizedData.length === 0 && Array.isArray(driversRef.current) && driversRef.current.length > 0 && !!opts?.bbox) {
+          // Keep current visible list if a move query returns empty to avoid sudden blank panel.
+        } else if (opts?.append) {
           setDrivers((prev) => {
             const map = new globalThis.Map<string, any>();
             for (const item of prev || []) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
@@ -321,13 +351,27 @@ export default function Home() {
           setDrivers(normalizedData);
         }
       }
+
+      if (includeMap) {
+        if (opts?.append) {
+          setMapDrivers((prev) => {
+            const map = new globalThis.Map<string, any>();
+            for (const item of prev || []) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
+            for (const item of normalizedData) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
+            return Array.from(map.values());
+          });
+        } else if (normalizedData.length > 0 || !opts?.bbox) {
+          setMapDrivers(normalizedData);
+        }
+      }
     } catch (err) {
-      if (requestSeq !== fetchSeqRef.current) return;
+      if (requestSeq !== seqRef.current) return;
       if ((err as any)?.name !== 'AbortError') {
         console.error('Fetch Error:', err);
         const typed = readTypeCache(type);
         if (typed && typed.length > 0) {
-          setDrivers(typed);
+          if (includePanel) setDrivers(typed);
+          if (includeMap) setMapDrivers(typed);
           setOfflineNotice('Internet yok. Son sonuclar yukleniyor.');
           return;
         }
@@ -336,23 +380,25 @@ export default function Home() {
           if (raw) {
             const parsed = JSON.parse(raw) as { data?: any[] };
             if (Array.isArray(parsed?.data) && parsed.data.length > 0) {
-              setDrivers(parsed.data);
+              if (includePanel) setDrivers(parsed.data);
+              if (includeMap) setMapDrivers(parsed.data);
               setOfflineNotice('Internet yok. Son sonuclar yukleniyor.');
             }
           }
         } catch {}
       }
     } finally {
-      if (inflightFetchKeyRef.current === key) {
-        inflightFetchKeyRef.current = null;
+      if (keyRef.current === key) {
+        keyRef.current = null;
       }
-      if (!opts?.silent) setLoading(false);
+      if (!opts?.silent && includePanel) setLoading(false);
     }
   }, [DRIVERS_CACHE_MAX_ENTRIES, readTypeCache, writeTypeCache]);
 
   useEffect(() => {
     return () => {
       if (fetchAbortRef.current) fetchAbortRef.current.abort();
+      if (mapFetchAbortRef.current) mapFetchAbortRef.current.abort();
       if (mapMoveDebounceRef.current) clearTimeout(mapMoveDebounceRef.current);
       if (filterRetryRef.current) clearTimeout(filterRetryRef.current);
     };
@@ -481,8 +527,7 @@ export default function Home() {
     useManualIfNeeded();
   }, [searchCoords]);
 
-  const filteredDrivers = useMemo(() => {
-    return drivers.filter((d) => {
+  const matchesActiveFilters = useCallback((d: any) => {
       const s = d.service;
       if (!s) return false;
       let match = false;
@@ -497,8 +542,15 @@ export default function Home() {
       if (!match) return false;
       if (activeTags.length > 0) return activeTags.some((t) => (s.tags || []).includes(t));
       return true;
-    });
-  }, [drivers, actionType, activeTags]);
+  }, [actionType, activeTags]);
+
+  const filteredDrivers = useMemo(() => {
+    return drivers.filter(matchesActiveFilters);
+  }, [drivers, matchesActiveFilters]);
+
+  const filteredMapDrivers = useMemo(() => {
+    return mapDrivers.filter(matchesActiveFilters);
+  }, [mapDrivers, matchesActiveFilters]);
 
   const handleCreateOrder = useCallback(async (driver: any, method: 'call' | 'message') => {
     try {
@@ -817,16 +869,27 @@ export default function Home() {
     if (mapMoveDebounceRef.current) clearTimeout(mapMoveDebounceRef.current);
     mapMoveDebounceRef.current = setTimeout(() => {
       lastMapFetchRef.current = { lat, lng, zoom, bbox };
-      const anchor = searchCoordsRef.current;
-      const baseLat = anchor?.[0] ?? lat;
-      const baseLng = anchor?.[1] ?? lng;
+      let expandedBbox = bbox;
+      if (bbox) {
+        const latSpan = Math.max(0.01, bbox.maxLat - bbox.minLat);
+        const lngSpan = Math.max(0.01, bbox.maxLng - bbox.minLng);
+        const latPad = Math.max(0.06, latSpan * BBOX_OVERSCAN_FACTOR);
+        const lngPad = Math.max(0.06, lngSpan * BBOX_OVERSCAN_FACTOR);
+        expandedBbox = {
+          minLat: bbox.minLat - latPad,
+          minLng: bbox.minLng - lngPad,
+          maxLat: bbox.maxLat + latPad,
+          maxLng: bbox.maxLng + lngPad,
+        };
+      }
       const requestedLimit = Math.max(ACTION_PANEL_QUERY_LIMIT, 2200);
-      fetchDrivers(baseLat, baseLng, actionTypeRef.current, {
-        zoom: ACTION_PANEL_QUERY_ZOOM,
+      fetchDrivers(lat, lng, actionTypeRef.current, {
+        zoom,
         limit: requestedLimit,
-        bbox: TURKEY_BBOX,
+        bbox: expandedBbox,
         append: true,
         silent: true,
+        target: 'map',
       });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
   }, [
@@ -862,7 +925,7 @@ export default function Home() {
           focusCoords={focusCoords}
           focusRequestToken={mapFocusToken}
           focusRequestZoom={mapFocusZoom}
-          drivers={filteredDrivers}
+          drivers={filteredMapDrivers}
           activeDriverId={activeDriverId}
           popupDriverId={popupDriverId}
           onSelectDriver={(id) => handleSelectDriver(id, true)}
