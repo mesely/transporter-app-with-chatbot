@@ -407,23 +407,31 @@ index d12967f..ec4e036 100644
          #endif
      }
 diff --git a/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/GoogleAuthProviderHandler.swift b/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/GoogleAuthProviderHandler.swift
-index 2cc2e26..a703811 100644
+index 2cc2e26..a195d0f 100644
 --- a/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/GoogleAuthProviderHandler.swift
 +++ b/node_modules/@capacitor-firebase/authentication/ios/Plugin/Handlers/GoogleAuthProviderHandler.swift
-@@ -30,14 +30,24 @@ class GoogleAuthProviderHandler: NSObject {
+@@ -30,14 +30,31 @@ class GoogleAuthProviderHandler: NSObject {
  
      private func startSignInWithGoogleFlow(_ call: CAPPluginCall, isLink: Bool) {
          #if RGCFA_INCLUDE_GOOGLE
 -        guard let clientId = FirebaseApp.app()?.options.clientID else { return }
 +        guard let clientId = FirebaseApp.app()?.options.clientID else {
-+            call.reject("Google sign-in failed: missing Firebase clientID.")
++            if isLink == true {
++                self.pluginImplementation.handleFailedLink(message: "Google sign-in failed: missing Firebase clientID.", error: nil)
++            } else {
++                self.pluginImplementation.handleFailedSignIn(message: "Google sign-in failed: missing Firebase clientID.", error: nil)
++            }
 +            return
 +        }
          let config = GIDConfiguration(clientID: clientId, serverClientID: clientId)
          GIDSignIn.sharedInstance.configuration = config
 -        guard let controller = self.pluginImplementation.getPlugin().bridge?.viewController else { return }
 +        guard let controller = self.pluginImplementation.getPlugin().bridge?.viewController else {
-+            call.reject("Google sign-in failed: no presenting view controller.")
++            if isLink == true {
++                self.pluginImplementation.handleFailedLink(message: "Google sign-in failed: no presenting view controller.", error: nil)
++            } else {
++                self.pluginImplementation.handleFailedSignIn(message: "Google sign-in failed: no presenting view controller.", error: nil)
++            }
 +            return
 +        }
          let scopes = call.getArray("scopes", String.self) ?? []
@@ -432,17 +440,20 @@ index 2cc2e26..a703811 100644
 -            GIDSignIn.sharedInstance.signIn(withPresenting: controller, hint: nil, additionalScopes: scopes) { [unowned self] result, error in
 +            GIDSignIn.sharedInstance.signIn(withPresenting: controller, hint: nil, additionalScopes: scopes) { [weak self] result, error in
 +                guard let self = self else {
-+                    call.reject("Google sign-in failed: handler deallocated.")
 +                    return
 +                }
                  if let error = error {
                      if isLink == true {
                          self.pluginImplementation.handleFailedLink(message: nil, error: error)
-@@ -50,6 +60,7 @@ class GoogleAuthProviderHandler: NSObject {
+@@ -50,6 +67,11 @@ class GoogleAuthProviderHandler: NSObject {
                  guard let user = result?.user,
                        let idToken = user.idToken?.tokenString
                  else {
-+                    call.reject("Google sign-in failed: missing user/token from Google response.")
++                    if isLink == true {
++                        self.pluginImplementation.handleFailedLink(message: "Google sign-in failed: missing user/token from Google response.", error: nil)
++                    } else {
++                        self.pluginImplementation.handleFailedSignIn(message: "Google sign-in failed: missing user/token from Google response.", error: nil)
++                    }
                      return
                  }
                  let accessToken = user.accessToken.tokenString

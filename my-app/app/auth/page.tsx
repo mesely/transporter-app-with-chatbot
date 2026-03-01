@@ -66,6 +66,9 @@ function mapAuthErrorMessage(err: any) {
   if (message.toLocaleLowerCase('tr').includes('apple')) {
     return 'Apple giriş yapılandırması eksik/hatalı olabilir. Apple Developer ve Firebase ayarlarını kontrol edin.';
   }
+  if (message.toLocaleLowerCase('tr').includes('simulator')) {
+    return 'iOS simülatörde native kimlik doğrulama sınırlı olabilir. Gerçek cihazda deneyin.';
+  }
   if (code.includes('internal-error')) return 'Native auth hatası. Firebase yapılandırması (google-services.json / GoogleService-Info.plist, SHA ve OAuth istemcisi) eksik olabilir.';
   if (code.includes('operation-not-allowed')) return 'Sağlayıcı Firebase’de kapalı. Firebase Console > Authentication > Sign-in method bölümünden Google ve Apple sağlayıcılarını açın.';
   return err?.message || 'Kimlik doğrulama başarısız.';
@@ -104,6 +107,14 @@ export default function AuthPage() {
   const [logoSrc, setLogoSrc] = useState('/favicon.ico');
   const isNative = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
+  const isIosSimulator =
+    isNative &&
+    platform === 'ios' &&
+    /simulator|x86_64|i386/i.test(
+      (typeof navigator !== 'undefined' ? navigator.userAgent : '') +
+        ' ' +
+        (typeof navigator !== 'undefined' ? navigator.platform : ''),
+    );
   const showAppleButton = !isNative || platform === 'ios';
 
   useEffect(() => {
@@ -147,7 +158,7 @@ export default function AuthPage() {
         throw new Error('Apple ile giriş sadece iOS cihazlarda kullanılabilir.');
       }
 
-      if (Capacitor.isNativePlatform()) {
+      if (Capacitor.isNativePlatform() && !isIosSimulator) {
         if (provider === 'google') {
           let nativeResult: any;
           try {
