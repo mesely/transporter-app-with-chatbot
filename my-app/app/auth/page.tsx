@@ -228,7 +228,11 @@ export default function AuthPage() {
             />
           </div>
           <h1 className="mt-4 text-2xl font-black uppercase tracking-wide text-slate-900">Giriş Yap</h1>
-          <p className="mt-2 text-sm font-semibold text-slate-600">Uygulamaya Google veya Apple hesabınızla giriş yapabilirsiniz.</p>
+          <p className="mt-2 text-sm font-semibold text-slate-600">
+            {showAppleButton
+              ? 'Uygulamaya Google veya Apple hesabınızla giriş yapabilirsiniz.'
+              : 'Uygulamaya Google hesabınızla giriş yapabilirsiniz.'}
+          </p>
         </div>
 
         {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}

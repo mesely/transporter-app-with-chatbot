@@ -21,9 +21,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
+	<string>beta-v5</string>
 	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<string>5</string>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
 	<key>LSRequiresIPhoneOS</key>
@@ -33,6 +33,10 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Hizmet sürecinde konumunuzu takip edebilmek ve size en uygun seçenekleri sunabilmek için bu izin gereklidir.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Size en yakın kurtarıcı ve nakliyecileri haritada gösterebilmek için konumunuza ihtiyacımız var.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -56,9 +60,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-    <key>NSLocationWhenInUseUsageDescription</key>
-        <string>Size en yakın kurtarıcı ve nakliyecileri haritada gösterebilmek için konumunuza ihtiyacımız var.</string>
-        <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-        <string>Hizmet sürecinde konumunuzu takip edebilmek ve size en uygun seçenekleri sunabilmek için bu izin gereklidir.</string>
 </dict>
 </plist>

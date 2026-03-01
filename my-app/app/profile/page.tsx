@@ -21,6 +21,8 @@ import {
   ArrowRight, Users, Bus, Crown, LocateFixed,
   Truck, ChevronDown, ChevronUp, FileText, Shield, Image as ImageIcon
 } from 'lucide-react';
+import { TURKEY_CITIES } from '../../utils/turkey-cities';
+import { buildGroupedCityOptions } from '../../utils/grouped-city-options';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -171,6 +173,10 @@ export default function ProfilePage() {
   }, []);
 
   const availableDistricts = useMemo(() => cityData[formData.city] || [], [formData.city, cityData]);
+  const groupedCityOptions = useMemo(() => {
+    const source = Object.keys(cityData).length > 0 ? Object.keys(cityData) : TURKEY_CITIES;
+    return buildGroupedCityOptions(source);
+  }, [cityData]);
 
   useEffect(() => {
     if (availableDistricts.length > 0 && !availableDistricts.includes(formData.district)) {
@@ -582,7 +588,32 @@ export default function ProfilePage() {
             <label className="text-[8px] font-black uppercase text-[#00c5c0]">Vergi Levhası No (Zorunlu)</label>
             <input type="text" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-transparent font-bold text-sm outline-none text-[#3d686b]" placeholder="Vergi levhası no"/>
           </div>
-          <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+          <div className="grid grid-cols-2 gap-4">
+            <select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">
+              <optgroup label="Türkiye Şehirleri">
+                {groupedCityOptions.turkey.map((city) => <option key={`tr-${city}`} value={city}>{city}</option>)}
+              </optgroup>
+              <optgroup label="Avrupa Şehirleri">
+                {groupedCityOptions.europe.map((city) => <option key={`eu-${city}`} value={city}>{city}</option>)}
+              </optgroup>
+              <optgroup label="Amerika Şehirleri">
+                {groupedCityOptions.america.map((city) => <option key={`us-${city}`} value={city}>{city}</option>)}
+              </optgroup>
+            </select>
+            {availableDistricts.length > 0 ? (
+              <select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]">
+                {availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={formData.district}
+                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                className="bg-white/50 backdrop-blur-sm border border-white/40 p-5 rounded-2xl font-black text-xs outline-none focus:bg-white/80 transition-colors text-[#3d686b]"
+                placeholder="İlçe / Bölge"
+              />
+            )}
+          </div>
           <button
             type="button"
             onClick={useCurrentLocationForAddress}

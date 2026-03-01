@@ -111,3 +111,7 @@ export class NewProvider {
 }
 
 export const NewProviderSchema = SchemaFactory.createForClass(NewProvider);
+NewProviderSchema.index({ location: '2dsphere' });
+NewProviderSchema.index({ 'service.mainType': 1, location: '2dsphere' });
+NewProviderSchema.index({ 'service.subType': 1, location: '2dsphere' });
+NewProviderSchema.index({ 'address.city': 1, 'service.mainType': 1 });

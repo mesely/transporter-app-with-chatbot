@@ -306,6 +306,22 @@ function getFocusPadding() {
   };
 }
 
+function getPopupScaleForZoom(zoom: number) {
+  if (zoom <= 3.2) return 0.68;
+  if (zoom <= 4.2) return 0.74;
+  if (zoom <= 5.2) return 0.8;
+  if (zoom <= 6.2) return 0.86;
+  if (zoom <= 7.2) return 0.92;
+  return 1;
+}
+
+function applyPopupScale(node: HTMLElement | null, zoom: number) {
+  if (!node) return;
+  const scale = getPopupScaleForZoom(zoom);
+  node.style.transform = `scale(${scale})`;
+  node.style.transformOrigin = 'bottom center';
+}
+
 function buildPopup(
   driver: Driver,
   lang: AppLang,
@@ -326,8 +342,6 @@ function buildPopup(
   wrap.style.width = 'min(360px, calc(100vw - 48px))';
   wrap.style.maxWidth = '100%';
   wrap.style.boxSizing = 'border-box';
-  wrap.style.transform = 'scale(0.94)';
-  wrap.style.transformOrigin = 'top left';
 
   const distance = driver.distance ? `${(driver.distance / 1000).toFixed(1)} KM` : '';
   const ratingValue = Number(driver.rating || 0);
@@ -406,6 +420,7 @@ function MapView({
   const mapNodeRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
+  const popupContentRef = useRef<HTMLElement | null>(null);
   const lastFocusTokenRef = useRef<number | undefined>(undefined);
   const lastActiveFocusIdRef = useRef<string | null>(null);
   const aggregateCacheRef = useRef<{
@@ -448,7 +463,7 @@ function MapView({
       style: BASE_STYLE as any,
       center,
       zoom: searchCoords ? 12 : 5.8,
-      minZoom: 5,
+      minZoom: 2,
       maxZoom: 18,
       renderWorldCopies: false,
       attributionControl: false,
@@ -635,10 +650,15 @@ function MapView({
           maxLng: b.getEast(),
         });
       });
+
+      map.on('zoom', () => {
+        applyPopupScale(popupContentRef.current, map.getZoom());
+      });
     });
 
     return () => {
       popupRef.current?.remove();
+      popupContentRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -726,6 +746,7 @@ function MapView({
     if (!map) return;
 
     popupRef.current?.remove();
+    popupContentRef.current = null;
     if (!popupDriverId) return;
 
     const driver = driverById.get(popupDriverId);
@@ -752,6 +773,8 @@ function MapView({
       .setDOMContent(popupNode)
       .addTo(map);
 
+    popupContentRef.current = popupNode;
+    applyPopupScale(popupContentRef.current, map.getZoom());
     popupRef.current = popup;
   }, [driverById, isFavorite, lang, onStartOrder, onToggleFavorite, onViewRatings, onViewReports, popupDriverId]);
 

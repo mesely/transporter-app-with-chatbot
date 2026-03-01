@@ -3,6 +3,8 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { auth } from '../../lib/firebase';
 
 const PUBLIC_PATHS = new Set(['/auth', '/privacy', '/support']);
@@ -14,7 +16,84 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const hasLocalSession = () =>
+        Boolean(
+          localStorage.getItem('Transport_auth_logged_in') ||
+          localStorage.getItem('Transport_user_email') ||
+          localStorage.getItem('Transport_user_phone') ||
+          localStorage.getItem('Transport_user_name'),
+        );
+
+      const applyNativeUser = (user: any) => {
+        const displayName = String(user?.displayName || '').trim();
+        const email = String(user?.email || '').trim();
+        const phone = String(user?.phoneNumber || '').trim();
+        const fallbackName = email.includes('@') ? email.split('@')[0] : '';
+        const resolvedName = displayName || fallbackName;
+        localStorage.setItem('Transport_auth_logged_in', '1');
+        if (resolvedName) localStorage.setItem('Transport_user_name', resolvedName);
+        if (email) localStorage.setItem('Transport_user_email', email);
+        if (phone) localStorage.setItem('Transport_user_phone', phone);
+        setLoggedIn(true);
+      };
+
+      const hydrateNativeUser = async () => {
+        try {
+          // Android'de app arka planda kapanırsa bekleyen auth sonucunu önce al.
+          await FirebaseAuthentication.getPendingAuthResult();
+        } catch {
+          // iOS'ta desteklenmediği veya pending sonuç olmadığı durumda sessiz geç.
+        }
+        return FirebaseAuthentication.getCurrentUser();
+      };
+
+      let authStateListener: { remove: () => Promise<void> } | null = null;
+
+      hydrateNativeUser()
+        .then((result) => {
+          const user = result?.user;
+          if (user) {
+            applyNativeUser(user);
+          } else {
+            setLoggedIn(hasLocalSession());
+          }
+        })
+        .catch(() => setLoggedIn(hasLocalSession()))
+        .finally(() => setReady(true));
+
+      FirebaseAuthentication.addListener('authStateChange', (event: any) => {
+        if (event?.user) {
+          applyNativeUser(event.user);
+          setReady(true);
+          return;
+        }
+        setLoggedIn(hasLocalSession());
+        setReady(true);
+      })
+        .then((listener) => {
+          authStateListener = listener;
+        })
+        .catch(() => {});
+
+      return () => {
+        if (authStateListener) {
+          authStateListener.remove().catch(() => {});
+        }
+      };
+    }
+
     const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const displayName = String(user.displayName || '').trim();
+        const email = String(user.email || '').trim();
+        const phone = String(user.phoneNumber || '').trim();
+        const fallbackName = email.includes('@') ? email.split('@')[0] : '';
+        const resolvedName = displayName || fallbackName;
+        if (resolvedName) localStorage.setItem('Transport_user_name', resolvedName);
+        if (email) localStorage.setItem('Transport_user_email', email);
+        if (phone) localStorage.setItem('Transport_user_phone', phone);
+      }
       setLoggedIn(!!user);
       setReady(true);
     });
@@ -46,4 +125,3 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
-

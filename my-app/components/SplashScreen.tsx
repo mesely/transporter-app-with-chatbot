@@ -2,12 +2,15 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
+import { useState } from 'react';
 
 interface SplashScreenProps {
   visible: boolean;
 }
 
 export default function SplashScreen({ visible }: SplashScreenProps) {
+  const [logoSrc, setLogoSrc] = useState('/favicon.ico');
+
   return (
     <AnimatePresence>
       {visible && (
@@ -41,10 +44,11 @@ export default function SplashScreen({ visible }: SplashScreenProps) {
 
               <div className="absolute inset-5 rounded-[2.2rem] border border-gray-200/80 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.2)]">
                 <Image
-                  src="/favicon.ico"
+                  src={logoSrc}
                   alt="Transport 245"
                   fill
                   priority
+                  onError={() => setLogoSrc('/playstore.png')}
                   className="rounded-[2rem] object-contain p-5"
                 />
               </div>
@@ -63,11 +67,17 @@ export default function SplashScreen({ visible }: SplashScreenProps) {
                 Gelecegin lojistik agi
               </p>
 
+              <div className="mx-auto mt-5 max-w-xl rounded-2xl border border-slate-200 bg-white/85 px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-700 sm:text-[11px]">
+                  Konuma en yakin araclar listeleniyor, en yakin kurtarici, vinc ve nakliye araclari bulunuyor.
+                </p>
+              </div>
+
               <div className="relative mx-auto mt-6 h-[3px] w-56 overflow-hidden rounded-full bg-slate-100 sm:w-64">
                 <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 2.2, ease: 'easeInOut' }}
+                  initial={{ width: '0%' }}
+                  animate={{ width: ['0%', '28%', '56%', '76%', '88%', '95%', '100%'] }}
+                  transition={{ duration: 6.2, times: [0, 0.2, 0.42, 0.62, 0.78, 0.92, 1], ease: 'easeInOut' }}
                   className="absolute left-0 top-0 h-full bg-gradient-to-r from-sky-500 via-indigo-500 to-blue-700"
                 />
               </div>

@@ -15,7 +15,7 @@ import {
   Loader2, Truck, Zap, Anchor, CarFront, Globe, 
   Navigation, Filter, Home, Package, Container, 
   Snowflake, Layers, Archive, Box, Check, Users, Bus, Crown,
-  ArrowRight, Settings2
+  ArrowRight, Settings2, LocateFixed
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
@@ -24,6 +24,14 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const TURKEY_CITIES = [
   "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
 ];
+
+const SERVICE_IMAGE_ICONS: Record<string, string> = {
+  seyyar_sarj: '/icons/GeziciIcon.png',
+  kamyonet: '/icons/kamyonet.png',
+  vinc: '/icons/vinc.png',
+  lastik: '/icons/lastikci.png',
+  tir: '/icons/tir.png',
+};
 
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
@@ -59,6 +67,29 @@ const SERVICE_OPTIONS = [
   { id: 'seyyar_sarj', label: 'MOBİL ŞARJ', icon: Zap, color: 'bg-cyan-500', subs: [] },
 ];
 
+const getIconBadgeClass = (serviceId: string) => {
+  if (['vinc', 'lastik', 'oto_kurtarma'].includes(serviceId)) {
+    return 'bg-rose-50 border border-rose-100';
+  }
+  if (['tir', 'kamyon', 'kamyonet', 'evden_eve', 'yurt_disi_nakliye'].includes(serviceId)) {
+    return 'bg-violet-50 border border-violet-100';
+  }
+  return 'bg-white/90 border border-white/80';
+};
+
+const renderServiceIcon = (serviceId: string, sizeClass = 'w-6 h-6') => {
+  const imageSrc = SERVICE_IMAGE_ICONS[serviceId];
+  if (!imageSrc) return null;
+
+  return (
+    <img
+      src={imageSrc}
+      alt={serviceId}
+      className={`${sizeClass} object-contain`}
+    />
+  );
+};
+
 export default function ProviderModule() {
   type VehicleEntry = { name: string; photoUrls: string[] };
   const [providers, setProviders] = useState<any[]>([]);
@@ -73,6 +104,8 @@ export default function ProviderModule() {
   const [cityData, setCityData] = useState<Record<string, string[]>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activeVehicleIndex, setActiveVehicleIndex] = useState<number>(0);
+  const [addressLocating, setAddressLocating] = useState(false);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [formData, setFormData] = useState<any>({
     _id: '', businessName: '', email: '', phoneNumber: '', city: 'İstanbul', district: 'Tuzla', address: '',
@@ -164,6 +197,56 @@ export default function ProviderModule() {
     } catch { return null; }
   };
 
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=tr`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const addr = data?.address || {};
+      return {
+        city: String(addr.city || addr.town || addr.province || addr.state || '').trim(),
+        district: String(addr.town || addr.suburb || addr.county || addr.city_district || '').trim(),
+        address: [addr.road, addr.house_number].filter(Boolean).join(' ').trim() || String(data?.display_name || '').split(',').slice(0, 2).join(',').trim(),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const useCurrentLocationForAddress = async () => {
+    if (!navigator?.geolocation) {
+      alert('Konum servisi desteklenmiyor.');
+      return;
+    }
+    setAddressLocating(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 60000,
+        })
+      );
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setSelectedCoords(coords);
+      const parsed = await reverseGeocode(coords.lat, coords.lng);
+      if (parsed) {
+        setFormData((prev: any) => ({
+          ...prev,
+          city: parsed.city || prev.city,
+          district: parsed.district || prev.district,
+          address: parsed.address || prev.address,
+        }));
+      }
+    } catch {
+      alert('Mevcut konum alınamadı.');
+    } finally {
+      setAddressLocating(false);
+    }
+  };
+
   const openEdit = (p: any) => {
     if(!p) return;
     const addr = p.address || {};
@@ -182,6 +265,10 @@ export default function ProviderModule() {
             photoUrls: p.vehiclePhotos || (p.photoUrl ? [p.photoUrl] : [])
           }]
     });
+    const existingCoords = Array.isArray(p?.location?.coordinates) && p.location.coordinates.length === 2
+      ? { lng: Number(p.location.coordinates[0]), lat: Number(p.location.coordinates[1]) }
+      : null;
+    setSelectedCoords(existingCoords);
     setIsEditing(true);
     setShowModal(true);
   };
@@ -214,7 +301,7 @@ export default function ProviderModule() {
       else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selected)) mappedMain = 'NAKLIYE';
 
       const combined = `${formData.address}, ${formData.district}, ${formData.city}, Türkiye`;
-      let coords = await getCoordinatesFromAddress(combined) || await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
+      let coords = selectedCoords || await getCoordinatesFromAddress(combined) || await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
       
       if (!coords) { setLoading(false); return alert("Adres haritada bulunamadı."); }
 
@@ -316,7 +403,7 @@ export default function ProviderModule() {
         </div>
         <div className="flex gap-3">
           {selectedProviders.length > 0 && <button onClick={handleBulkDelete} className="bg-red-600 text-white px-6 py-4 rounded-3xl text-xs font-black uppercase shadow-xl hover:bg-red-700 transition-colors flex items-center gap-2"><Trash2 size={18}/> Sil ({selectedProviders.length})</button>}
-          <button onClick={() => { setIsEditing(false); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:'', taxNumber: '', vehicleItems: [{ name: '', photoUrls: [] }]}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
+          <button onClick={() => { setIsEditing(false); setSelectedCoords(null); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:'', taxNumber: '', vehicleItems: [{ name: '', photoUrls: [] }]}); setShowModal(true); }} className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-3xl text-xs font-black uppercase shadow-xl transition-colors flex items-center gap-2"><Plus size={20}/> Yeni Kurum</button>
         </div>
       </header>
 
@@ -334,16 +421,18 @@ export default function ProviderModule() {
             if(!ui) ui = SERVICE_OPTIONS[0];
             const isSel = selectedProviders.includes(p._id);
             const addr = typeof p.address === 'string' ? p.address : p.address?.fullText || `${p.address?.city || ''} / ${p.address?.district || ''}`;
-            const isMobileCharge = p.service?.subType === 'seyyar_sarj' || p.serviceType === 'seyyar_sarj';
+            const resolvedServiceType = p.service?.subType || p.serviceType || '';
+            const listIcon = renderServiceIcon(resolvedServiceType, 'w-7 h-7');
+            const iconContainerClass = listIcon
+              ? getIconBadgeClass(resolvedServiceType)
+              : `${ui.color} text-white`;
 
             return(
               <div key={p._id} onClick={()=>toggleProviderSelection(p._id)} className={`bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/50 transition-all cursor-pointer shadow-xl hover:shadow-2xl ${isSel ? 'ring-4 ring-blue-500/30 bg-white/80' : ''}`}>
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex gap-4 items-center">
-                    <div className={`w-14 h-14 ${ui.color} text-white rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>
-                      {isMobileCharge ? (
-                        <img src="/icons/GeziciIcon.png" className="w-7 h-7 invert brightness-200" alt="G" />
-                      ) : p.service?.subType === 'minibus' ? <Users size={28} strokeWidth={1}/> : p.service?.subType === 'otobus' ? <Bus size={28} strokeWidth={1.5}/> : <ui.icon size={28} strokeWidth={1.5}/>}
+                    <div className={`w-14 h-14 ${iconContainerClass} rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>
+                      {listIcon || (p.service?.subType === 'minibus' ? <Users size={28} strokeWidth={1}/> : p.service?.subType === 'otobus' ? <Bus size={28} strokeWidth={1.5}/> : <ui.icon size={28} strokeWidth={1.5}/>)}
                     </div>
                     <div className="overflow-hidden"><h3 className="font-black text-slate-900 text-sm uppercase truncate">{p.businessName || p.firstName}</h3><span className="text-[8px] font-black text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType || 'Genel'}</span></div>
                   </div>
@@ -367,6 +456,15 @@ export default function ProviderModule() {
                 <div className="grid grid-cols-2 gap-4"><input placeholder="E-POSTA" value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/><input placeholder="TEL (05...)" value={formData.phoneNumber} onChange={e=>setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/></div>
                 <div className="grid grid-cols-2 gap-4"><select value={formData.city} onChange={e=>setFormData({...formData, city: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-black text-xs outline-none focus:bg-white/80 transition-colors text-gray-900">{Object.keys(cityData).map(c=><option key={c} value={c}>{c}</option>)}</select><select value={formData.district} onChange={e=>setFormData({...formData, district: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none focus:bg-white/80 transition-colors text-gray-900">{availableDistricts.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
                 <textarea placeholder="MAHALLE, SOKAK, CADDE, NO..." value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-medium text-xs h-32 outline-none resize-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
+                <button
+                  type="button"
+                  onClick={useCurrentLocationForAddress}
+                  disabled={addressLocating}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-black text-white px-4 py-3 text-[10px] font-black uppercase disabled:opacity-60"
+                >
+                  {addressLocating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+                  Mevcut Konumu Kullan
+                </button>
                 <input placeholder="WEB SİTESİ" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
                 <input placeholder="VERGİ NUMARASI (OPSİYONEL)" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
               </div>
@@ -375,8 +473,10 @@ export default function ProviderModule() {
                   {SERVICE_OPTIONS.map(opt=>(
                     <div key={opt.id} className="relative">
                       <button onClick={()=>toggleServiceType(opt.id)} className={`w-full flex flex-col items-center justify-center p-3 rounded-3xl border border-white/40 transition-all gap-2 min-h-[106px] shadow-sm ${formData.serviceTypes.includes(opt.id) ? `${opt.color} text-white shadow-lg border-transparent` : 'bg-white/60 text-[#49b5c2] hover:bg-white/80'}`}>
-                        {opt.id === 'seyyar_sarj' ? (
-                          <img src="/icons/GeziciIcon.png" className={`w-6 h-6 object-contain ${formData.serviceTypes.includes(opt.id) ? 'invert brightness-200' : 'opacity-80'}`} style={!formData.serviceTypes.includes(opt.id) ? { filter: 'sepia(1) hue-rotate(140deg) saturate(2.5) brightness(0.9)' } : {}} alt="Mobil Şarj" />
+                        {renderServiceIcon(opt.id, 'w-6 h-6') ? (
+                          <span className={`inline-flex items-center justify-center rounded-xl p-1.5 ${getIconBadgeClass(opt.id)}`}>
+                            {renderServiceIcon(opt.id, 'w-6 h-6')}
+                          </span>
                         ) : (
                           <opt.icon size={22} strokeWidth={1.5}/>
                         )}

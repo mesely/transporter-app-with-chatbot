@@ -32,6 +32,10 @@ const config: CapacitorConfig = {
     ],
   },
   plugins: {
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['google.com'],
+    },
     Geolocation: {
       permission: 'whenInUse',
     },

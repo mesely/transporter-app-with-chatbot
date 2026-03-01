@@ -31,6 +31,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import ViewRatingsModal from '../ViewRatingsModal';
 import ViewReportsModal from '../ViewReportsModal';
 import { AppLang, getPreferredLang } from '../../utils/language';
+import { AMERICA_CITIES_RAW, EUROPE_CITIES_RAW } from '../../utils/city-groups';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const SERVICE_IMAGE_ICONS: Record<string, string> = {
@@ -78,6 +79,7 @@ const DEFAULT_LAT = 41.0082;
 const DEFAULT_LNG = 28.9784;
 const LAST_LOCATION_KEY = 'Transport_last_location';
 const FAVORITES_KEY = 'Transport_favorites_v1';
+type CityScope = 'tr' | 'eu' | 'us';
 
 // --- SERVICE_OPTIONS VE ALT SEÇENEKLER ---
 const SERVICE_OPTIONS = [
@@ -243,6 +245,7 @@ function ActionPanel({
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
 
   const [selectedCity, setSelectedCity] = useState('');
+  const [selectedCityScope, setSelectedCityScope] = useState<CityScope | null>(null);
   const [sortMode, setSortMode] = useState<'distance' | 'rating'>('distance');
 
   const [showTowRow, setShowTowRow] = useState(false);
@@ -287,6 +290,7 @@ function ActionPanel({
   const lastReachListEndAtRef = useRef(0);
   const cityFetchSeqRef = useRef(0);
   const cityScopedCacheRef = useRef<Record<string, { ts: number; data: any[] }>>({});
+  const cityFocusCacheRef = useRef<Record<string, [number, number]>>({});
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
 
   const normalizeCityText = useCallback((value: string) => {
@@ -341,7 +345,7 @@ function ActionPanel({
       return;
     }
 
-    const cacheKey = [selectedCity.toLocaleLowerCase('tr'), actionType, String(currentCoords?.[0] || ''), String(currentCoords?.[1] || '')].join(':');
+    const cacheKey = [selectedCityScope || 'na', selectedCity.toLocaleLowerCase('tr'), actionType].join(':');
     const cached = cityScopedCacheRef.current[cacheKey];
     if (cached && Date.now() - cached.ts < 60_000) {
       setCityScopedDrivers(cached.data);
@@ -352,6 +356,7 @@ function ActionPanel({
     const seq = ++cityFetchSeqRef.current;
     const controller = new AbortController();
     const run = async () => {
+      setCityScopedDrivers([]);
       setCityScopedLoading(true);
       try {
         const params = new URLSearchParams({
@@ -359,10 +364,6 @@ function ActionPanel({
           type: actionType,
           limit: '420',
         });
-        if (currentCoords) {
-          params.set('lat', String(currentCoords[0]));
-          params.set('lng', String(currentCoords[1]));
-        }
         const res = await fetch(`${API_URL}/users/city-scope?${params.toString()}`, { signal: controller.signal });
         const data = await res.json();
         if (seq !== cityFetchSeqRef.current) return;
@@ -382,7 +383,95 @@ function ActionPanel({
 
     run();
     return () => controller.abort();
-  }, [selectedCity, actionType, currentCoords]);
+  }, [selectedCity, actionType, selectedCityScope]);
+
+  const groupedCityOptions = useMemo(() => {
+    const trSorter = new Intl.Collator('tr').compare;
+    const enSorter = new Intl.Collator('en').compare;
+    const turkey = Object.keys(CITY_COORDINATES).sort(trSorter);
+    const turkeySet = new Set(turkey.map((c) => c.toLocaleLowerCase('tr')));
+
+    const europe = Array.from(
+      new Set(EUROPE_CITIES_RAW.map((c) => String(c || '').trim()).filter(Boolean)),
+    )
+      .filter((c) => !turkeySet.has(c.toLocaleLowerCase('tr')))
+      .sort(enSorter);
+
+    const america = Array.from(
+      new Set(AMERICA_CITIES_RAW.map((c) => String(c || '').trim()).filter(Boolean)),
+    )
+      .filter((c) => !turkeySet.has(c.toLocaleLowerCase('tr')))
+      .sort(enSorter);
+
+    return { turkey, europe, america };
+  }, []);
+
+  const getCityTargetZoom = useCallback((scope: CityScope | null) => {
+    if (scope === 'tr') return 10.8;
+    if (scope === 'eu') return 10.4;
+    if (scope === 'us') return 10.2;
+    return 10.4;
+  }, []);
+
+  const isInScopedBounds = useCallback((lat: number, lng: number, scope: CityScope | null) => {
+    if (scope === 'tr') return lat >= 35 && lat <= 43 && lng >= 25 && lng <= 45;
+    if (scope === 'eu') return lat >= 34 && lat <= 72 && lng >= -26 && lng <= 60;
+    if (scope === 'us') return lat >= 18 && lat <= 72 && lng >= -171 && lng <= -50;
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCity) return;
+    const targetZoom = getCityTargetZoom(selectedCityScope);
+    const cityFocusKey = `${selectedCityScope || 'na'}::${selectedCity}`;
+    const cachedCoords = cityFocusCacheRef.current[cityFocusKey];
+    const knownCoords = CITY_COORDINATES[selectedCity];
+    if (cachedCoords || knownCoords) {
+      const [lat, lng] = cachedCoords || knownCoords;
+      onSearchLocation(lat, lng, {
+        forceFocus: true,
+        targetZoom,
+        clearActiveDriver: true,
+        preserveCurrentCoords: true,
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+    const q =
+      selectedCityScope === 'tr'
+        ? `${selectedCity}, Turkiye`
+        : selectedCityScope === 'us'
+          ? `${selectedCity}, United States`
+          : `${selectedCity}, Europe`;
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=10&q=${encodeURIComponent(q)}`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.ok ? res.json() : [])
+      .then((rows) => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        const scoped = rows.find((r) => {
+          const lat = Number(r?.lat);
+          const lng = Number(r?.lon);
+          return Number.isFinite(lat) && Number.isFinite(lng) && isInScopedBounds(lat, lng, selectedCityScope);
+        });
+        const first = scoped || rows[0];
+        const lat = Number(first?.lat);
+        const lng = Number(first?.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        cityFocusCacheRef.current[cityFocusKey] = [lat, lng];
+        onSearchLocation(lat, lng, {
+          forceFocus: true,
+          targetZoom,
+          clearActiveDriver: true,
+          preserveCurrentCoords: true,
+        });
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [selectedCity, selectedCityScope, onSearchLocation, getCityTargetZoom, isInScopedBounds]);
 
   useEffect(() => {
     if (favoritesExternal) return;
@@ -463,8 +552,8 @@ function ActionPanel({
         onActionChange('nakliye'); onFilterApply('nakliye');
     } else if (category === 'sarj') {
         setShowTowRow(false); setShowChargeRow(true); setShowDomesticRow(false); setShowPassengerRow(false);
-        onActionChange('istasyon');
-        onFilterApply('istasyon');
+        onActionChange('sarj');
+        onFilterApply('sarj');
     } else if (category === 'yolcu') {
         setShowTowRow(false); setShowChargeRow(false); setShowDomesticRow(false); setShowPassengerRow(true);
         onActionChange('yolcu'); onFilterApply('yolcu');
@@ -482,7 +571,16 @@ function ActionPanel({
   };
 
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const city = e.target.value;
+    const value = e.target.value;
+    if (!value) {
+      setSelectedCity('');
+      setSelectedCityScope(null);
+      return;
+    }
+    const [scopeRaw, cityRaw] = value.split('::');
+    const scope = (scopeRaw === 'tr' || scopeRaw === 'eu' || scopeRaw === 'us') ? scopeRaw : null;
+    const city = String(cityRaw || '').trim();
+    setSelectedCityScope(scope);
     setSelectedCity(city);
   };
 
@@ -492,7 +590,7 @@ function ActionPanel({
       ? (drivers || []).filter((d: any) => normalizeCityText(d?.address?.city || '') === selectedCityNorm)
       : [];
     const sourceList = selectedCity
-      ? (cityScopedDrivers.length > 0 ? cityScopedDrivers : localCityFiltered.length > 0 ? localCityFiltered : drivers)
+      ? (cityScopedDrivers.length > 0 ? cityScopedDrivers : localCityFiltered)
       : drivers;
     let list = Array.isArray(sourceList) ? [...sourceList] : [];
 
@@ -508,9 +606,24 @@ function ActionPanel({
     return list;
   }, [drivers, cityScopedDrivers, sortMode, selectedCity, actionType, activeTransportFilter, normalizeCityText]);
 
+  const isTurkeyScopedService = useCallback((driver: any) => {
+    if (selectedCityScope === 'eu' || selectedCityScope === 'us') return false;
+    if (selectedCityScope === 'tr') return true;
+
+    const countryNorm = normalizeCityText(driver?.address?.country || '');
+    if (countryNorm) {
+      if (countryNorm.includes('turkiye') || countryNorm.includes('turkey')) return true;
+      return false;
+    }
+
+    const city = String(driver?.address?.city || '').trim();
+    if (city && CITY_COORDINATES[city]) return true;
+    return true;
+  }, [normalizeCityText, selectedCityScope]);
+
   useEffect(() => {
     setRenderedCount(28);
-  }, [selectedCity, actionType, activeTransportFilter, sortMode, activeTags, drivers.length, cityScopedDrivers.length]);
+  }, [selectedCity, actionType, activeTransportFilter, sortMode, activeTags]);
 
   const visibleDrivers = useMemo(
     () => displayDrivers.slice(0, Math.max(1, renderedCount)),
@@ -800,12 +913,26 @@ function ActionPanel({
           <div className="flex items-center gap-1.5 mb-1 py-0.5 shrink-0 overflow-x-auto no-scrollbar">
               <div className="relative shrink-0 w-[106px] shadow-lg rounded-xl transition-transform">
                 <select
-                  value={selectedCity}
+                  value={selectedCity && selectedCityScope ? `${selectedCityScope}::${selectedCity}` : ''}
                   onChange={handleCityChange}
                   className={`w-full appearance-none ${activeThemeColor} text-white pl-2.5 pr-7 py-1.5 rounded-xl text-[7px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
                 >
-                  <option value="">{tx.allTurkey}</option>
-                  {Object.keys(CITY_COORDINATES).map(city => <option key={city} value={city}>{city.toUpperCase()}</option>)}
+                  <option value="">TÜM DÜNYA</option>
+                  <optgroup label="Türkiye Şehirleri">
+                    {groupedCityOptions.turkey.map((city) => (
+                      <option key={`tr-${city}`} value={`tr::${city}`}>{city.toUpperCase()}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Avrupa Şehirleri">
+                    {groupedCityOptions.europe.map((city) => (
+                      <option key={`eu-${city}`} value={`eu::${city}`}>{city.toUpperCase()}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Amerika Şehirleri">
+                    {groupedCityOptions.america.map((city) => (
+                      <option key={`us-${city}`} value={`us::${city}`}>{city.toUpperCase()}</option>
+                    ))}
+                  </optgroup>
                 </select>
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50"><ChevronDown size={10} /></div>
               </div>
@@ -862,7 +989,7 @@ function ActionPanel({
 
         {panelState > 1 && (
         <div ref={listContainerRef} className="flex-1 overflow-y-scroll pb-40 custom-scrollbar overscroll-contain">
-          {(loading || cityScopedLoading) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
+          {(((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0)) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
             visibleDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
@@ -871,6 +998,7 @@ function ActionPanel({
                 const isStation = sub === 'istasyon';
                 const isPassenger = ['minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(sub);
                 const isSpecialCategory = isMobileCharge || isPassenger || isStation;
+                const showTurkeyWideBadge = isSpecialCategory && isTurkeyScopedService(driver);
 
                 let uiConfig = SERVICE_OPTIONS.find(o => o.id === sub);
                 let subIcon = null;
@@ -1105,7 +1233,7 @@ function ActionPanel({
                                         </span>
                                     )}
 
-                                    {isSpecialCategory && <span className={`text-[9px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : isStation ? 'text-blue-600' : 'text-cyan-600'}`}>{tx.turkeyWide}</span>}
+                                    {showTurkeyWideBadge && <span className={`text-[9px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : isStation ? 'text-blue-600' : 'text-cyan-600'}`}>{tx.turkeyWide}</span>}
                                 </div>
 
                                 {driver.service?.tags?.length > 0 && (
