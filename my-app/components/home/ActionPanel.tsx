@@ -670,14 +670,6 @@ function ActionPanel({
     return false;
   }, [normalizeCityText, selectedCityScope]);
 
-  // If the list is empty while loading, lift panel to show the loading state.
-  useEffect(() => {
-    const isLoadingNow = selectedCity ? cityScopedLoading : loading;
-    if (isLoadingNow && displayDrivers.length === 0 && panelState < 2) {
-      setPanelState(2);
-    }
-  }, [selectedCity, cityScopedLoading, loading, displayDrivers.length, panelState]);
-
   useEffect(() => {
     setRenderedCount(28);
   }, [selectedCity, actionType, activeTransportFilter, sortMode, activeTags]);
@@ -857,7 +849,7 @@ function ActionPanel({
     dragStartY.current = null;
   };
 
-  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-20' : 'h-12';
+  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-24' : 'h-14';
 
   const formatTitle = (name?: string) => {
     if (!name) return '';
