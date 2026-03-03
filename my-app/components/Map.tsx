@@ -137,7 +137,7 @@ const BASE_STYLE = {
   layers: [{ id: 'carto-layer', type: 'raster', source: 'carto', minzoom: 0, maxzoom: 22 }],
 } as const;
 
-const HIDDEN_CATEGORIES = new Set(['seyyar_sarj', 'minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima']);
+const HIDDEN_CATEGORIES = new Set<string>();
 const INITIAL_CENTER: [number, number] = [35.2433, 38.9637];
 
 function getServiceColor(subType: string) {

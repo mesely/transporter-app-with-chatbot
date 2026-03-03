@@ -92,6 +92,22 @@ function isInsideBBox(
   return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
 }
 
+function prioritizePanelDrivers(list: any[]): any[] {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => {
+    const da = Number(a?.distance);
+    const db = Number(b?.distance);
+    const va = Number.isFinite(da) ? da : Number.MAX_SAFE_INTEGER;
+    const vb = Number.isFinite(db) ? db : Number.MAX_SAFE_INTEGER;
+    return va - vb;
+  });
+  const within40Km = sorted.filter((d) => Number.isFinite(Number(d?.distance)) && Number(d?.distance) <= 40000);
+  if (within40Km.length >= 24) return within40Km;
+  const within120Km = sorted.filter((d) => Number.isFinite(Number(d?.distance)) && Number(d?.distance) <= 120000);
+  if (within120Km.length >= 24) return within120Km;
+  return sorted;
+}
+
 export default function Home() {
   const router = useRouter();
   const SPLASH_DURATION_MS = 6800;
@@ -311,7 +327,7 @@ export default function Home() {
     const now = Date.now();
     const cached = driversCacheRef.current[key];
     if (!opts?.force && cached) {
-      if (includePanel) setDrivers(cached.data);
+      if (includePanel) setDrivers(prioritizePanelDrivers(cached.data));
       if (includeMap) setMapDrivers(cached.data);
       setLoading(false);
       if (now - cached.ts < DRIVERS_CACHE_REVALIDATE_MS) return;
@@ -328,7 +344,7 @@ export default function Home() {
     if (!opts?.silent && (!cached || opts?.force)) {
       const typeCached = readTypeCache(type);
       if (typeCached && typeCached.length > 0) {
-        if (includePanel) setDrivers(typeCached);
+        if (includePanel) setDrivers(prioritizePanelDrivers(typeCached));
         if (includeMap) setMapDrivers(typeCached);
       }
       if (includePanel) setLoading(true);
@@ -349,10 +365,7 @@ export default function Home() {
         params.set('maxLat', String(opts.bbox.maxLat));
         params.set('maxLng', String(opts.bbox.maxLng));
       }
-      const url =
-        type === 'seyyar_sarj'
-          ? `${API_URL}/users/all?type=seyyar_sarj`
-          : `${API_URL}/users/nearby?${params.toString()}`;
+      const url = `${API_URL}/users/nearby?${params.toString()}`;
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
       if (requestSeq !== seqRef.current) return;
@@ -399,10 +412,10 @@ export default function Home() {
             const map = new globalThis.Map<string, any>();
             for (const item of prev || []) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
             for (const item of normalizedData) map.set(String(item?._id || `${item?.businessName}-${item?.phoneNumber}`), item);
-            return Array.from(map.values());
+            return prioritizePanelDrivers(Array.from(map.values()));
           });
         } else {
-          setDrivers(normalizedData);
+          setDrivers(prioritizePanelDrivers(normalizedData));
         }
       }
 
@@ -424,7 +437,7 @@ export default function Home() {
         console.error('Fetch Error:', err);
         const typed = readTypeCache(type);
         if (typed && typed.length > 0) {
-          if (includePanel) setDrivers(typed);
+          if (includePanel) setDrivers(prioritizePanelDrivers(typed));
           if (includeMap) setMapDrivers(typed);
           setOfflineNotice('Internet yok. Son sonuclar yukleniyor.');
           return;
@@ -434,7 +447,7 @@ export default function Home() {
           if (raw) {
             const parsed = JSON.parse(raw) as { data?: any[] };
             if (Array.isArray(parsed?.data) && parsed.data.length > 0) {
-              if (includePanel) setDrivers(parsed.data);
+              if (includePanel) setDrivers(prioritizePanelDrivers(parsed.data));
               if (includeMap) setMapDrivers(parsed.data);
               setOfflineNotice('Internet yok. Son sonuclar yukleniyor.');
             }
@@ -586,15 +599,17 @@ export default function Home() {
   const matchesActiveFilters = useCallback((d: any) => {
       const s = d.service;
       if (!s) return false;
+      const mainType = String(s.mainType || '').toLocaleUpperCase('tr');
+      const subType = String(s.subType || '').toLocaleLowerCase('tr');
       let match = false;
-      if (actionType === 'seyyar_sarj')    match = s.subType === 'seyyar_sarj';
-      else if (actionType === 'sarj')      match = s.mainType === 'SARJ';
-      else if (actionType === 'kurtarici') match = s.mainType === 'KURTARICI';
-      else if (actionType === 'nakliye')   match = s.mainType === 'NAKLIYE';
-      else if (actionType === 'yolcu')     match = s.mainType === 'YOLCU';
+      if (actionType === 'seyyar_sarj')    match = subType === 'seyyar_sarj';
+      else if (actionType === 'sarj')      match = mainType.includes('SARJ') || subType === 'istasyon' || subType === 'seyyar_sarj';
+      else if (actionType === 'kurtarici') match = mainType.includes('KURTARICI') || subType === 'oto_kurtarma' || subType === 'vinc' || subType === 'lastik';
+      else if (actionType === 'nakliye')   match = mainType.includes('NAKLIYE') || ['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].includes(subType);
+      else if (actionType === 'yolcu')     match = mainType.includes('YOLCU') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType);
       else if (CATEGORY_MAP[actionType])
-        match = s.subType === actionType || CATEGORY_MAP[actionType].includes(s.subType);
-      else match = s.subType === actionType;
+        match = subType === actionType || CATEGORY_MAP[actionType].includes(subType);
+      else match = subType === actionType;
       if (!match) return false;
       if (activeTags.length > 0) return activeTags.some((t) => (s.tags || []).includes(t));
       return true;
