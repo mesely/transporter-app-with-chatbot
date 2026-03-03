@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   BookText,
+  Globe2,
   Heart,
   Phone,
   Shield,
@@ -19,6 +20,7 @@ import KVKKModal from '../../components/KVKKModal';
 import UserAgreementModal from '../../components/UserAgreementModal';
 import RatingModal from '../../components/RatingModal';
 import ReportModal from '../../components/ReportModal';
+import { AppLang, LANG_STORAGE_KEY, getPreferredLang } from '../../utils/language';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const FAVORITES_KEY = 'Transport_favorites_v1';
@@ -74,6 +76,8 @@ export default function SettingsPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
+  const [appLang, setAppLang] = useState<AppLang>('tr');
+  const [membershipStartedAt, setMembershipStartedAt] = useState<number | null>(null);
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
 
@@ -136,6 +140,7 @@ export default function SettingsPage() {
     setEmail(storedEmail);
     setPhone(storedPhone);
     setIsGuest(guestMode);
+    setAppLang(getPreferredLang());
 
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
@@ -143,6 +148,15 @@ export default function SettingsPage() {
       setFavorites(Array.isArray(parsed) ? parsed : []);
     } catch {
       setFavorites([]);
+    }
+
+    const storedMembershipStart = Number(localStorage.getItem('Transport_membership_started_at') || '');
+    if (Number.isFinite(storedMembershipStart) && storedMembershipStart > 0) {
+      setMembershipStartedAt(storedMembershipStart);
+    } else {
+      const now = Date.now();
+      localStorage.setItem('Transport_membership_started_at', String(now));
+      setMembershipStartedAt(now);
     }
   }, []);
 
@@ -229,6 +243,22 @@ export default function SettingsPage() {
     setSelectedOrder(order);
     setShowReportModal(true);
   };
+
+  const handleLanguageChange = (value: string) => {
+    const next = value as AppLang;
+    setAppLang(next);
+    localStorage.setItem(LANG_STORAGE_KEY, next);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = next;
+    }
+  };
+
+  const freeUntilText = useMemo(() => {
+    if (!membershipStartedAt) return '-';
+    const next = new Date(membershipStartedAt);
+    next.setFullYear(next.getFullYear() + 1);
+    return next.toLocaleDateString('tr-TR');
+  }, [membershipStartedAt]);
 
   const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
     const providerId = selectedOrder?.driver?._id;
@@ -354,6 +384,39 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <BookText className="text-indigo-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Sözleşme ve İletişim</p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center gap-2">
+                <Globe2 className="text-sky-600" size={16} />
+                <p className="text-[10px] font-black uppercase text-slate-400">Dil</p>
+              </div>
+              <select
+                value={appLang}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none"
+              >
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+                <option value="de">Deutsch</option>
+                <option value="fr">Français</option>
+                <option value="it">Italiano</option>
+                <option value="es">Español</option>
+                <option value="pt">Português</option>
+                <option value="ru">Русский</option>
+                <option value="zh">中文</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+                <option value="ar">العربية</option>
+              </select>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-[10px] font-black uppercase text-slate-400">Üyelik Bilgisi</p>
+              <p className="mt-1 text-sm font-black text-slate-900">İlk 12 ay ücretsiz</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Ücretsiz dönem bitiş: {freeUntilText}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık 1 EUR (mağaza yerel fiyatı).</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Ödeme yalnızca uygulama içi satın alma ile yapılır.</p>
+            </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <button

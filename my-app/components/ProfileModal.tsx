@@ -25,6 +25,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [name, setName] = useState('');
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [saved, setSaved] = useState(false);
+  const [membershipStartedAt, setMembershipStartedAt] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,6 +37,11 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setFavorites(Array.isArray(parsed) ? parsed : []);
     } catch {
       setFavorites([]);
+    }
+
+    const storedMembershipStart = Number(localStorage.getItem('Transport_membership_started_at') || '');
+    if (Number.isFinite(storedMembershipStart) && storedMembershipStart > 0) {
+      setMembershipStartedAt(storedMembershipStart);
     }
   }, [isOpen]);
 
@@ -67,9 +73,16 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
   if (!isOpen) return null;
 
+  const freeUntilText = (() => {
+    if (!membershipStartedAt) return '-';
+    const next = new Date(membershipStartedAt);
+    next.setFullYear(next.getFullYear() + 1);
+    return next.toLocaleDateString('tr-TR');
+  })();
+
   return (
     <div className="fixed inset-0 z-[5000] bg-black/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-      <div className="w-full max-w-md rounded-[2.2rem] border border-white/70 bg-white/90 p-6 shadow-2xl backdrop-blur-xl relative">
+      <div className="w-full max-w-md rounded-[2.2rem] border border-white/70 bg-white/85 p-6 shadow-2xl backdrop-blur-2xl relative">
         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-500 transition-all">
           <X size={20} strokeWidth={2.5} />
         </button>
@@ -105,6 +118,13 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         >
           Çıkış Yap
         </button>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/90 p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Üyelik</p>
+          <p className="mt-1 text-[12px] font-black text-slate-900">İlk 12 ay ücretsiz</p>
+          <p className="mt-1 text-[11px] font-semibold text-slate-600">Ücretsiz dönem bitiş: {freeUntilText}</p>
+          <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık 1 EUR (yerel mağaza fiyatı).</p>
+        </div>
 
         <div className="mt-5">
           <div className="flex items-center gap-2 mb-2">

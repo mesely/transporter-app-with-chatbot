@@ -613,12 +613,29 @@ function ActionPanel({
     const countryNorm = normalizeCityText(driver?.address?.country || '');
     if (countryNorm) {
       if (countryNorm.includes('turkiye') || countryNorm.includes('turkey')) return true;
+      if (countryNorm.includes('europe') || countryNorm.includes('avrupa')) return false;
+      if (countryNorm.includes('united states') || countryNorm === 'usa' || countryNorm.includes('amerika')) return false;
+      return false;
+    }
+
+    const cityNorm = normalizeCityText(driver?.address?.city || '');
+    if (cityNorm) {
+      const isEuropeCity = EUROPE_CITIES_RAW.some((city) => normalizeCityText(city) === cityNorm);
+      if (isEuropeCity) return false;
+      const isAmericaCity = AMERICA_CITIES_RAW.some((city) => normalizeCityText(city) === cityNorm);
+      if (isAmericaCity) return false;
+    }
+
+    const tagsNorm = Array.isArray(driver?.service?.tags)
+      ? driver.service.tags.map((t: string) => normalizeCityText(t))
+      : [];
+    if (tagsNorm.some((tag: string) => tag.includes('avrupa') || tag.includes('europe') || tag.includes('amerika') || tag.includes('america'))) {
       return false;
     }
 
     const city = String(driver?.address?.city || '').trim();
     if (city && CITY_COORDINATES[city]) return true;
-    return true;
+    return false;
   }, [normalizeCityText, selectedCityScope]);
 
   useEffect(() => {
@@ -1400,9 +1417,10 @@ function ActionPanel({
                 );
             })
           )}
-          {!loading && !cityScopedLoading && visibleDrivers.length < displayDrivers.length && (
-            <div className="py-3 text-center text-[9px] font-black uppercase tracking-wide text-slate-400">
-              Liste yükleniyor...
+          {(loading || cityScopedLoading || visibleDrivers.length < displayDrivers.length) && (
+            <div className="py-3 text-center text-[9px] font-black uppercase tracking-wide text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="animate-spin text-slate-400" size={13} />
+              {tx.loading}
             </div>
           )}
           <div ref={loadMoreSentinelRef} className="h-8 w-full" />

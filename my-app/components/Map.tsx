@@ -307,12 +307,12 @@ function getFocusPadding() {
 }
 
 function getPopupScaleForZoom(zoom: number) {
-  if (zoom <= 3.2) return 0.68;
-  if (zoom <= 4.2) return 0.74;
-  if (zoom <= 5.2) return 0.8;
-  if (zoom <= 6.2) return 0.86;
-  if (zoom <= 7.2) return 0.92;
-  return 1;
+  if (zoom <= 3.2) return 0.68 * 0.7;
+  if (zoom <= 4.2) return 0.74 * 0.7;
+  if (zoom <= 5.2) return 0.8 * 0.7;
+  if (zoom <= 6.2) return 0.86 * 0.7;
+  if (zoom <= 7.2) return 0.92 * 0.7;
+  return 0.7;
 }
 
 function applyPopupScale(node: HTMLElement | null, zoom: number) {
@@ -544,9 +544,24 @@ function MapView({
         },
       });
 
+      map.addSource('search-range', {
+        type: 'geojson',
+        data: createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any,
+      });
+
+      map.addLayer({
+        id: 'search-range-fill',
+        type: 'fill',
+        source: 'search-range',
+        paint: {
+          'fill-color': '#2563eb',
+          'fill-opacity': 0.16,
+        },
+      });
+
       map.addSource('search-point', {
         type: 'geojson',
-        data: createUserPointGeoJson(searchCoords || focusCoords || null) as any,
+        data: createUserPointGeoJson(searchCoords || null) as any,
       });
 
       map.addLayer({
@@ -569,21 +584,6 @@ function MapView({
           'circle-color': '#2563eb',
           'circle-radius': 18 * MARKER_SCALE,
           'circle-opacity': 0.22,
-        },
-      });
-
-      map.addSource('search-range', {
-        type: 'geojson',
-        data: createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any,
-      });
-
-      map.addLayer({
-        id: 'search-range-fill',
-        type: 'fill',
-        source: 'search-range',
-        paint: {
-          'fill-color': '#2563eb',
-          'fill-opacity': 0.16,
         },
       });
 
@@ -682,12 +682,12 @@ function MapView({
     const map = mapRef.current;
     if (!map || !map.getSource('search-point')) return;
     const pointSource = map.getSource('search-point') as maplibregl.GeoJSONSource;
-    pointSource.setData(createUserPointGeoJson(searchCoords || focusCoords || null) as any);
+    pointSource.setData(createUserPointGeoJson(searchCoords || null) as any);
     const rangeSource = map.getSource('search-range') as maplibregl.GeoJSONSource | undefined;
     if (rangeSource) {
       rangeSource.setData(createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any);
     }
-  }, [focusCoords, searchApproxRadiusKm, searchApproximate, searchCoords]);
+  }, [searchApproxRadiusKm, searchApproximate, searchCoords]);
 
   useEffect(() => {
     const map = mapRef.current;

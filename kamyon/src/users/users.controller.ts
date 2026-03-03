@@ -206,4 +206,11 @@ export class UsersController {
     this.logger.log(`Import Tamamlandı. ${count} kayıt eklendi.`);
     return { status: 'SUCCESS', message: `${count} adet kayıt başarıyla içeri aktarıldı.` };
   }
+
+  // --- 11. DATA CLEANUP (Admin) ---
+  @Post('admin/cleanup-providers')
+  async cleanupProviders(@Query('dryRun') dryRun?: string) {
+    const isDryRun = String(dryRun || '').toLowerCase() === 'true';
+    return this.usersService.cleanupProviders(isDryRun);
+  }
 }

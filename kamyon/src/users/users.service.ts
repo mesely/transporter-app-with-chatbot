@@ -4,10 +4,17 @@ import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { NewUser, NewUserDocument } from '../data/schemas/new-user.schema';
 import { NewProvider, NewProviderDocument } from '../data/schemas/new-provider.schema';
+import { european_data, us_data } from '../data/abroad';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
   private readonly logger = new Logger(UsersService.name);
+  private readonly europeanCities = new Set(
+    european_data.map((row) => this.normalize(row.city))
+  );
+  private readonly usCities = new Set(
+    us_data.map((row) => this.normalize(row.city))
+  );
   private readonly STOP_WORDS = new Set([
     've', 'veya', 'ile', 'icin', 'için', 'gibi', 'olan', 'olanlar', 'en', 'yakın', 'yakin',
     'var', 'mi', 'mı', 'mu', 'mü', 'km', 'kac', 'kaç', 'bana', 'bir', 'bu', 'su', 'şu',
@@ -637,5 +644,126 @@ export class UsersService implements OnModuleInit {
 
   async getServiceTypes() {
     return this.providerModel.aggregate([{ $group: { _id: "$service.mainType", count: { $sum: 1 } } }]).exec();
+  }
+
+  async cleanupProviders(dryRun = true) {
+    const rows = await this.providerModel
+      .find({})
+      .select('_id businessName phoneNumber service address')
+      .lean()
+      .exec();
+
+    const chargeKeywords = [
+      'sarj',
+      'şarj',
+      'charge',
+      'charging',
+      'supercharger',
+      'ev',
+      'electric vehicle',
+      'tesla',
+      'shell recharge',
+      'eva',
+      'ionity',
+      'zaptec',
+      'charger',
+    ];
+
+    const hasChargeKeyword = (text: string) => {
+      const normalized = this.normalize(text);
+      return chargeKeywords.some((kw) => normalized.includes(this.normalize(kw)));
+    };
+
+    const shouldDeleteIds: Types.ObjectId[] = [];
+    const bulkOps: any[] = [];
+    let removedNoPhone = 0;
+    let removedInvalidStation = 0;
+    let updatedScope = 0;
+
+    for (const row of rows as any[]) {
+      const cleanPhone = String(row?.phoneNumber || '').replace(/\D/g, '');
+      if (!cleanPhone || cleanPhone.length < 7) {
+        shouldDeleteIds.push(row._id);
+        removedNoPhone += 1;
+        continue;
+      }
+
+      const subType = String(row?.service?.subType || '').toLowerCase().trim();
+      const mainType = String(row?.service?.mainType || '').toUpperCase().trim();
+      const tags = Array.isArray(row?.service?.tags)
+        ? row.service.tags.map((t: any) => String(t || '').trim()).filter(Boolean)
+        : [];
+      const businessName = String(row?.businessName || '');
+      const city = String(row?.address?.city || '');
+
+      if (subType === 'istasyon' || mainType === 'SARJ') {
+        const keywordPool = `${businessName} ${subType} ${tags.join(' ')}`;
+        if (!hasChargeKeyword(keywordPool)) {
+          shouldDeleteIds.push(row._id);
+          removedInvalidStation += 1;
+          continue;
+        }
+      }
+
+      if (subType === 'seyyar_sarj' || subType === 'istasyon') {
+        const normalizedCity = this.normalize(city);
+        const inEurope = this.europeanCities.has(normalizedCity);
+        const inUs = this.usCities.has(normalizedCity);
+        const inferredCountry = inEurope ? 'Europe' : inUs ? 'United States' : 'Turkey';
+        const nextTags = new Set(tags);
+
+        if (inEurope || inUs) {
+          nextTags.delete('turkiye_geneli');
+          nextTags.delete('turkey_wide');
+          nextTags.add(inEurope ? 'avrupa_geneli' : 'amerika_geneli');
+        } else {
+          nextTags.add('turkiye_geneli');
+          nextTags.delete('avrupa_geneli');
+          nextTags.delete('amerika_geneli');
+        }
+
+        const changedTags = Array.from(nextTags);
+        const tagsChanged =
+          changedTags.length !== tags.length ||
+          changedTags.some((t) => !tags.includes(t));
+        const countryChanged = String(row?.address?.country || '') !== inferredCountry;
+
+        if (tagsChanged || countryChanged) {
+          updatedScope += 1;
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: row._id },
+              update: {
+                $set: {
+                  'service.tags': changedTags,
+                  'address.country': inferredCountry,
+                },
+              },
+            },
+          });
+        }
+      }
+    }
+
+    if (!dryRun) {
+      if (shouldDeleteIds.length > 0) {
+        await this.providerModel.deleteMany({ _id: { $in: shouldDeleteIds } }).exec();
+      }
+      if (bulkOps.length > 0) {
+        await this.providerModel.bulkWrite(bulkOps, { ordered: false });
+      }
+    }
+
+    return {
+      ok: true,
+      dryRun,
+      scanned: rows.length,
+      deleteCandidates: shouldDeleteIds.length,
+      removedNoPhone,
+      removedInvalidStation,
+      scopeUpdateCandidates: updatedScope,
+      appliedDeletes: dryRun ? 0 : shouldDeleteIds.length,
+      appliedUpdates: dryRun ? 0 : updatedScope,
+    };
   }
 }
