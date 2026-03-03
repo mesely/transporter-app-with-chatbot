@@ -309,7 +309,7 @@ function ActionPanel({
     }
     if (collapseRequestToken !== lastCollapseTokenRef.current) {
       lastCollapseTokenRef.current = collapseRequestToken;
-      setPanelState(0);
+      setPanelState((current) => (current < 2 ? 2 : current));
     }
   }, [collapseRequestToken]);
 

@@ -332,7 +332,7 @@ function buildPopup(
   onViewReports?: (driverId: string, driverName?: string) => void
 ) {
   const subType = driver.service?.subType || 'other';
-  const color = '#dc2626';
+  const color = getServiceColor(normalizeServiceType(subType));
   const label = SERVICE_LABELS[subType]?.[lang] || SERVICE_LABELS.other[lang] || SERVICE_LABELS.other.en;
   const uiText = MAP_UI_TEXT[lang] || MAP_UI_TEXT.en;
 

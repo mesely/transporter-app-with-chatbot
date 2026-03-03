@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
       { url: "/icon-512.png", type: "image/png", sizes: "512x512" }
     ],
-    apple: [{ url: "/playstore.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "512x512", type: "image/png" }],
   },
   openGraph: {
     title: "Transport 245 | Geleceğin Lojistik Ağı",

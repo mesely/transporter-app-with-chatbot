@@ -141,7 +141,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen w-full bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(37,99,235,0.16),transparent_40%),#f8fafc] flex items-center justify-center">
         <div className="rounded-3xl bg-white/90 border border-slate-200 px-8 py-6 shadow-xl text-center">
-          <img src="/playstore.png" alt="Transport 245" className="w-14 h-14 mx-auto mb-3 rounded-xl" />
+          <img src="/icon-512.png" alt="Transport 245" className="w-14 h-14 mx-auto mb-3 rounded-xl" />
           <p className="text-sm font-black uppercase tracking-wide text-slate-700">Yukleniyor...</p>
         </div>
       </div>

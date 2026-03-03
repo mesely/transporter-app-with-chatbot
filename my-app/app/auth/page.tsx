@@ -243,7 +243,7 @@ export default function AuthPage() {
               alt="Transport 245"
               fill
               priority
-              onError={() => setLogoSrc('/playstore.png')}
+              onError={() => setLogoSrc('/icon-512.png')}
               className="object-contain p-1"
             />
           </div>

@@ -56,7 +56,7 @@ export default function KVKKModal({ isOpen, onClose, readOnly = false }: KVKKMod
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Kullanıcı Verileri:</strong> Kimlik (Ad, Soyad), İletişim (Tel, E-posta), Profil bilgileri, Kullanım kayıtları ve Konum bilgisi.</li>
               <li><strong>Hizmet Sağlayıcı Verileri:</strong> Firma adı, İşyeri telefonu, Adres/Konum ve Hizmet tanıtım bilgileri.</li>
-              <li><strong>Ödeme Bilgileri:</strong> İşlemler Apple App Store ve Google Play Store üzerinden yapıldığından, kart bilgileri Platform tarafından saklanmaz.</li>
+              <li><strong>Ödeme Bilgileri:</strong> İşlemler uygulama mağazası üzerinden yapıldığından, kart bilgileri Platform tarafından saklanmaz.</li>
             </ul>
           </section>
 

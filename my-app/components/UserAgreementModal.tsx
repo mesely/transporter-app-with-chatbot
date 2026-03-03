@@ -67,15 +67,15 @@ export default function UserAgreementModal({ isOpen, onClose, readOnly = false }
             <h3 className="font-black text-blue-900 uppercase tracking-wide">5. Ücretlendirme ve Abonelik</h3>
             <ul className="list-disc pl-5 space-y-2 text-blue-800">
               <li><strong>Ücretsiz Dönem:</strong> İlk kayıt tarihinden itibaren <strong>12 (on iki) ay süreyle ücretsizdir.</strong></li>
-              <li><strong>Abonelik Bedeli:</strong> Ücretsiz süre sonunda yıllık abonelik bedeli <strong>1 ABD Doları (USD)</strong> karşılığıdır.</li>
-              <li><strong>Ödeme:</strong> Apple App Store veya Google Play Store üzerinden yerel para birimiyle tahsil edilir. Kart bilgileri saklanmaz.</li>
+              <li><strong>Abonelik Bedeli:</strong> Ücretsiz süre sonunda yıllık abonelik bedeli <strong>1 Euro</strong> karşılığıdır.</li>
+              <li><strong>Ödeme:</strong> Uygulama içi satın alma ile mağaza üzerinden yerel para biriminde tahsil edilir. Kart bilgileri saklanmaz.</li>
               <li><strong>Yenileme:</strong> Mağaza kuralları gereği iptal edilmedikçe otomatik yenilenir.</li>
             </ul>
           </section>
 
           <section className="space-y-2">
             <h3 className="font-black text-gray-900 uppercase tracking-wide">6. Veri Kaynakları</h3>
-            <p>Bilgiler; Google/herkese açık kaynaklar, Platform tarafından eklenen veriler ve kullanıcılar tarafından girilen verilerden oluşur.</p>
+            <p>Bilgiler; herkese açık kaynaklar, Platform tarafından eklenen veriler ve kullanıcılar tarafından girilen verilerden oluşur.</p>
           </section>
 
           <section className="space-y-2">

@@ -58,8 +58,8 @@ const CONTENT: any = {
         p: "Taleplerinizi uygulama içi kanallardan iletebilirsiniz. Bu metin yayımlandığı tarihte yürürlüğe girer ve uygulamayı kullanarak bu metni kabul etmiş sayılırsınız."
       },
       {
-        h: "10. Google Play Data Safety Beyanı",
-        p: "Google Play Data Safety formunda; toplanan veri türleri (konum, iletişim bilgisi, profil verileri, kullanım verisi), veri işleme amacı (hizmet sunumu, güvenlik, destek), verinin üçüncü taraflarla paylaşım durumu ve verinin silinme talebi kapsamı açıkça beyan edilir. Platform, beyan ettiği kapsam dışında veri satışı yapmaz."
+        h: "10. Uygulama Mağazası Veri Güvenliği Beyanı",
+        p: "Uygulama mağazası veri güvenliği beyanında; toplanan veri türleri (konum, iletişim bilgisi, profil verileri, kullanım verisi), veri işleme amacı (hizmet sunumu, güvenlik, destek), verinin üçüncü taraflarla paylaşım durumu ve verinin silinme talebi kapsamı açıkça belirtilir. Platform, beyan ettiği kapsam dışında veri satışı yapmaz."
       },
       {
         h: "11. Konum İzni ve Arka Plan Kullanımı",
@@ -88,11 +88,11 @@ const CONTENT: any = {
       },
       {
         h: "5. Ücretlendirme ve Abonelik (ÖNEMLİ)",
-        p: "Uygulamanın temel kullanımı, ilk kayıt tarihinden itibaren 12 (on iki) ay süreyle ÜCRETSİZDİR. Ücretsiz sürenin sonunda, hizmetlerden yararlanmaya devam etmek için yıllık abonelik (1 ABD Doları karşılığı yerel para birimi) gereklidir. Ödemeler Apple App Store veya Google Play Store üzerinden tahsil edilir. Platform kart bilgisi saklamaz. İptal edilmedikçe mağaza kuralları gereği otomatik yenilenir."
+        p: "Uygulamanın temel kullanımı, ilk kayıt tarihinden itibaren 12 (on iki) ay süreyle ÜCRETSİZDİR. Ücretsiz sürenin sonunda, hizmetlerden yararlanmaya devam etmek için yıllık abonelik (1 Euro karşılığı yerel para birimi) gereklidir. Ödemeler uygulama içi satın alma ile mağaza üzerinden tahsil edilir. Platform kart bilgisi saklamaz. İptal edilmedikçe mağaza kuralları gereği otomatik yenilenir."
       },
       {
         h: "6. Veri Kaynakları",
-        p: "Bilgiler; Google/herkese açık kaynaklar, Platform tarafından eklenen veriler ve kullanıcılar tarafından girilen verilerden oluşur. Platform bu verileri bilgilendirme amacıyla kullanır."
+        p: "Bilgiler; herkese açık kaynaklar, Platform tarafından eklenen veriler ve kullanıcılar tarafından girilen verilerden oluşur. Platform bu verileri bilgilendirme amacıyla kullanır."
       },
       {
         h: "7. Bağış Politikası",
@@ -119,13 +119,13 @@ const CONTENT: any = {
       { h: "2. Processed Data", p: "We process User Data (ID, Contact, Location) and Service Provider Data (Business Name, Address). Financial data is handled by App Stores." },
       { h: "3. Purposes", p: "Data is processed to provide services, improve matching quality, ensure account/security operations, and fulfill legal obligations." },
       { h: "4. Storage and Deletion", p: "Data is retained only for the required legal/business duration. Users may request deletion; non-mandatory records are deleted or anonymized." },
-      { h: "5. Google Play Data Safety", p: "Our Google Play Data Safety declaration states what data is collected, why it is used, whether it is shared, and how deletion requests are handled. We do not sell personal data." },
+      { h: "5. App Store Data Safety", p: "Our store data safety declaration states what data is collected, why it is used, whether it is shared, and how deletion requests are handled. We do not sell personal data." },
       { h: "6. Location Permission", p: "Location is used to show nearby providers and accurate map matching. If location permission is denied, some functions may be limited. Permission can be changed anytime from device settings." },
     ],
     agreementTitle: "PART 2: USER AGREEMENT",
     agreementSections: [
       { h: "1. Nature of Platform", p: "Transport 245 is an intermediary technology platform connecting users with providers. It is not the direct provider of services." },
-      { h: "5. Pricing & Subscription", p: "Usage is FREE for the first 12 months. Afterwards, an annual subscription fee of 1 USD (local currency equivalent) applies via App Stores." }
+      { h: "5. Pricing & Subscription", p: "Usage is FREE for the first 12 months. Afterwards, an annual subscription fee of 1 EUR (local currency equivalent) applies via in-app purchase in the store." }
     ]
   }
 };

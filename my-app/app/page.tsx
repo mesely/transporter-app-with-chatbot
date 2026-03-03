@@ -848,6 +848,12 @@ export default function Home() {
     const q = normalizeText(mapSearchQuery);
     if (!q) return [];
     const tokens = q.split(' ').filter(Boolean);
+    const merged = [...drivers, ...mapDrivers];
+    const uniqueById = new globalThis.Map<string, any>();
+    for (const d of merged) {
+      const key = String(d?._id || `${d?.businessName || ''}-${d?.phoneNumber || ''}`);
+      if (!uniqueById.has(key)) uniqueById.set(key, d);
+    }
     const serviceLabel = (subType: string) => {
       const s = (subType || '').toLocaleLowerCase('tr');
       if (s.includes('kurtar')) return 'oto cekici kurtarici';
@@ -856,7 +862,7 @@ export default function Home() {
       if (s.includes('nakliye') || s.includes('kamyon') || s.includes('tir')) return 'nakliye tasima';
       return s;
     };
-    return filteredDrivers
+    return Array.from(uniqueById.values())
       .filter((d) => {
         const hay = normalizeText([
           d.businessName,
@@ -868,7 +874,7 @@ export default function Home() {
         return tokens.every((t) => hay.includes(t));
       })
       .slice(0, 6);
-  }, [filteredDrivers, mapSearchQuery]);
+  }, [drivers, mapDrivers, mapSearchQuery]);
 
   useEffect(() => {
     listEndFetchLimitRef.current = 0;

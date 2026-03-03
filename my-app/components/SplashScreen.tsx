@@ -48,7 +48,7 @@ export default function SplashScreen({ visible }: SplashScreenProps) {
                   alt="Transport 245"
                   fill
                   priority
-                  onError={() => setLogoSrc('/playstore.png')}
+                  onError={() => setLogoSrc('/icon-512.png')}
                   className="rounded-[2rem] object-contain p-5"
                 />
               </div>

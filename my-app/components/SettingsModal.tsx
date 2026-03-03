@@ -62,7 +62,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               
               <div className="bg-white/50 rounded-2xl p-3 backdrop-blur-md border border-white/60 shadow-inner">
                 <p className="text-[10px] leading-relaxed text-gray-600 font-medium">
-                  Ödemeler App Store / Google Play üzerinden güvenle yönetilir. Kart bilgisi saklanmaz.
+                  Ödemeler uygulama mağazası üzerinden güvenle yönetilir. Kart bilgisi saklanmaz.
                 </p>
               </div>
             </div>
