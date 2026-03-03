@@ -3,7 +3,9 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  BadgeCheck,
   BookText,
+  CreditCard,
   Globe2,
   Heart,
   Phone,
@@ -318,9 +320,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#e0e7ff] via-[#f1f5f9] to-[#e2e8f0] px-5 pb-10 pt-10 md:px-10">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_12%_14%,rgba(59,130,246,0.16),transparent_36%),radial-gradient(circle_at_85%_88%,rgba(15,23,42,0.10),transparent_38%),linear-gradient(145deg,#e7edf8,#f3f6fb)] px-5 pb-10 pt-10 md:px-10">
       <div className="mx-auto max-w-4xl space-y-6">
-        <header className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <header className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
@@ -335,7 +337,7 @@ export default function SettingsPage() {
             </button>
             <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Ayarlar</h1>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-white/55 p-1.5 backdrop-blur-md border border-white/70">
             <button
               onClick={() => setActiveTab('general')}
               className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide ${
@@ -357,7 +359,7 @@ export default function SettingsPage() {
 
         {activeTab === 'general' && (
         <>
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <UserCircle2 className="text-cyan-700" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Hesap Bilgileri</p>
@@ -377,11 +379,11 @@ export default function SettingsPage() {
             </div>
           )}
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
               <p className="text-[10px] font-black uppercase text-slate-400">Ad Soyad</p>
               <p className="mt-1 text-sm font-black text-slate-900">{name || '-'}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
               <p className="text-[10px] font-black uppercase text-slate-400">E-posta</p>
               <p className="mt-1 text-sm font-black text-slate-900 break-all">{email || '-'}</p>
             </div>
@@ -402,13 +404,13 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <BookText className="text-indigo-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Sözleşme ve İletişim</p>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Globe2 className="text-sky-600" size={16} />
                 <p className="text-[10px] font-black uppercase text-slate-400">Dil</p>
@@ -432,9 +434,15 @@ export default function SettingsPage() {
                 <option value="ar">العربية</option>
               </select>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[10px] font-black uppercase text-slate-400">Üyelik Bilgisi</p>
-              <p className="mt-1 text-sm font-black text-slate-900">İlk 12 ay ücretsiz</p>
+            <div className="rounded-2xl border border-white/70 bg-gradient-to-br from-white/80 to-slate-50/70 p-4 backdrop-blur-md shadow-inner">
+              <div className="flex items-center gap-2">
+                <BadgeCheck className="text-emerald-600" size={16} />
+                <p className="text-[10px] font-black uppercase text-slate-400">Üyelik Bilgisi</p>
+              </div>
+              <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-emerald-700 border border-emerald-100">
+                <CreditCard size={12} /> Premium
+              </div>
+              <p className="mt-2 text-sm font-black text-slate-900">İlk 12 ay ücretsiz</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">Ücretsiz dönem bitiş: {freeUntilText}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık 1 EUR (mağaza yerel fiyatı).</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">Ödeme yalnızca uygulama içi satın alma ile yapılır.</p>
@@ -443,19 +451,19 @@ export default function SettingsPage() {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <button
               onClick={() => setShowAgreementModal(true)}
-              className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
+              className="rounded-2xl border border-white/70 bg-white/70 p-4 text-left backdrop-blur-md"
             >
               <p className="text-[10px] font-black uppercase text-slate-400">Kullanıcı Sözleşmesi</p>
             </button>
 
             <button
               onClick={() => setShowKvkkModal(true)}
-              className="rounded-2xl border border-slate-200 bg-white p-4 text-left"
+              className="rounded-2xl border border-white/70 bg-white/70 p-4 text-left backdrop-blur-md"
             >
               <p className="text-[10px] font-black uppercase text-slate-400">KVKK Aydınlatma</p>
             </button>
           </div>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
             <p className="text-[10px] font-black uppercase text-slate-400">İletişim</p>
             <a href="mailto:iletisimtransporter@gmail.com" className="mt-1 block text-sm font-black text-slate-900 break-all">
               iletisimtransporter@gmail.com
@@ -467,7 +475,7 @@ export default function SettingsPage() {
 
         {activeTab === 'history' && (
         <>
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Phone className="text-blue-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Geçmiş Siparişler</p>
@@ -520,7 +528,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Heart className="text-rose-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Favori Firmalar</p>
@@ -541,7 +549,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Star className="text-amber-500" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Yaptığım Değerlendirmeler</p>
@@ -569,7 +577,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/70 bg-white/70 p-5 shadow-lg backdrop-blur-xl">
+        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <AlertTriangle className="text-red-500" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Yaptığım Şikayetler</p>
@@ -598,7 +606,7 @@ export default function SettingsPage() {
         </>
         )}
 
-        <footer className="rounded-[2rem] border border-white/70 bg-white/70 p-4 text-center shadow-lg backdrop-blur-xl">
+        <footer className="rounded-[2rem] border border-white/60 bg-white/45 p-4 text-center shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">
             Net gelirin %10&apos;una kadar yardım kuruluşlarına bağışlanır.
           </p>

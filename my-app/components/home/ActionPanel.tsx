@@ -309,7 +309,7 @@ function ActionPanel({
     }
     if (collapseRequestToken !== lastCollapseTokenRef.current) {
       lastCollapseTokenRef.current = collapseRequestToken;
-      setPanelState((current) => (current < 2 ? 2 : current));
+      setPanelState((current) => (current > 1 ? 1 : current));
     }
   }, [collapseRequestToken]);
 
@@ -857,7 +857,7 @@ function ActionPanel({
     dragStartY.current = null;
   };
 
-  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-24' : 'h-14';
+  const sizeClass = panelState === 3 ? 'h-[92dvh]' : panelState === 2 ? 'h-[55dvh]' : panelState === 1 ? 'h-20' : 'h-12';
 
   const formatTitle = (name?: string) => {
     if (!name) return '';
