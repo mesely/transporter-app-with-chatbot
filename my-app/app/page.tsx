@@ -33,6 +33,7 @@ const FAVORITES_KEY = 'Transport_favorites_v1';
 const MANUAL_LOCATION_KEY = 'Transport_manual_location_v1';
 const SKIP_SPLASH_ONCE_KEY = 'Transport_skip_splash_once';
 const HOME_VIEW_STATE_KEY = 'Transport_home_view_state_v1';
+const LAST_SEARCH_COORDS_KEY = 'Transport_last_search_coords_v1';
 const TURKEY_BBOX = {
   minLat: 35.45,
   minLng: 25.4,
@@ -222,6 +223,17 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!searchCoords) return;
+    try {
+      localStorage.setItem(
+        LAST_SEARCH_COORDS_KEY,
+        JSON.stringify({ lat: searchCoords[0], lng: searchCoords[1], ts: Date.now() })
+      );
+    } catch {}
+  }, [searchCoords]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
       const raw = sessionStorage.getItem(HOME_VIEW_STATE_KEY);
       if (!raw) return;
@@ -245,6 +257,21 @@ export default function Home() {
       setHomeStateReady(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (searchCoords) return;
+    try {
+      const raw = localStorage.getItem(LAST_SEARCH_COORDS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const lat = Number(parsed?.lat);
+      const lng = Number(parsed?.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setSearchCoords([lat, lng]);
+      }
+    } catch {}
+  }, [searchCoords]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
