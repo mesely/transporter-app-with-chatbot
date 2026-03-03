@@ -599,12 +599,44 @@ function ActionPanel({
         list = list.filter(d => allowedSubTypes.includes(d.service?.subType));
     }
 
+    const turkeyMode = selectedCityScope !== 'eu' && selectedCityScope !== 'us';
+    if (turkeyMode && actionType === 'seyyar_sarj') {
+      list = list.filter((driver: any) => {
+        const countryNorm = normalizeCityText(driver?.address?.country || '');
+        if (countryNorm) {
+          if (countryNorm.includes('turkiye') || countryNorm.includes('turkey')) return true;
+          if (countryNorm.includes('europe') || countryNorm.includes('avrupa')) return false;
+          if (countryNorm.includes('united states') || countryNorm === 'usa' || countryNorm.includes('amerika')) return false;
+          return false;
+        }
+
+        const cityNorm = normalizeCityText(driver?.address?.city || '');
+        if (cityNorm) {
+          const isEuropeCity = EUROPE_CITIES_RAW.some((city) => normalizeCityText(city) === cityNorm);
+          if (isEuropeCity) return false;
+          const isAmericaCity = AMERICA_CITIES_RAW.some((city) => normalizeCityText(city) === cityNorm);
+          if (isAmericaCity) return false;
+        }
+
+        const tagsNorm = Array.isArray(driver?.service?.tags)
+          ? driver.service.tags.map((t: string) => normalizeCityText(t))
+          : [];
+        if (tagsNorm.some((tag: string) => tag.includes('avrupa') || tag.includes('europe') || tag.includes('amerika') || tag.includes('america'))) {
+          return false;
+        }
+
+        const city = String(driver?.address?.city || '').trim();
+        if (city && CITY_COORDINATES[city]) return true;
+        return false;
+      });
+    }
+
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       return (a.distance || 0) - (b.distance || 0);
     });
     return list;
-  }, [drivers, cityScopedDrivers, sortMode, selectedCity, actionType, activeTransportFilter, normalizeCityText]);
+  }, [drivers, cityScopedDrivers, sortMode, selectedCity, selectedCityScope, actionType, activeTransportFilter, normalizeCityText]);
 
   const isTurkeyScopedService = useCallback((driver: any) => {
     if (selectedCityScope === 'eu' || selectedCityScope === 'us') return false;
@@ -637,6 +669,14 @@ function ActionPanel({
     if (city && CITY_COORDINATES[city]) return true;
     return false;
   }, [normalizeCityText, selectedCityScope]);
+
+  // If the list is empty while loading, lift panel to show the loading state.
+  useEffect(() => {
+    const isLoadingNow = selectedCity ? cityScopedLoading : loading;
+    if (isLoadingNow && displayDrivers.length === 0 && panelState < 2) {
+      setPanelState(2);
+    }
+  }, [selectedCity, cityScopedLoading, loading, displayDrivers.length, panelState]);
 
   useEffect(() => {
     setRenderedCount(28);
