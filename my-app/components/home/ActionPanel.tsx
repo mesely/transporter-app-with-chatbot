@@ -1417,7 +1417,7 @@ function ActionPanel({
                 );
             })
           )}
-          {visibleDrivers.length > 0 && (loading || cityScopedLoading || visibleDrivers.length < displayDrivers.length) && (
+          {!((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0) && (loading || cityScopedLoading || visibleDrivers.length < displayDrivers.length) && (
             <div className="py-3 text-center text-[9px] font-black uppercase tracking-wide text-slate-400 flex items-center justify-center gap-2">
               <Loader2 className="animate-spin text-slate-400" size={13} />
               {tx.loading}
