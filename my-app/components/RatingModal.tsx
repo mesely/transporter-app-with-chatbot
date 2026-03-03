@@ -48,7 +48,7 @@ export default function RatingModal({ isOpen, onRate, onClose }: RatingModalProp
 
   return (
     // Overlay: Admin paneliyle uyumlu koyuluk ve blur
-    <div className="fixed inset-0 z-[10001] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[10001] bg-slate-700/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
       
       {/* Modal Container: iOS Glassmorphism Stil */}
       <div className="w-full max-w-md rounded-[3rem] shadow-2xl border border-white/60 bg-white/90 backdrop-blur-2xl p-8 text-center relative max-h-[92vh] overflow-y-auto custom-scrollbar animate-in zoom-in duration-300">

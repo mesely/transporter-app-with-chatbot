@@ -46,6 +46,19 @@ type OrderItem = {
   };
 };
 
+function isMockLikeText(value?: string): boolean {
+  const normalized = String(value || '').toLocaleLowerCase('tr').trim();
+  if (!normalized) return false;
+  return (
+    normalized.includes('mock') ||
+    normalized.includes('dummy') ||
+    normalized.includes('test') ||
+    normalized.includes('örnek') ||
+    normalized.includes('ornek') ||
+    normalized.includes('transport 245 oto kurtarma')
+  );
+}
+
 function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return '';
   let id = localStorage.getItem('Transport_device_id');
@@ -185,8 +198,14 @@ export default function SettingsPage() {
         ]);
         const ratingsData = await ratingsRes.json();
         const reportsData = await reportsRes.json();
-        setMyRatings(Array.isArray(ratingsData) ? ratingsData : []);
-        setMyReports(Array.isArray(reportsData) ? reportsData : []);
+        const safeRatings = Array.isArray(ratingsData)
+          ? ratingsData.filter((item: any) => !isMockLikeText(item?.providerName))
+          : [];
+        const safeReports = Array.isArray(reportsData)
+          ? reportsData.filter((item: any) => !isMockLikeText(item?.reason) && !isMockLikeText(item?.details))
+          : [];
+        setMyRatings(safeRatings);
+        setMyReports(safeReports);
       } catch {
         setMyRatings([]);
         setMyReports([]);
@@ -209,7 +228,10 @@ export default function SettingsPage() {
         }
         const response = await fetch(`${API_URL}/orders?customerId=${encodeURIComponent(customerId)}`);
         const data = await response.json();
-        setOrderHistory(Array.isArray(data) ? data : []);
+        const safeOrders = Array.isArray(data)
+          ? data.filter((order: any) => !isMockLikeText(order?.driver?.businessName))
+          : [];
+        setOrderHistory(safeOrders);
       } catch {
         setOrderHistory([]);
       } finally {
@@ -466,7 +488,7 @@ export default function SettingsPage() {
                   <div key={order._id} className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-black uppercase text-slate-800">
-                        {order.driver?.businessName || 'Firma'}
+                        {order.driver?.businessName || '-'}
                       </p>
                       <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase ${chip.className}`}>
                         {chip.label}
@@ -509,7 +531,7 @@ export default function SettingsPage() {
             ) : (
               favorites.map((fav) => (
                 <div key={fav._id} className="rounded-xl border border-rose-100 bg-rose-50/70 p-3">
-                  <p className="text-xs font-black uppercase text-slate-800">{fav.businessName || 'Firma'}</p>
+                  <p className="text-xs font-black uppercase text-slate-800">{fav.businessName || '-'}</p>
                   <p className="mt-1 text-[11px] font-semibold text-slate-600">
                     {(fav.address?.district || '-') + ' / ' + (fav.address?.city || '-')}
                   </p>
@@ -535,7 +557,7 @@ export default function SettingsPage() {
                 return (
                   <div key={`${item.providerId}-${item.entryId}`} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-black uppercase text-slate-800">{item.providerName || 'Firma'}</p>
+                      <p className="text-xs font-black uppercase text-slate-800">{item.providerName || '-'}</p>
                       <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase ${chip.className}`}>{chip.label}</span>
                     </div>
                     <p className="mt-1 text-[11px] font-bold text-slate-600">Puan: {item.rating}/5</p>

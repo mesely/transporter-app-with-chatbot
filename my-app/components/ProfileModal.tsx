@@ -81,7 +81,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   })();
 
   return (
-    <div className="fixed inset-0 z-[5000] bg-black/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[5000] bg-slate-700/30 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
       <div className="w-full max-w-md rounded-[2.2rem] border border-white/70 bg-white/85 p-6 shadow-2xl backdrop-blur-2xl relative">
         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-500 transition-all">
           <X size={20} strokeWidth={2.5} />

@@ -20,7 +20,7 @@ export default function KVKKModal({ isOpen, onClose, readOnly = false }: KVKKMod
 
   return (
     <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-slate-700/35 backdrop-blur-md" onClick={onClose}></div>
 
       <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in duration-300">
         

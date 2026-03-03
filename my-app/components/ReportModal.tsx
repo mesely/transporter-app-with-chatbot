@@ -91,7 +91,7 @@ export default function ReportModal({ isOpen, onClose, orderId, driverId }: Repo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100000] bg-slate-950/40 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100000] bg-slate-700/35 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
       
       <div className="w-full max-w-md bg-white rounded-[3.5rem] shadow-[0_40px_150px_rgba(0,0,0,0.4)] border border-slate-100 p-8 relative max-h-[92vh] overflow-y-auto custom-scrollbar animate-in zoom-in duration-300">
         
