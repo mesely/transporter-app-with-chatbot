@@ -36,6 +36,9 @@ function findAnnualPackage(offeringsRes: any) {
 function normalizeIapError(error: any) {
   const raw = String(error?.message || error || '').trim();
   const lower = raw.toLowerCase();
+  if (lower.includes('none of the products registered in the revenuecat dashboard could be fetched')) {
+    return 'Abonelik ürünü Apple tarafında henüz çekilemiyor. App Store Connect sözleşme/vergiler aktif olduktan sonra 12-24 saat bekleyip tekrar deneyin.';
+  }
   if (lower.includes('wrong api key') || lower.includes('production key')) {
     return 'RevenueCat production Apple API key gerekli. `.env` içinde NEXT_PUBLIC_REVENUECAT_APPLE_API_KEY değerini `appl_...` production key ile güncelle.';
   }
