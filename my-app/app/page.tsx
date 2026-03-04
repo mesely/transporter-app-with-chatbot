@@ -120,10 +120,10 @@ export default function Home() {
   const MIN_ZOOM_DELTA = 0.9;
   const VIEWPORT_REFETCH_EDGE_RATIO = 0.22;
   const BBOX_OVERSCAN_FACTOR = 0.45;
-  const COUNTRY_MODE_ZOOM_THRESHOLD = 6.35;
-  const COUNTRY_MODE_FETCH_LIMIT = 3200;
+  const COUNTRY_MODE_ZOOM_THRESHOLD = 7.1;
+  const COUNTRY_MODE_FETCH_LIMIT = 5600;
   const ACTION_PANEL_QUERY_ZOOM = 6.2;
-  const ACTION_PANEL_QUERY_LIMIT = 3200;
+  const ACTION_PANEL_QUERY_LIMIT = 4200;
   const TOP_UI_OFFSET = 'max(calc(env(safe-area-inset-top, 0px) + 22px), 34px)';
 
   const [showSplash, setShowSplash] = useState(true);
@@ -792,6 +792,21 @@ export default function Home() {
     const baseCoords = searchCoordsRef.current;
     const baseLat = baseCoords?.[0] ?? DEFAULT_LAT;
     const baseLng = baseCoords?.[1] ?? DEFAULT_LNG;
+
+    // Category switches should show a wider context on the map
+    // without changing user-location marker logic.
+    const prevZoom = lastMapFetchRef.current?.zoom;
+    const nextZoom =
+      typeof prevZoom === 'number'
+        ? (prevZoom > 8.4 ? Math.max(7.4, prevZoom - 1.15) : prevZoom)
+        : 11.2;
+    setActiveDriverId(null);
+    setPopupDriverId(null);
+    setSelectedDriverGhost(null);
+    setFocusCoords([baseLat, baseLng]);
+    setMapFocusZoom(nextZoom);
+    setMapFocusToken((v) => v + 1);
+
     const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, ACTION_PANEL_QUERY_LIMIT);
     listEndFetchLimitRef.current = requestedLimit;
     fetchDrivers(baseLat, baseLng, type, {
@@ -1023,14 +1038,22 @@ export default function Home() {
           maxLng: bbox.maxLng + lngPad,
         };
       }
-      const requestedLimit = Math.max(ACTION_PANEL_QUERY_LIMIT, 2200);
+      const isCountryMode = zoom <= COUNTRY_MODE_ZOOM_THRESHOLD;
+      const isCenteredInTurkey = isInsideBBox(lat, lng, TURKEY_BBOX);
+      const fetchBbox = (isCountryMode && isCenteredInTurkey)
+        ? TURKEY_BBOX
+        : (expandedBbox || bbox || TURKEY_BBOX);
+      const requestedLimit = isCountryMode
+        ? Math.max(COUNTRY_MODE_FETCH_LIMIT, ACTION_PANEL_QUERY_LIMIT)
+        : Math.max(ACTION_PANEL_QUERY_LIMIT, 2800);
       fetchDrivers(lat, lng, actionTypeRef.current, {
         zoom,
         limit: requestedLimit,
-        bbox: expandedBbox,
+        bbox: fetchBbox,
         append: true,
         silent: true,
         target: 'map',
+        force: isCountryMode && isCenteredInTurkey,
       });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
   }, [
