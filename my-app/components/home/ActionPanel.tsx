@@ -18,6 +18,7 @@ import {
   Navigation, Globe, CarFront, Construction, Home,
   Package, Container, ArrowUpDown, Map as MapIcon,
   Check, Phone, MessageCircle, Info, Users, Bus, Crown,
+  Loader2,
   ThumbsUp,
   Heart,
   X,
@@ -737,6 +738,10 @@ function ActionPanel({
     () => displayDrivers.slice(0, Math.max(1, renderedCount)),
     [displayDrivers, renderedCount]
   );
+  const showAppendLoading = useMemo(() => {
+    if (selectedCity ? cityScopedLoading : loading) return visibleDrivers.length > 0;
+    return visibleDrivers.length < displayDrivers.length;
+  }, [cityScopedLoading, displayDrivers.length, loading, selectedCity, visibleDrivers.length]);
 
   useEffect(() => {
     const targetId = activeDriverId || localSelectedId;
@@ -1536,6 +1541,12 @@ function ActionPanel({
             })
           )}
           <div ref={loadMoreSentinelRef} className="h-8 w-full" />
+          {showAppendLoading && (
+            <div className="flex items-center justify-center py-2 text-[10px] font-black uppercase tracking-wide text-slate-500">
+              <Loader2 size={14} className="mr-2 animate-spin" />
+              {tx.loading}
+            </div>
+          )}
         </div>
         )}
       </div>

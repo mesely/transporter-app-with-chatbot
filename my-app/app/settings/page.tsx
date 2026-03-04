@@ -74,6 +74,67 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
+function getMembershipText(lang: AppLang) {
+  if (lang === 'fr') {
+    return {
+      title: 'Adhésion',
+      firstYear: '12 premiers mois gratuits',
+      freeUntil: 'Fin de la période gratuite',
+      yearlyAfter: 'Puis annuel',
+      paymentOnlyApple: 'Paiement uniquement via Apple In-App Purchase.',
+      status: 'Statut',
+      active: 'Actif',
+      passive: 'Inactif',
+      expiry: 'Expiration',
+      iosOnlyInfo: "L'achat d'abonnement est disponible sur iOS via App Store.",
+      start: "Démarrer l'abonnement (IAP)",
+      restore: 'Restaurer les achats',
+      manage: "Gérer l'abonnement",
+      processing: 'Traitement...',
+    };
+  }
+  if (lang === 'en') {
+    return {
+      title: 'Membership',
+      firstYear: 'First 12 months free',
+      freeUntil: 'Free period ends',
+      yearlyAfter: 'Then yearly',
+      paymentOnlyApple: 'Payment is available only via Apple In-App Purchase.',
+      status: 'Status',
+      active: 'Active',
+      passive: 'Inactive',
+      expiry: 'Expiry',
+      iosOnlyInfo: 'Subscription purchase is available on iOS via App Store.',
+      start: 'Start Subscription (IAP)',
+      restore: 'Restore Purchases',
+      manage: 'Manage Subscription',
+      processing: 'Processing...',
+    };
+  }
+  return {
+    title: 'Üyelik Bilgisi',
+    firstYear: 'İlk 12 ay ücretsiz',
+    freeUntil: 'Ücretsiz dönem bitiş',
+    yearlyAfter: 'Sonrasında yıllık',
+    paymentOnlyApple: 'Ödeme yalnızca Apple In-App Purchase ile yapılır.',
+    status: 'Durum',
+    active: 'Aktif',
+    passive: 'Pasif',
+    expiry: 'Bitiş',
+    iosOnlyInfo: 'Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.',
+    start: 'Aboneliği Başlat (IAP)',
+    restore: 'Satın Alımları Geri Yükle',
+    manage: 'Aboneliği Yönet',
+    processing: 'İşleniyor...',
+  };
+}
+
+function toLocaleTag(lang: AppLang): string {
+  if (lang === 'fr') return 'fr-FR';
+  if (lang === 'en') return 'en-US';
+  return 'tr-TR';
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [name, setName] = useState('Kullanıcı');
@@ -296,14 +357,15 @@ export default function SettingsPage() {
     if (!membershipStartedAt) return '-';
     const next = new Date(membershipStartedAt);
     next.setFullYear(next.getFullYear() + 1);
-    return next.toLocaleDateString('tr-TR');
-  }, [membershipStartedAt]);
+    return next.toLocaleDateString(toLocaleTag(appLang));
+  }, [appLang, membershipStartedAt]);
   const iapExpiresText = useMemo(() => {
     if (!membershipIap.expiresDate) return '-';
     const dt = new Date(membershipIap.expiresDate);
     if (Number.isNaN(dt.getTime())) return '-';
-    return dt.toLocaleDateString('tr-TR');
-  }, [membershipIap.expiresDate]);
+    return dt.toLocaleDateString(toLocaleTag(appLang));
+  }, [appLang, membershipIap.expiresDate]);
+  const membershipText = useMemo(() => getMembershipText(appLang), [appLang]);
 
   const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
     const providerId = selectedOrder?.driver?._id;
@@ -458,20 +520,20 @@ export default function SettingsPage() {
             <div className="rounded-2xl border border-white/70 bg-gradient-to-br from-white/80 to-slate-50/70 p-4 backdrop-blur-md shadow-inner">
               <div className="flex items-center gap-2">
                 <BadgeCheck className="text-emerald-600" size={16} />
-                <p className="text-[10px] font-black uppercase text-slate-400">Üyelik Bilgisi</p>
+                <p className="text-[10px] font-black uppercase text-slate-400">{membershipText.title}</p>
               </div>
               <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-emerald-700 border border-emerald-100">
                 <CreditCard size={12} /> Premium
               </div>
-              <p className="mt-2 text-sm font-black text-slate-900">İlk 12 ay ücretsiz</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Ücretsiz dönem bitiş: {freeUntilText}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık {membershipIap.priceText || '1 EUR'} (mağaza yerel fiyatı).</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Ödeme yalnızca Apple In-App Purchase ile yapılır.</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Durum: {membershipIap.isActive ? 'Aktif' : 'Pasif'}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Bitiş: {iapExpiresText}</p>
+              <p className="mt-2 text-sm font-black text-slate-900">{membershipText.firstYear}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.freeUntil}: {freeUntilText}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.yearlyAfter} {membershipIap.priceText || '1 EUR'} (store local price).</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.paymentOnlyApple}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.status}: {membershipIap.isActive ? membershipText.active : membershipText.passive}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.expiry}: {iapExpiresText}</p>
               {!membershipIap.isNativeIOS && (
                 <p className="mt-2 text-[11px] font-semibold text-slate-500">
-                  Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.
+                  {membershipText.iosOnlyInfo}
                 </p>
               )}
               {membershipIap.isNativeIOS && !membershipIap.hasPurchasesPlugin && (
@@ -489,20 +551,20 @@ export default function SettingsPage() {
                     disabled={membershipIap.isLoading}
                     className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white disabled:opacity-60"
                   >
-                    {membershipIap.isLoading ? 'İşleniyor...' : 'Aboneliği Başlat (IAP)'}
+                    {membershipIap.isLoading ? membershipText.processing : membershipText.start}
                   </button>
                   <button
                     onClick={membershipIap.restore}
                     disabled={membershipIap.isLoading}
                     className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700 disabled:opacity-60"
                   >
-                    Satın Alımları Geri Yükle
+                    {membershipText.restore}
                   </button>
                   <button
                     onClick={membershipIap.openManageSubscriptions}
                     className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
                   >
-                    Aboneliği Yönet
+                    {membershipText.manage}
                   </button>
                 </div>
               ) : null}

@@ -93,6 +93,27 @@ function isInsideBBox(
   return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
 }
 
+function isDriverInsideBBox(driver: any, bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }) {
+  if (!bbox) return true;
+  const coords = driver?.location?.coordinates;
+  if (!Array.isArray(coords) || coords.length < 2) return false;
+  const lat = Number(coords[1]);
+  const lng = Number(coords[0]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  return isInsideBBox(lat, lng, bbox);
+}
+
+function buildRegionalBBox(lat: number, lng: number, zoom = 6.2) {
+  const latSpan = zoom <= 4.6 ? 58 : zoom <= 6.4 ? 40 : 24;
+  const lngSpan = zoom <= 4.6 ? 104 : zoom <= 6.4 ? 68 : 44;
+  return {
+    minLat: Math.max(-85, lat - latSpan / 2),
+    minLng: Math.max(-180, lng - lngSpan / 2),
+    maxLat: Math.min(85, lat + latSpan / 2),
+    maxLng: Math.min(180, lng + lngSpan / 2),
+  };
+}
+
 function prioritizePanelDrivers(list: any[]): any[] {
   if (!Array.isArray(list) || list.length === 0) return [];
   const sorted = [...list].sort((a, b) => {
@@ -119,11 +140,11 @@ export default function Home() {
   const MIN_MOVE_DISTANCE_DEG = 0.03;
   const MIN_ZOOM_DELTA = 0.9;
   const VIEWPORT_REFETCH_EDGE_RATIO = 0.22;
-  const BBOX_OVERSCAN_FACTOR = 0.45;
-  const COUNTRY_MODE_ZOOM_THRESHOLD = 7.1;
-  const COUNTRY_MODE_FETCH_LIMIT = 5600;
-  const ACTION_PANEL_QUERY_ZOOM = 6.2;
-  const ACTION_PANEL_QUERY_LIMIT = 4200;
+  const BBOX_OVERSCAN_FACTOR = 1.25;
+  const COUNTRY_MODE_ZOOM_THRESHOLD = 7.4;
+  const COUNTRY_MODE_FETCH_LIMIT = 12000;
+  const ACTION_PANEL_QUERY_ZOOM = 5.0;
+  const ACTION_PANEL_QUERY_LIMIT = 8400;
   const TOP_UI_OFFSET = 'max(calc(env(safe-area-inset-top, 0px) + 22px), 34px)';
 
   const [showSplash, setShowSplash] = useState(true);
@@ -177,6 +198,23 @@ export default function Home() {
   const mapDriversRef = useRef<any[]>([]);
   const filterRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFilterTypeRef = useRef('kurtarici');
+
+  const resolveQueryBbox = useCallback((lat: number, lng: number, zoom = ACTION_PANEL_QUERY_ZOOM) => {
+    const lastBbox = lastMapFetchRef.current?.bbox;
+    if (lastBbox) {
+      const latSpan = Math.max(0.01, lastBbox.maxLat - lastBbox.minLat);
+      const lngSpan = Math.max(0.01, lastBbox.maxLng - lastBbox.minLng);
+      const latPad = Math.max(1.4, latSpan * 1.9);
+      const lngPad = Math.max(2.3, lngSpan * 1.9);
+      return {
+        minLat: Math.max(-85, lastBbox.minLat - latPad),
+        minLng: Math.max(-180, lastBbox.minLng - lngPad),
+        maxLat: Math.min(85, lastBbox.maxLat + latPad),
+        maxLng: Math.min(180, lastBbox.maxLng + lngPad),
+      };
+    }
+    return buildRegionalBBox(lat, lng, zoom);
+  }, [ACTION_PANEL_QUERY_ZOOM]);
 
   useEffect(() => {
     driversRef.current = drivers;
@@ -370,7 +408,8 @@ export default function Home() {
 
     if (!opts?.silent && (!cached || opts?.force)) {
       const typeCached = readTypeCache(type);
-      if (typeCached && typeCached.length > 0) {
+      const hasRelevantTypeCache = typeCached?.some((row: any) => isDriverInsideBBox(row, opts?.bbox));
+      if (typeCached && typeCached.length > 0 && hasRelevantTypeCache) {
         if (includePanel) setDrivers(prioritizePanelDrivers(typeCached));
         if (includeMap) setMapDrivers(typeCached);
       }
@@ -404,10 +443,10 @@ export default function Home() {
         opts?.countryFallback !== false &&
         type !== 'seyyar_sarj'
       ) {
-        const fallbackBbox = isInsideBBox(lat, lng, TURKEY_BBOX) ? TURKEY_BBOX : undefined;
+        const fallbackBbox = opts?.bbox || buildRegionalBBox(lat, lng, 6.2);
         await fetchDrivers(lat, lng, type, {
           zoom: 6.2,
-          limit: 3200,
+          limit: 6400,
           bbox: fallbackBbox,
           force: true,
           append: false,
@@ -581,10 +620,10 @@ export default function Home() {
       fetchDrivers(DEFAULT_LAT, DEFAULT_LNG, 'kurtarici', {
         zoom: ACTION_PANEL_QUERY_ZOOM,
         limit: ACTION_PANEL_QUERY_LIMIT,
-        bbox: TURKEY_BBOX,
+        bbox: resolveQueryBbox(DEFAULT_LAT, DEFAULT_LNG, ACTION_PANEL_QUERY_ZOOM),
       });
     }
-  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, homeStateReady, searchCoords]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, homeStateReady, resolveQueryBbox, searchCoords]);
 
   useEffect(() => {
     if (!homeStateReady) return;
@@ -741,9 +780,9 @@ export default function Home() {
     fetchDrivers(anchorLat, anchorLng, actionTypeRef.current, {
       zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: ACTION_PANEL_QUERY_LIMIT,
-      bbox: TURKEY_BBOX,
+      bbox: resolveQueryBbox(anchorLat, anchorLng, ACTION_PANEL_QUERY_ZOOM),
     });
-  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, resolveQueryBbox]);
 
   useEffect(() => {
     if (searchCoords) return;
@@ -786,12 +825,36 @@ export default function Home() {
     setActionType(type);
     setActiveTags([]);
     const typeCached = readTypeCache(type);
-    if (typeCached && typeCached.length > 0) {
-      setDrivers(typeCached);
+    const anchorProbeBbox = resolveQueryBbox(
+      Number.isFinite(lastMapFetchRef.current?.lat) ? (lastMapFetchRef.current?.lat as number) : (searchCoordsRef.current?.[0] ?? DEFAULT_LAT),
+      Number.isFinite(lastMapFetchRef.current?.lng) ? (lastMapFetchRef.current?.lng as number) : (searchCoordsRef.current?.[1] ?? DEFAULT_LNG),
+      ACTION_PANEL_QUERY_ZOOM
+    );
+    const hasRelevantCache = typeCached?.some((row: any) => isDriverInsideBBox(row, anchorProbeBbox));
+    if (typeCached && typeCached.length > 0 && hasRelevantCache) {
+      setDrivers(prioritizePanelDrivers(typeCached));
+    } else {
+      const merged = [...(driversRef.current || []), ...(mapDriversRef.current || [])];
+      const warm = merged.filter((d: any) => {
+        const s = d?.service;
+        if (!s) return false;
+        const mainType = String(s.mainType || '').toLocaleUpperCase('tr');
+        const subType = String(s.subType || '').toLocaleLowerCase('tr');
+        if (type === 'seyyar_sarj') return subType === 'seyyar_sarj';
+        if (type === 'sarj') return mainType.includes('SARJ') || subType === 'istasyon' || subType === 'seyyar_sarj';
+        if (type === 'kurtarici') return mainType.includes('KURTARICI') || subType === 'oto_kurtarma' || subType === 'vinc' || subType === 'lastik';
+        if (type === 'nakliye') return mainType.includes('NAKLIYE') || ['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].includes(subType);
+        if (type === 'yolcu') return mainType.includes('YOLCU') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType);
+        if (CATEGORY_MAP[type]) return subType === type || CATEGORY_MAP[type].includes(subType);
+        return subType === type;
+      });
+      if (warm.length > 0) setDrivers(prioritizePanelDrivers(warm));
     }
     const baseCoords = searchCoordsRef.current;
     const baseLat = baseCoords?.[0] ?? DEFAULT_LAT;
     const baseLng = baseCoords?.[1] ?? DEFAULT_LNG;
+    const anchorLat = Number.isFinite(lastMapFetchRef.current?.lat) ? (lastMapFetchRef.current?.lat as number) : baseLat;
+    const anchorLng = Number.isFinite(lastMapFetchRef.current?.lng) ? (lastMapFetchRef.current?.lng as number) : baseLng;
 
     // Category switches should show a wider context on the map
     // without changing user-location marker logic.
@@ -803,16 +866,16 @@ export default function Home() {
     setActiveDriverId(null);
     setPopupDriverId(null);
     setSelectedDriverGhost(null);
-    setFocusCoords([baseLat, baseLng]);
+    setFocusCoords([anchorLat, anchorLng]);
     setMapFocusZoom(nextZoom);
     setMapFocusToken((v) => v + 1);
 
     const requestedLimit = Math.max(listEndFetchLimitRef.current || 0, ACTION_PANEL_QUERY_LIMIT);
     listEndFetchLimitRef.current = requestedLimit;
-    fetchDrivers(baseLat, baseLng, type, {
+    fetchDrivers(anchorLat, anchorLng, type, {
       zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: requestedLimit,
-      bbox: TURKEY_BBOX,
+      bbox: resolveQueryBbox(anchorLat, anchorLng, ACTION_PANEL_QUERY_ZOOM),
       force: true,
       countryFallback: true,
     });
@@ -821,15 +884,21 @@ export default function Home() {
     filterRetryRef.current = setTimeout(() => {
       if (lastFilterTypeRef.current !== type) return;
       const retryCoords = searchCoordsRef.current;
-      fetchDrivers(retryCoords?.[0] ?? DEFAULT_LAT, retryCoords?.[1] ?? DEFAULT_LNG, type, {
+      const retryLat = Number.isFinite(lastMapFetchRef.current?.lat)
+        ? (lastMapFetchRef.current?.lat as number)
+        : (retryCoords?.[0] ?? DEFAULT_LAT);
+      const retryLng = Number.isFinite(lastMapFetchRef.current?.lng)
+        ? (lastMapFetchRef.current?.lng as number)
+        : (retryCoords?.[1] ?? DEFAULT_LNG);
+      fetchDrivers(retryLat, retryLng, type, {
         zoom: ACTION_PANEL_QUERY_ZOOM,
         limit: requestedLimit,
-        bbox: TURKEY_BBOX,
+        bbox: resolveQueryBbox(retryLat, retryLng, ACTION_PANEL_QUERY_ZOOM),
         force: true,
         countryFallback: true,
       });
     }, 420);
-  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, readTypeCache]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, readTypeCache, resolveQueryBbox]);
 
   const handleSelectDriver = useCallback((id: string | null, openPopup: boolean, driverHint?: any) => {
     setActiveDriverId(id);
@@ -852,24 +921,35 @@ export default function Home() {
     if (id) {
       blockMapMoveFetchUntilRef.current = Date.now() + 3200;
       suppressNextMapMoveFetchRef.current = true;
-      setMapFocusZoom(13.2);
+      const currentZoom = Number(lastMapFetchRef.current?.zoom);
+      // Never zoom-in on selection. Only zoom out if currently too close.
+      const targetZoom = Number.isFinite(currentZoom)
+        ? (currentZoom > 11.2 ? 10.8 : currentZoom)
+        : 10.8;
+      setMapFocusZoom(targetZoom);
       setMapFocusToken((v) => v + 1);
     }
   }, [drivers, filteredDrivers, filteredMapDrivers, mapDrivers]);
 
   const handleReachListEnd = useCallback(() => {
     const base = searchCoordsRef.current;
-    if (!base) return;
+    const fallbackLat = Number.isFinite(lastMapFetchRef.current?.lat)
+      ? (lastMapFetchRef.current?.lat as number)
+      : (base?.[0] ?? DEFAULT_LAT);
+    const fallbackLng = Number.isFinite(lastMapFetchRef.current?.lng)
+      ? (lastMapFetchRef.current?.lng as number)
+      : (base?.[1] ?? DEFAULT_LNG);
+    if (!Number.isFinite(fallbackLat) || !Number.isFinite(fallbackLng)) return;
     const prevLimit = listEndFetchLimitRef.current || ACTION_PANEL_QUERY_LIMIT;
-    const nextLimit = Math.min(5200, prevLimit + 700);
+    const nextLimit = Math.min(12000, prevLimit + 900);
     listEndFetchLimitRef.current = nextLimit;
 
     let expandedBbox = lastMapFetchRef.current?.bbox;
     if (expandedBbox) {
       const latSpan = Math.max(0.01, expandedBbox.maxLat - expandedBbox.minLat);
       const lngSpan = Math.max(0.01, expandedBbox.maxLng - expandedBbox.minLng);
-      const latPad = Math.max(0.08, latSpan * 0.9);
-      const lngPad = Math.max(0.08, lngSpan * 0.9);
+      const latPad = Math.max(0.2, latSpan * 1.2);
+      const lngPad = Math.max(0.2, lngSpan * 1.2);
       expandedBbox = {
         minLat: expandedBbox.minLat - latPad,
         minLng: expandedBbox.minLng - lngPad,
@@ -878,19 +958,29 @@ export default function Home() {
       };
     }
 
-    fetchDrivers(base[0], base[1], actionTypeRef.current, {
+    fetchDrivers(fallbackLat, fallbackLng, actionTypeRef.current, {
       zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: nextLimit,
-      bbox: TURKEY_BBOX,
+      bbox: expandedBbox || resolveQueryBbox(fallbackLat, fallbackLng, ACTION_PANEL_QUERY_ZOOM),
       append: true,
     });
-  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, resolveQueryBbox]);
 
   const suggestions = useMemo(() => {
     const q = normalizeText(mapSearchQuery);
     if (!q) return [];
     const tokens = q.split(' ').filter(Boolean);
     const merged = [...drivers, ...mapDrivers];
+    const allTypes = [
+      'kurtarici', 'oto_kurtarma', 'vinc', 'lastik',
+      'nakliye', 'yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet',
+      'sarj', 'istasyon', 'seyyar_sarj',
+      'yolcu', 'minibus', 'otobus', 'midibus', 'vip_tasima',
+    ];
+    for (const type of allTypes) {
+      const cached = readTypeCache(type);
+      if (cached && cached.length > 0) merged.push(...cached);
+    }
     const uniqueById = new globalThis.Map<string, any>();
     for (const d of merged) {
       const key = String(d?._id || `${d?.businessName || ''}-${d?.phoneNumber || ''}`);
@@ -920,7 +1010,7 @@ export default function Home() {
 
   useEffect(() => {
     listEndFetchLimitRef.current = 0;
-  }, [actionType, searchCoords?.[0], searchCoords?.[1]]);
+  }, [actionType, readTypeCache, searchCoords?.[0], searchCoords?.[1]]);
 
   const handleSearchPick = useCallback((driver: any) => {
     setMapSearchQuery(driver?.businessName || '');
@@ -1000,7 +1090,14 @@ export default function Home() {
     bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }
   ) => {
     if (activeDriverId) {
-      return;
+      // While a provider is selected, allow wide zoom-out to switch back to map-browse mode.
+      if (zoom <= 9.9) {
+        setActiveDriverId(null);
+        setPopupDriverId(null);
+        setSelectedDriverGhost(null);
+      } else {
+        return;
+      }
     }
     if (Date.now() < blockMapMoveFetchUntilRef.current) {
       return;
@@ -1029,8 +1126,8 @@ export default function Home() {
       if (bbox) {
         const latSpan = Math.max(0.01, bbox.maxLat - bbox.minLat);
         const lngSpan = Math.max(0.01, bbox.maxLng - bbox.minLng);
-        const latPad = Math.max(0.06, latSpan * BBOX_OVERSCAN_FACTOR);
-        const lngPad = Math.max(0.06, lngSpan * BBOX_OVERSCAN_FACTOR);
+        const latPad = Math.max(0.2, latSpan * BBOX_OVERSCAN_FACTOR);
+        const lngPad = Math.max(0.2, lngSpan * BBOX_OVERSCAN_FACTOR);
         expandedBbox = {
           minLat: bbox.minLat - latPad,
           minLng: bbox.minLng - lngPad,
@@ -1039,10 +1136,7 @@ export default function Home() {
         };
       }
       const isCountryMode = zoom <= COUNTRY_MODE_ZOOM_THRESHOLD;
-      const isCenteredInTurkey = isInsideBBox(lat, lng, TURKEY_BBOX);
-      const fetchBbox = (isCountryMode && isCenteredInTurkey)
-        ? TURKEY_BBOX
-        : (expandedBbox || bbox || TURKEY_BBOX);
+      const fetchBbox = expandedBbox || bbox || buildRegionalBBox(lat, lng, zoom);
       const requestedLimit = isCountryMode
         ? Math.max(COUNTRY_MODE_FETCH_LIMIT, ACTION_PANEL_QUERY_LIMIT)
         : Math.max(ACTION_PANEL_QUERY_LIMIT, 2800);
@@ -1053,7 +1147,7 @@ export default function Home() {
         append: true,
         silent: true,
         target: 'map',
-        force: isCountryMode && isCenteredInTurkey,
+        force: isCountryMode,
       });
     }, MAP_MOVE_FETCH_DEBOUNCE_MS);
   }, [
