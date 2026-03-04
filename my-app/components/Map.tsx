@@ -270,6 +270,17 @@ function createUserPointGeoJson(coords: [number, number] | null) {
   };
 }
 
+function createUserMarkerElement() {
+  const el = document.createElement('div');
+  el.style.width = '18px';
+  el.style.height = '18px';
+  el.style.borderRadius = '999px';
+  el.style.background = '#2563eb';
+  el.style.border = '3px solid #ffffff';
+  el.style.boxShadow = '0 0 0 6px rgba(37,99,235,0.22), 0 4px 14px rgba(15,23,42,0.35)';
+  return el;
+}
+
 function createApproximateRangeGeoJson(coords: [number, number] | null, radiusKm = 8) {
   if (!coords) return { type: 'FeatureCollection', features: [] };
   const [lat, lng] = coords;
@@ -421,6 +432,7 @@ function MapView({
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const popupContentRef = useRef<HTMLElement | null>(null);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const lastFocusTokenRef = useRef<number | undefined>(undefined);
   const lastActiveFocusIdRef = useRef<string | null>(null);
   const aggregateCacheRef = useRef<{
@@ -581,7 +593,7 @@ function MapView({
         source: 'search-point',
         paint: {
           'circle-color': '#2563eb',
-          'circle-radius': 8 * MARKER_SCALE,
+          'circle-radius': 10,
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 4,
         },
@@ -593,8 +605,8 @@ function MapView({
         source: 'search-point',
         paint: {
           'circle-color': '#2563eb',
-          'circle-radius': 18 * MARKER_SCALE,
-          'circle-opacity': 0.22,
+          'circle-radius': 24,
+          'circle-opacity': 0.2,
         },
       });
 
@@ -608,6 +620,15 @@ function MapView({
           'line-opacity': 0.7,
         },
       });
+
+      const marker = new maplibregl.Marker({
+        element: createUserMarkerElement(),
+        anchor: 'center',
+      });
+      if (searchCoords) {
+        marker.setLngLat([searchCoords[1], searchCoords[0]]).addTo(map);
+      }
+      userMarkerRef.current = marker;
 
       const clusterLayers = RENDER_SERVICE_TYPES.map((type) => `clusters-${type}`);
       const pointLayers = RENDER_SERVICE_TYPES.map((type) => `driver-points-${type}`);
@@ -668,6 +689,8 @@ function MapView({
     });
 
     return () => {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
       popupRef.current?.remove();
       popupContentRef.current = null;
       map.remove();
@@ -699,6 +722,20 @@ function MapView({
       rangeSource.setData(createApproximateRangeGeoJson(searchApproximate ? searchCoords : null, searchApproxRadiusKm) as any);
     }
   }, [searchApproxRadiusKm, searchApproximate, searchCoords]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const marker = userMarkerRef.current;
+    if (!map || !marker) return;
+    if (!searchCoords) {
+      marker.remove();
+      return;
+    }
+    marker.setLngLat([searchCoords[1], searchCoords[0]]);
+    if (!marker.getElement().isConnected) {
+      marker.addTo(map);
+    }
+  }, [searchCoords]);
 
   useEffect(() => {
     const map = mapRef.current;

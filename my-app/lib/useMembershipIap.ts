@@ -33,6 +33,21 @@ function findAnnualPackage(offeringsRes: any) {
   return availablePackages[0];
 }
 
+function normalizeIapError(error: any) {
+  const raw = String(error?.message || error || '').trim();
+  const lower = raw.toLowerCase();
+  if (lower.includes('wrong api key') || lower.includes('production key')) {
+    return 'RevenueCat production Apple API key gerekli. `.env` içinde NEXT_PUBLIC_REVENUECAT_APPLE_API_KEY değerini `appl_...` production key ile güncelle.';
+  }
+  if (lower.includes('configuration') || lower.includes('underlying error')) {
+    return 'IAP yapılandırma hatası var. RevenueCat App (App Store) eşleşmesi, Product ID ve API key ayarlarını kontrol et.';
+  }
+  if (lower.includes('product') && lower.includes('not found')) {
+    return 'Abonelik ürünü bulunamadı. Product ID, Offering ve Entitlement eşleşmesini kontrol et.';
+  }
+  return raw || 'Abonelik işlemi sırasında hata oluştu.';
+}
+
 export function useMembershipIap() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
@@ -61,6 +76,10 @@ export function useMembershipIap() {
       setErrorText('IAP yapılandırması eksik (RevenueCat API key).');
       return false;
     }
+    if (RC_API_KEY.startsWith('test_')) {
+      setErrorText('RevenueCat test API key kullanılıyor. TestFlight/App Review için production Apple key (`appl_...`) girilmelidir.');
+      return false;
+    }
     if (configuredOnceRef.current) return true;
     try {
       await Purchases.configure({
@@ -71,10 +90,11 @@ export function useMembershipIap() {
       return true;
     } catch (e: any) {
       const msg = String(e?.message || '');
+      console.error('[IAP configure error]', e);
       if (/not implemented/i.test(msg)) {
         setErrorText('IAP eklentisi iOS buildinde aktif değil. `npx cap sync ios` sonrası Xcode paketi yenilenmeli.');
       } else {
-        setErrorText(msg || 'IAP yapılandırması başarısız.');
+        setErrorText(normalizeIapError(e));
       }
       return false;
     }
@@ -107,7 +127,8 @@ export function useMembershipIap() {
       const expiry = activeEntitlement?.expirationDate || activeEntitlement?.expiresDate || null;
       setExpiresDate(expiry ? String(expiry) : null);
     } catch (e: any) {
-      setErrorText(String(e?.message || 'Abonelik bilgisi alınamadı.'));
+      console.error('[IAP loadProductAndStatus error]', e);
+      setErrorText(normalizeIapError(e));
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +162,8 @@ export function useMembershipIap() {
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (!/cancel/i.test(msg)) {
-        setErrorText(msg || 'Satın alma başarısız.');
+        console.error('[IAP purchase error]', e);
+        setErrorText(normalizeIapError(e));
       }
     } finally {
       setIsLoading(false);
@@ -159,7 +181,8 @@ export function useMembershipIap() {
       await loadProductAndStatus();
       alert('Satın alımlar geri yüklendi.');
     } catch (e: any) {
-      setErrorText(String(e?.message || 'Geri yükleme başarısız.'));
+      console.error('[IAP restore error]', e);
+      setErrorText(normalizeIapError(e));
     } finally {
       setIsLoading(false);
     }
