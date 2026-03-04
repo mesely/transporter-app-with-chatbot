@@ -127,17 +127,38 @@ export default function LocationRequiredPage() {
           if (status?.state === 'prompt') {
             setMessage('Konum izni bekleniyor. İzin verildiğinde otomatik devam edilecek.');
           } else {
-            setMessage('Konum izni kapalı. Ayarlardan açıp Tekrar Kontrol Et butonuna basın.');
+            setMessage('Konum izni kapalı. Ayarlardan açınca otomatik devam edilecek.');
           }
         }
-      } catch {}
+      } catch {
+        // Some WebViews do not support permissions.query reliably.
+        // Fallback: directly probe geolocation so page can auto-continue.
+        checkAndGo();
+      }
     };
 
     watch();
     const intervalId = setInterval(watch, 2200);
+    const probeId = setInterval(() => {
+      if (document.hidden) return;
+      checkAndGo();
+    }, 2600);
+
+    const onVisibilityOrFocus = () => {
+      if (!document.hidden) {
+        watch();
+        checkAndGo();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityOrFocus);
+    window.addEventListener('focus', onVisibilityOrFocus);
+
     return () => {
       mounted = false;
       clearInterval(intervalId);
+      clearInterval(probeId);
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
+      window.removeEventListener('focus', onVisibilityOrFocus);
     };
   }, [checkAndGo]);
 
