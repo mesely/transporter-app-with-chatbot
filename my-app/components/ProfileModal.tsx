@@ -1,10 +1,11 @@
 'use client';
 
-import { X, UserCircle2, Save, Heart } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { X, UserCircle2, Save, Heart, CreditCard, BadgeCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { auth } from '../lib/firebase';
+import { useMembershipIap } from '../lib/useMembershipIap';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [saved, setSaved] = useState(false);
   const [membershipStartedAt, setMembershipStartedAt] = useState<number | null>(null);
+  const membershipIap = useMembershipIap();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -71,14 +73,21 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     window.location.assign('/auth');
   };
 
-  if (!isOpen) return null;
-
-  const freeUntilText = (() => {
+  const freeUntilText = useMemo(() => {
     if (!membershipStartedAt) return '-';
     const next = new Date(membershipStartedAt);
     next.setFullYear(next.getFullYear() + 1);
     return next.toLocaleDateString('tr-TR');
-  })();
+  }, [membershipStartedAt]);
+
+  const iapExpiresText = useMemo(() => {
+    if (!membershipIap.expiresDate) return '-';
+    const dt = new Date(membershipIap.expiresDate);
+    if (Number.isNaN(dt.getTime())) return '-';
+    return dt.toLocaleDateString('tr-TR');
+  }, [membershipIap.expiresDate]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[5000] bg-slate-700/30 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
@@ -102,7 +111,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none"
+              className="w-full bg-transparent text-base font-semibold text-slate-900 outline-none"
               placeholder="Ad Soyad"
             />
           </div>
@@ -120,10 +129,56 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         </button>
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white/90 p-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Üyelik</p>
+          <div className="flex items-center gap-2">
+            <BadgeCheck className="text-emerald-600" size={16} />
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Üyelik</p>
+          </div>
+          <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-emerald-700 border border-emerald-100">
+            <CreditCard size={12} /> Premium
+          </div>
           <p className="mt-1 text-[12px] font-black text-slate-900">İlk 12 ay ücretsiz</p>
           <p className="mt-1 text-[11px] font-semibold text-slate-600">Ücretsiz dönem bitiş: {freeUntilText}</p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık 1 EUR (yerel mağaza fiyatı).</p>
+          <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık {membershipIap.priceText || '1 EUR'} (mağaza yerel fiyatı).</p>
+          <p className="mt-1 text-[11px] font-semibold text-slate-600">Ödeme yalnızca Apple In-App Purchase ile yapılır.</p>
+          <p className="mt-1 text-[11px] font-semibold text-slate-600">Durum: {membershipIap.isActive ? 'Aktif' : 'Pasif'}</p>
+          <p className="mt-1 text-[11px] font-semibold text-slate-600">Bitiş: {iapExpiresText}</p>
+          {!membershipIap.isNativeIOS && (
+            <p className="mt-2 text-[11px] font-semibold text-slate-500">
+              Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.
+            </p>
+          )}
+          {membershipIap.isNativeIOS && !membershipIap.hasPurchasesPlugin && (
+            <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-700">
+              IAP eklentisi bu iOS buildinde aktif değil. Xcode paketlerini yenileyip tekrar build alın.
+            </p>
+          )}
+          {membershipIap.errorText && membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin && (
+            <p className="mt-2 text-[11px] font-semibold text-red-600">{membershipIap.errorText}</p>
+          )}
+          {membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin ? (
+            <div className="mt-3 grid gap-2">
+              <button
+                onClick={membershipIap.purchase}
+                disabled={membershipIap.isLoading}
+                className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+              >
+                {membershipIap.isLoading ? 'İşleniyor...' : 'Aboneliği Başlat (IAP)'}
+              </button>
+              <button
+                onClick={membershipIap.restore}
+                disabled={membershipIap.isLoading}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700 disabled:opacity-60"
+              >
+                Satın Alımları Geri Yükle
+              </button>
+              <button
+                onClick={membershipIap.openManageSubscriptions}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
+              >
+                Aboneliği Yönet
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-5">

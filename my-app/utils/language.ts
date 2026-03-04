@@ -1,6 +1,7 @@
 'use client';
 
 export const LANG_STORAGE_KEY = 'Transport_lang';
+export const LANG_CHANGED_EVENT = 'transport:language-changed';
 
 export type AppLang =
   | 'tr'
@@ -33,4 +34,13 @@ export function getPreferredLang(): AppLang {
   const stored = localStorage.getItem(LANG_STORAGE_KEY);
   if (stored) return normalizeLang(stored);
   return normalizeLang(window.navigator.language);
+}
+
+export function setPreferredLang(next: string): AppLang {
+  const normalized = normalizeLang(next);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LANG_STORAGE_KEY, normalized);
+    window.dispatchEvent(new CustomEvent(LANG_CHANGED_EVENT, { detail: { lang: normalized } }));
+  }
+  return normalized;
 }

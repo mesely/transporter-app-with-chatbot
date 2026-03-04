@@ -22,7 +22,8 @@ import KVKKModal from '../../components/KVKKModal';
 import UserAgreementModal from '../../components/UserAgreementModal';
 import RatingModal from '../../components/RatingModal';
 import ReportModal from '../../components/ReportModal';
-import { AppLang, LANG_STORAGE_KEY, getPreferredLang } from '../../utils/language';
+import { AppLang, LANG_CHANGED_EVENT, getPreferredLang, setPreferredLang } from '../../utils/language';
+import { useMembershipIap } from '../../lib/useMembershipIap';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const FAVORITES_KEY = 'Transport_favorites_v1';
@@ -93,6 +94,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
   const [appLang, setAppLang] = useState<AppLang>('tr');
   const [membershipStartedAt, setMembershipStartedAt] = useState<number | null>(null);
+  const membershipIap = useMembershipIap();
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
 
@@ -173,6 +175,20 @@ export default function SettingsPage() {
       localStorage.setItem('Transport_membership_started_at', String(now));
       setMembershipStartedAt(now);
     }
+  }, []);
+
+  useEffect(() => {
+    const syncLang = () => setAppLang(getPreferredLang());
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === 'Transport_lang') syncLang();
+    };
+    const onLangChanged = () => syncLang();
+    window.addEventListener('storage', onStorage);
+    window.addEventListener(LANG_CHANGED_EVENT, onLangChanged);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(LANG_CHANGED_EVENT, onLangChanged);
+    };
   }, []);
 
   useEffect(() => {
@@ -269,9 +285,8 @@ export default function SettingsPage() {
   };
 
   const handleLanguageChange = (value: string) => {
-    const next = value as AppLang;
+    const next = setPreferredLang(value) as AppLang;
     setAppLang(next);
-    localStorage.setItem(LANG_STORAGE_KEY, next);
     if (typeof document !== 'undefined') {
       document.documentElement.lang = next;
     }
@@ -283,6 +298,12 @@ export default function SettingsPage() {
     next.setFullYear(next.getFullYear() + 1);
     return next.toLocaleDateString('tr-TR');
   }, [membershipStartedAt]);
+  const iapExpiresText = useMemo(() => {
+    if (!membershipIap.expiresDate) return '-';
+    const dt = new Date(membershipIap.expiresDate);
+    if (Number.isNaN(dt.getTime())) return '-';
+    return dt.toLocaleDateString('tr-TR');
+  }, [membershipIap.expiresDate]);
 
   const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
     const providerId = selectedOrder?.driver?._id;
@@ -444,8 +465,47 @@ export default function SettingsPage() {
               </div>
               <p className="mt-2 text-sm font-black text-slate-900">İlk 12 ay ücretsiz</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">Ücretsiz dönem bitiş: {freeUntilText}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık 1 EUR (mağaza yerel fiyatı).</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">Ödeme yalnızca uygulama içi satın alma ile yapılır.</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Sonrasında yıllık {membershipIap.priceText || '1 EUR'} (mağaza yerel fiyatı).</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Ödeme yalnızca Apple In-App Purchase ile yapılır.</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Durum: {membershipIap.isActive ? 'Aktif' : 'Pasif'}</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">Bitiş: {iapExpiresText}</p>
+              {!membershipIap.isNativeIOS && (
+                <p className="mt-2 text-[11px] font-semibold text-slate-500">
+                  Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.
+                </p>
+              )}
+              {membershipIap.isNativeIOS && !membershipIap.hasPurchasesPlugin && (
+                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-700">
+                  IAP eklentisi bu iOS buildinde aktif değil. Xcode paketlerini yenileyip tekrar build alın.
+                </p>
+              )}
+              {membershipIap.errorText && membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin && (
+                <p className="mt-2 text-[11px] font-semibold text-red-600">{membershipIap.errorText}</p>
+              )}
+              {membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin ? (
+                <div className="mt-3 grid gap-2">
+                  <button
+                    onClick={membershipIap.purchase}
+                    disabled={membershipIap.isLoading}
+                    className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                  >
+                    {membershipIap.isLoading ? 'İşleniyor...' : 'Aboneliği Başlat (IAP)'}
+                  </button>
+                  <button
+                    onClick={membershipIap.restore}
+                    disabled={membershipIap.isLoading}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700 disabled:opacity-60"
+                  >
+                    Satın Alımları Geri Yükle
+                  </button>
+                  <button
+                    onClick={membershipIap.openManageSubscriptions}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
+                  >
+                    Aboneliği Yönet
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">

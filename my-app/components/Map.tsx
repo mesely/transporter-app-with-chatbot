@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { AppLang, getPreferredLang } from '../utils/language';
+import { AppLang, getPreferredLang, LANG_CHANGED_EVENT, LANG_STORAGE_KEY } from '../utils/language';
 
 interface Driver {
   _id: string;
@@ -452,7 +452,18 @@ function MapView({
   }, []);
 
   useEffect(() => {
-    setLang(getPreferredLang());
+    const syncLang = () => setLang(getPreferredLang());
+    syncLang();
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === LANG_STORAGE_KEY) syncLang();
+    };
+    const onLangChanged = () => syncLang();
+    window.addEventListener('storage', onStorage);
+    window.addEventListener(LANG_CHANGED_EVENT, onLangChanged);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(LANG_CHANGED_EVENT, onLangChanged);
+    };
   }, []);
 
   useEffect(() => {

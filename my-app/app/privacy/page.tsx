@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Globe, ShieldCheck, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { AppLang, getPreferredLang, LANG_STORAGE_KEY } from '../../utils/language';
+import { AppLang, getPreferredLang, setPreferredLang } from '../../utils/language';
 
 const CONTENT: any = {
   tr: {
@@ -158,9 +158,8 @@ export default function PrivacyPage() {
   }, []);
 
   const handleToggleLang = () => {
-    const next = lang === 'tr' ? 'en' : 'tr';
+    const next = setPreferredLang(lang === 'tr' ? 'en' : 'tr');
     setLang(next);
-    localStorage.setItem(LANG_STORAGE_KEY, next);
     document.documentElement.lang = next;
   };
 

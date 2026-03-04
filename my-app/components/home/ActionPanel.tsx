@@ -14,7 +14,7 @@
 
 import {
   Truck, Zap, Star, MapPin, Wrench,
-  ChevronDown, ChevronUp, LocateFixed, Loader2,
+  ChevronDown, ChevronUp, LocateFixed,
   Navigation, Globe, CarFront, Construction, Home,
   Package, Container, ArrowUpDown, Map as MapIcon,
   Check, Phone, MessageCircle, Info, Users, Bus, Crown,
@@ -30,7 +30,7 @@ import {
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import ViewRatingsModal from '../ViewRatingsModal';
 import ViewReportsModal from '../ViewReportsModal';
-import { AppLang, getPreferredLang } from '../../utils/language';
+import { AppLang, getPreferredLang, LANG_CHANGED_EVENT, LANG_STORAGE_KEY } from '../../utils/language';
 import { AMERICA_CITIES_RAW, EUROPE_CITIES_RAW } from '../../utils/city-groups';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
@@ -286,12 +286,39 @@ function ActionPanel({
   };
   const [cityScopedDrivers, setCityScopedDrivers] = useState<any[]>([]);
   const [cityScopedLoading, setCityScopedLoading] = useState(false);
+  const [liveCoords, setLiveCoords] = useState<[number, number] | null>(null);
   const [renderedCount, setRenderedCount] = useState(28);
   const lastReachListEndAtRef = useRef(0);
   const cityFetchSeqRef = useRef(0);
   const cityScopedCacheRef = useRef<Record<string, { ts: number; data: any[] }>>({});
   const cityFocusCacheRef = useRef<Record<string, [number, number]>>({});
   const tx = useMemo(() => PANEL_TEXT[lang] || PANEL_TEXT.en, [lang]);
+
+  const computeDistanceMeters = useCallback((driver: any) => {
+    // Always rank by user's actual current location for consistent nearest-first ordering.
+    const referenceCoords = liveCoords || currentCoords;
+    if (!referenceCoords) return Number.POSITIVE_INFINITY;
+    const coords = driver?.location?.coordinates;
+    if (!Array.isArray(coords) || coords.length < 2) return Number.POSITIVE_INFINITY;
+    const dLat = Number(coords[1]);
+    const dLng = Number(coords[0]);
+    if (!Number.isFinite(dLat) || !Number.isFinite(dLng)) return Number.POSITIVE_INFINITY;
+
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const lat1 = referenceCoords[0];
+    const lng1 = referenceCoords[1];
+    const R = 6371000;
+    const dPhi = toRad(dLat - lat1);
+    const dLambda = toRad(dLng - lng1);
+    const phi1 = toRad(lat1);
+    const phi2 = toRad(dLat);
+    const a =
+      Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
+      Math.cos(phi1) * Math.cos(phi2) *
+      Math.sin(dLambda / 2) * Math.sin(dLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, [currentCoords, liveCoords]);
 
   const normalizeCityText = useCallback((value: string) => {
     return String(value || '')
@@ -335,8 +362,40 @@ function ActionPanel({
   }, [localSelectedId]);
 
   useEffect(() => {
-    setLang(getPreferredLang());
+    const syncLang = () => setLang(getPreferredLang());
+    syncLang();
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === LANG_STORAGE_KEY) syncLang();
+    };
+    const onLangChanged = () => syncLang();
+    window.addEventListener('storage', onStorage);
+    window.addEventListener(LANG_CHANGED_EVENT, onLangChanged);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(LANG_CHANGED_EVENT, onLangChanged);
+    };
   }, []);
+
+  const cityOptionText = useMemo(() => {
+    if (lang === 'tr') {
+      return {
+        allWorld: 'TÜM DÜNYA',
+        turkey: 'Türkiye Şehirleri',
+        europe: 'Avrupa Şehirleri',
+        america: 'Amerika Şehirleri',
+        saved: 'Kaydedilenler',
+        emptyFavorites: 'Henüz favori yok.',
+      };
+    }
+    return {
+      allWorld: 'ALL WORLD',
+      turkey: 'Cities in Turkiye',
+      europe: 'Cities in Europe',
+      america: 'Cities in America',
+      saved: 'Saved',
+      emptyFavorites: 'No favorites yet.',
+    };
+  }, [lang]);
 
   useEffect(() => {
     if (!selectedCity) {
@@ -633,10 +692,10 @@ function ActionPanel({
 
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-      return (a.distance || 0) - (b.distance || 0);
+      return computeDistanceMeters(a) - computeDistanceMeters(b);
     });
     return list;
-  }, [drivers, cityScopedDrivers, sortMode, selectedCity, selectedCityScope, actionType, activeTransportFilter, normalizeCityText]);
+  }, [drivers, cityScopedDrivers, sortMode, selectedCity, selectedCityScope, actionType, activeTransportFilter, normalizeCityText, computeDistanceMeters]);
 
   const isTurkeyScopedService = useCallback((driver: any) => {
     if (selectedCityScope === 'eu' || selectedCityScope === 'us') return false;
@@ -794,6 +853,7 @@ function ActionPanel({
           const pos = await getCurrentPosition(opts);
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          setLiveCoords([lat, lng]);
           saveCachedLocation(lat, lng);
           onSearchLocation(lat, lng, { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
           return;
@@ -804,6 +864,7 @@ function ActionPanel({
 
       const cached = getCachedLocation();
       if (cached) {
+        setLiveCoords(cached);
         onSearchLocation(cached[0], cached[1], { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
         return;
       }
@@ -815,6 +876,7 @@ function ActionPanel({
     } catch {
       const cached = getCachedLocation();
       if (cached) {
+        setLiveCoords(cached);
         onSearchLocation(cached[0], cached[1], { forceFocus: true, targetZoom: 15, clearActiveDriver: true });
       } else {
         onSearchLocation(DEFAULT_LAT, DEFAULT_LNG, { forceFocus: true, targetZoom: 11, clearActiveDriver: true });
@@ -840,6 +902,26 @@ function ActionPanel({
   useEffect(() => {
     findMyLocation(true);
   }, [findMyLocation]);
+
+  useEffect(() => {
+    if (!navigator?.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        setLiveCoords([lat, lng]);
+        saveCachedLocation(lat, lng);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
+    );
+    return () => {
+      try {
+        navigator.geolocation.clearWatch(watchId);
+      } catch {}
+    };
+  }, []);
 
   const handleDragEnd = (y: number) => {
     if (dragStartY.current === null) return;
@@ -966,18 +1048,18 @@ function ActionPanel({
                   onChange={handleCityChange}
                   className={`w-full appearance-none ${activeThemeColor} text-white pl-2.5 pr-7 py-1.5 rounded-xl text-[7px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
                 >
-                  <option value="">TÜM DÜNYA</option>
-                  <optgroup label="Türkiye Şehirleri">
+                  <option value="">{cityOptionText.allWorld}</option>
+                  <optgroup label={cityOptionText.turkey}>
                     {groupedCityOptions.turkey.map((city) => (
                       <option key={`tr-${city}`} value={`tr::${city}`}>{city.toUpperCase()}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Avrupa Şehirleri">
+                  <optgroup label={cityOptionText.europe}>
                     {groupedCityOptions.europe.map((city) => (
                       <option key={`eu-${city}`} value={`eu::${city}`}>{city.toUpperCase()}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Amerika Şehirleri">
+                  <optgroup label={cityOptionText.america}>
                     {groupedCityOptions.america.map((city) => (
                       <option key={`us-${city}`} value={`us::${city}`}>{city.toUpperCase()}</option>
                     ))}
@@ -1008,9 +1090,9 @@ function ActionPanel({
 
         {panelState > 1 && showFavorites && (
           <div className="mb-3 rounded-2xl border border-white/40 bg-white/90 p-3 shadow-lg">
-            <div className="mb-2 text-[10px] font-black uppercase text-slate-600">Kaydedilenler</div>
+            <div className="mb-2 text-[10px] font-black uppercase text-slate-600">{cityOptionText.saved}</div>
             {effectiveFavorites.length === 0 ? (
-              <div className="text-[10px] font-bold text-slate-400">Henüz favori yok.</div>
+              <div className="text-[10px] font-bold text-slate-400">{cityOptionText.emptyFavorites}</div>
             ) : (
               <div className="space-y-2 max-h-44 overflow-y-auto">
                 {effectiveFavorites.map((f) => (
@@ -1038,7 +1120,7 @@ function ActionPanel({
 
         {panelState > 1 && (
         <div ref={listContainerRef} className="flex-1 overflow-y-scroll pb-40 custom-scrollbar overscroll-contain">
-          {(((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0)) ? ( <div className="space-y-4 py-10 text-center"><Loader2 className="animate-spin mx-auto text-gray-400" size={32}/><p className="text-[10px] font-black text-gray-400 uppercase mt-2 tracking-widest">{tx.loading}</p></div> ) : (
+          {(((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0)) ? ( <div className="space-y-4 py-10 text-center"></div> ) : (
             visibleDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
@@ -1047,7 +1129,7 @@ function ActionPanel({
                 const isStation = sub === 'istasyon';
                 const isPassenger = ['minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(sub);
                 const isSpecialCategory = isMobileCharge || isPassenger || isStation;
-                const showTurkeyWideBadge = isSpecialCategory && isTurkeyScopedService(driver);
+                const showTurkeyWideBadge = isPassenger && isTurkeyScopedService(driver);
 
                 let uiConfig = SERVICE_OPTIONS.find(o => o.id === sub);
                 let subIcon = null;
@@ -1274,7 +1356,11 @@ function ActionPanel({
                                 <div className="flex items-center gap-1 mt-1 flex-wrap">
                                     {[1,2,3,4,5].map(s => <Star key={s} size={9} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
 
-                                    {!isSpecialCategory && driver.distance && <span className="text-[8px] text-gray-400 font-bold ml-1 shrink-0">{(driver.distance / 1000).toFixed(1)} km</span>}
+                                    {!isSpecialCategory && Number.isFinite(computeDistanceMeters(driver)) && computeDistanceMeters(driver) < Number.POSITIVE_INFINITY && (
+                                      <span className="text-[8px] text-gray-400 font-bold ml-1 shrink-0">
+                                        {(computeDistanceMeters(driver) / 1000).toFixed(1)} km
+                                      </span>
+                                    )}
 
                                     {!isSpecialCategory && driver.address?.fullText && (
                                         <span className="text-[8px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
@@ -1448,12 +1534,6 @@ function ActionPanel({
                 </div>
                 );
             })
-          )}
-          {!((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0) && (loading || cityScopedLoading || visibleDrivers.length < displayDrivers.length) && (
-            <div className="py-3 text-center text-[9px] font-black uppercase tracking-wide text-slate-400 flex items-center justify-center gap-2">
-              <Loader2 className="animate-spin text-slate-400" size={13} />
-              {tx.loading}
-            </div>
           )}
           <div ref={loadMoreSentinelRef} className="h-8 w-full" />
         </div>
