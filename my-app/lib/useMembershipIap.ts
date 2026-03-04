@@ -16,6 +16,23 @@ function extractActiveSubscription(customerInfo: any) {
   return null;
 }
 
+function findAnnualPackage(offeringsRes: any) {
+  const current = offeringsRes?.all?.current || offeringsRes?.current || null;
+  const availablePackages = Array.isArray(current?.availablePackages) ? current.availablePackages : [];
+  if (availablePackages.length === 0) return null;
+
+  const byProductId = availablePackages.find((p: any) => p?.storeProduct?.identifier === PRODUCT_ID);
+  if (byProductId) return byProductId;
+
+  const byAnnualName = availablePackages.find((p: any) =>
+    String(p?.identifier || '').toLowerCase().includes('annual') ||
+    String(p?.packageType || '').toUpperCase().includes('ANNUAL')
+  );
+  if (byAnnualName) return byAnnualName;
+
+  return availablePackages[0];
+}
+
 export function useMembershipIap() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
@@ -71,13 +88,16 @@ export function useMembershipIap() {
       const ok = await configureIfNeeded();
       if (!ok) return;
 
-      const productRes = await Purchases.getProducts({
-        productIdentifiers: [PRODUCT_ID],
-      });
+      const productRes = await Purchases.getProducts({ productIdentifiers: [PRODUCT_ID] });
       const product: PurchasesStoreProduct | undefined = productRes?.products?.[0];
-      if (product) {
-        const localized = String(product.priceString || '').trim();
+      if (product?.priceString) {
+        const localized = String(product.priceString).trim();
         if (localized) setPriceText(localized);
+      } else {
+        const offeringsRes = await Purchases.getOfferings();
+        const annualPackage = findAnnualPackage(offeringsRes);
+        const packagePrice = String(annualPackage?.storeProduct?.priceString || '').trim();
+        if (packagePrice) setPriceText(packagePrice);
       }
 
       const infoRes = await Purchases.getCustomerInfo();
@@ -103,15 +123,19 @@ export function useMembershipIap() {
     try {
       const ok = await configureIfNeeded();
       if (!ok) return;
-      const productsRes = await Purchases.getProducts({
-        productIdentifiers: [PRODUCT_ID],
-      });
+      const productsRes = await Purchases.getProducts({ productIdentifiers: [PRODUCT_ID] });
       const product = productsRes?.products?.[0];
-      if (!product) {
-        setErrorText('Abonelik ürünü bulunamadı.');
-        return;
+      if (product) {
+        await Purchases.purchaseStoreProduct({ product });
+      } else {
+        const offeringsRes = await Purchases.getOfferings();
+        const annualPackage = findAnnualPackage(offeringsRes);
+        if (!annualPackage) {
+          setErrorText('Abonelik ürünü bulunamadı. App Store metadata ve RevenueCat offering ayarlarını kontrol edin.');
+          return;
+        }
+        await Purchases.purchasePackage({ aPackage: annualPackage });
       }
-      await Purchases.purchaseStoreProduct({ product });
       await loadProductAndStatus();
       alert('Abonelik işlemi tamamlandı.');
     } catch (e: any) {
