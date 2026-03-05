@@ -1075,7 +1075,7 @@ function ActionPanel({
           )}
           {panelState > 1 && (showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
              <div className="flex gap-2">
-                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{tx.domestic}</button>
+                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}><MapPin size={10} className="inline mr-1"/> {tx.domestic}</button>
                 <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={10} className="inline mr-1"/> {tx.international}</button>
              </div>
           )}

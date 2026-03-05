@@ -986,6 +986,7 @@ export default function Home() {
       append: true,
       force: true,
       countryFallback: true,
+      target: 'panel',
     });
   }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
 
