@@ -938,38 +938,22 @@ export default function Home() {
 
   const handleReachListEnd = useCallback(() => {
     const base = searchCoordsRef.current;
-    const fallbackLat = Number.isFinite(lastMapFetchRef.current?.lat)
-      ? (lastMapFetchRef.current?.lat as number)
-      : (base?.[0] ?? DEFAULT_LAT);
-    const fallbackLng = Number.isFinite(lastMapFetchRef.current?.lng)
-      ? (lastMapFetchRef.current?.lng as number)
-      : (base?.[1] ?? DEFAULT_LNG);
+    const fallbackLat = base?.[0] ?? DEFAULT_LAT;
+    const fallbackLng = base?.[1] ?? DEFAULT_LNG;
     if (!Number.isFinite(fallbackLat) || !Number.isFinite(fallbackLng)) return;
     const prevLimit = listEndFetchLimitRef.current || ACTION_PANEL_QUERY_LIMIT;
     const nextLimit = Math.min(12000, prevLimit + 900);
     listEndFetchLimitRef.current = nextLimit;
 
-    let expandedBbox = lastMapFetchRef.current?.bbox;
-    if (expandedBbox) {
-      const latSpan = Math.max(0.01, expandedBbox.maxLat - expandedBbox.minLat);
-      const lngSpan = Math.max(0.01, expandedBbox.maxLng - expandedBbox.minLng);
-      const latPad = Math.max(0.2, latSpan * 1.2);
-      const lngPad = Math.max(0.2, lngSpan * 1.2);
-      expandedBbox = {
-        minLat: expandedBbox.minLat - latPad,
-        minLng: expandedBbox.minLng - lngPad,
-        maxLat: expandedBbox.maxLat + latPad,
-        maxLng: expandedBbox.maxLng + lngPad,
-      };
-    }
-
     fetchDrivers(fallbackLat, fallbackLng, actionTypeRef.current, {
       zoom: ACTION_PANEL_QUERY_ZOOM,
       limit: nextLimit,
-      bbox: expandedBbox || resolveQueryBbox(fallbackLat, fallbackLng, ACTION_PANEL_QUERY_ZOOM),
+      // List pagination must be independent from current map viewport.
+      bbox: undefined,
       append: true,
+      force: true,
     });
-  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers, resolveQueryBbox]);
+  }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
 
   const suggestions = useMemo(() => {
     const q = normalizeText(mapSearchQuery);

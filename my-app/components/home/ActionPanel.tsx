@@ -624,7 +624,9 @@ function ActionPanel({
   const handleTransportTypeClick = (type: string) => {
     if (activeTransportFilter === type) {
         setActiveTransportFilter(null); onTagsChange([]);
-        onFilterApply(type === 'yolcu' ? 'yolcu' : 'nakliye');
+        const parentType = type === 'yolcu' ? 'yolcu' : 'nakliye';
+        onFilterApply(parentType);
+        onActionChange(parentType);
     } else {
         setActiveTransportFilter(type); onTagsChange([]);
         onFilterApply(type); onActionChange(type);
@@ -645,6 +647,28 @@ function ActionPanel({
     setSelectedCity(city);
   };
 
+  const matchesCurrentActionType = useCallback((driver: any) => {
+    const service = driver?.service;
+    if (!service) return false;
+    const mainType = String(service.mainType || '').toLocaleUpperCase('tr');
+    const subType = String(service.subType || '').toLocaleLowerCase('tr');
+
+    let match = false;
+    if (actionType === 'seyyar_sarj') match = subType === 'seyyar_sarj';
+    else if (actionType === 'sarj') match = mainType.includes('SARJ') || subType === 'istasyon' || subType === 'seyyar_sarj';
+    else if (actionType === 'kurtarici') match = mainType.includes('KURTARICI') || subType === 'oto_kurtarma' || subType === 'vinc' || subType === 'lastik';
+    else if (actionType === 'nakliye') match = mainType.includes('NAKLIYE') || ['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].includes(subType);
+    else if (actionType === 'yolcu') match = mainType.includes('YOLCU') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType);
+    else if (SUB_FILTERS[actionType]) match = subType === actionType || SUB_FILTERS[actionType].some((s) => s.id === subType);
+    else match = subType === actionType;
+    if (!match) return false;
+    if (activeTags.length > 0) {
+      const tags = Array.isArray(service.tags) ? service.tags : [];
+      return activeTags.some((tag) => tags.includes(tag));
+    }
+    return true;
+  }, [actionType, activeTags]);
+
   const displayDrivers = useMemo(() => {
     const selectedCityNorm = normalizeCityText(selectedCity);
     const localCityFiltered = selectedCity
@@ -654,6 +678,7 @@ function ActionPanel({
       ? (cityScopedDrivers.length > 0 ? cityScopedDrivers : localCityFiltered)
       : drivers;
     let list = Array.isArray(sourceList) ? [...sourceList] : [];
+    list = list.filter(matchesCurrentActionType);
 
     if (activeTransportFilter && SUB_FILTERS[activeTransportFilter]) {
         const allowedSubTypes = [activeTransportFilter, ...SUB_FILTERS[activeTransportFilter].map(s => s.id)];
@@ -692,12 +717,29 @@ function ActionPanel({
       });
     }
 
+    // API'den aynı kurum birden fazla kez gelebildiği için listeyi _id bazında tekilleştir.
+    const unique = new Map<string, any>();
+    for (const driver of list) {
+      const id = String(driver?._id || '').trim();
+      if (id) {
+        if (!unique.has(id)) unique.set(id, driver);
+        continue;
+      }
+      const fallbackKey = [
+        String(driver?.businessName || '').trim().toLocaleLowerCase('tr'),
+        String(driver?.phoneNumber || '').trim(),
+        String(driver?.address?.city || '').trim().toLocaleLowerCase('tr'),
+      ].join('|');
+      if (!unique.has(fallbackKey)) unique.set(fallbackKey, driver);
+    }
+    list = Array.from(unique.values());
+
     list.sort((a, b) => {
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       return computeDistanceMeters(a) - computeDistanceMeters(b);
     });
     return list;
-  }, [drivers, cityScopedDrivers, sortMode, selectedCity, selectedCityScope, actionType, activeTransportFilter, normalizeCityText, computeDistanceMeters]);
+  }, [drivers, cityScopedDrivers, sortMode, selectedCity, selectedCityScope, actionType, activeTransportFilter, normalizeCityText, computeDistanceMeters, matchesCurrentActionType]);
 
   const isTurkeyScopedService = useCallback((driver: any) => {
     if (selectedCityScope === 'eu' || selectedCityScope === 'us') return false;
@@ -745,6 +787,7 @@ function ActionPanel({
   }, [cityScopedLoading, displayDrivers.length, loading, selectedCity, visibleDrivers.length]);
   const tryReachListEnd = useCallback(() => {
     if (!onReachListEnd) return;
+    if (selectedCity) return;
     if (selectedCity ? cityScopedLoading : loading) return;
     if (displayDrivers.length === 0) return;
     if (visibleDrivers.length < displayDrivers.length) return;
