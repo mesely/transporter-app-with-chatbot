@@ -145,6 +145,7 @@ export default function Home() {
   const COUNTRY_MODE_FETCH_LIMIT = 12000;
   const ACTION_PANEL_QUERY_ZOOM = 5.0;
   const ACTION_PANEL_QUERY_LIMIT = 8400;
+  const MANUAL_LOCATION_FOCUS_ZOOM = 10.6;
   const TOP_UI_OFFSET = 'max(calc(env(safe-area-inset-top, 0px) + 22px), 34px)';
 
   const [showSplash, setShowSplash] = useState(true);
@@ -392,10 +393,14 @@ export default function Home() {
     const now = Date.now();
     const cached = driversCacheRef.current[key];
     if (!opts?.force && cached) {
-      if (includePanel) setDrivers(prioritizePanelDrivers(cached.data));
-      if (includeMap) setMapDrivers(cached.data);
-      setLoading(false);
-      if (now - cached.ts < DRIVERS_CACHE_REVALIDATE_MS) return;
+      const cachedData = Array.isArray(cached.data) ? cached.data : [];
+      const hasCachedRows = cachedData.length > 0;
+      if (hasCachedRows) {
+        if (includePanel) setDrivers(prioritizePanelDrivers(cachedData));
+        if (includeMap) setMapDrivers(cachedData);
+        setLoading(false);
+      }
+      if (hasCachedRows && now - cached.ts < DRIVERS_CACHE_REVALIDATE_MS) return;
       if (now - cached.ts > DRIVERS_CACHE_TTL_MS) {
         delete driversCacheRef.current[key];
       }
@@ -636,7 +641,7 @@ export default function Home() {
       if (!navigator?.geolocation) {
         setSearchCoords([manual.lat, manual.lng]);
         setIsApproximateLocation(true);
-        setMapFocusZoom(12.5);
+        setMapFocusZoom(MANUAL_LOCATION_FOCUS_ZOOM);
         setMapFocusToken((v) => v + 1);
         return;
       }
@@ -645,7 +650,7 @@ export default function Home() {
         if (!permissions?.query) {
           setSearchCoords([manual.lat, manual.lng]);
           setIsApproximateLocation(true);
-          setMapFocusZoom(12.5);
+          setMapFocusZoom(MANUAL_LOCATION_FOCUS_ZOOM);
           setMapFocusToken((v) => v + 1);
           return;
         }
@@ -653,14 +658,14 @@ export default function Home() {
         if (status?.state !== 'granted') {
           setSearchCoords([manual.lat, manual.lng]);
           setIsApproximateLocation(true);
-          setMapFocusZoom(12.5);
+          setMapFocusZoom(MANUAL_LOCATION_FOCUS_ZOOM);
           setMapFocusToken((v) => v + 1);
         }
       } catch {}
     };
 
     useManualIfNeeded();
-  }, [homeStateReady, searchCoords]);
+  }, [MANUAL_LOCATION_FOCUS_ZOOM, homeStateReady, searchCoords]);
 
   const matchesActiveFilters = useCallback((d: any) => {
       const s = d.service;
@@ -1082,6 +1087,39 @@ export default function Home() {
     const id = setInterval(tick, 60000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!showProfileModal) return;
+
+    const scrollY = window.scrollY;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyPosition = document.body.style.position;
+    const prevBodyTop = document.body.style.top;
+    const prevBodyLeft = document.body.style.left;
+    const prevBodyRight = document.body.style.right;
+    const prevBodyWidth = document.body.style.width;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.position = prevBodyPosition;
+      document.body.style.top = prevBodyTop;
+      document.body.style.left = prevBodyLeft;
+      document.body.style.right = prevBodyRight;
+      document.body.style.width = prevBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [showProfileModal]);
 
   const handleMapMove = useCallback((
     lat: number,

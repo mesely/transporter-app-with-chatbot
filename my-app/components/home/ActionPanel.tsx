@@ -33,6 +33,7 @@ import ViewRatingsModal from '../ViewRatingsModal';
 import ViewReportsModal from '../ViewReportsModal';
 import { AppLang, getPreferredLang, LANG_CHANGED_EVENT, LANG_STORAGE_KEY } from '../../utils/language';
 import { AMERICA_CITIES_RAW, EUROPE_CITIES_RAW } from '../../utils/city-groups';
+import { openSystemMap } from '../../lib/openSystemMap';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const SERVICE_IMAGE_ICONS: Record<string, string> = {
@@ -188,18 +189,18 @@ const TAG_DETAILS_EN: Record<string, { tasima: string, kapasite: string }> = {
 };
 
 const PANEL_TEXT: Record<AppLang, Record<string, string>> = {
-  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', lastik: 'Lastik', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "GOOGLE MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeler', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
-  en: { kurtarici: 'Recovery', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger', otoKurtarma: 'Roadside Recovery', vinc: 'Crane', domestic: 'Domestic', international: 'International', homeMoving: 'Home Moving', trailer: 'Trailer', truck: 'Truck', van: 'Van', station: 'Station', geziciSarj: 'Mobile Charge', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE', tapCall: 'Tap To Get Price And Call', verifiedPrice: 'Verified Price', mapsOpen: 'OPEN IN GOOGLE MAPS', call: 'CALL', message: 'MESSAGE', site: 'GO TO SITE', listVehicles: 'List Vehicles', viewPhotos: 'View Vehicle Photos', noVehicles: 'No registered vehicle info.', noPhotos: 'No registered photos.', reviewsAndReports: 'Reviews & Reports', noRating: 'Not rated yet', scoreText: 'Score', viewRatings: 'View Reviews', viewReports: 'View Reports', turkeyWide: 'Nationwide', transport: 'Transport', capacity: 'Capacity', close: 'Close', vehicle: 'Vehicle', photo: 'Photo', vehiclePhoto: 'Vehicle photo', previewPhoto: 'Large vehicle photo preview' },
-  de: { kurtarici: 'Bergung', nakliye: 'Transport', sarj: 'Laden', yolcu: 'Passagier', otoKurtarma: 'Pannenhilfe', vinc: 'Kran', domestic: 'Inland', international: 'International', homeMoving: 'Umzug', trailer: 'Auflieger', truck: 'LKW', van: 'Transporter', station: 'Station', geziciSarj: 'Mobiles Laden', loading: 'Lädt...', score: 'PUNKT', allTurkey: 'GANZE TÜRKEI', tapCall: 'Tippen für Preis und Anruf', verifiedPrice: 'Verifizierter Preis', mapsOpen: 'IN GOOGLE MAPS ÖFFNEN', call: 'ANRUFEN', message: 'NACHRICHT', site: 'ZUR WEBSEITE', listVehicles: 'Fahrzeuge anzeigen', viewPhotos: 'Fahrzeugfotos anzeigen', noVehicles: 'Keine Fahrzeugdaten vorhanden.', noPhotos: 'Keine Fotos vorhanden.', reviewsAndReports: 'Bewertungen & Beschwerden', noRating: 'Noch keine Bewertung', scoreText: 'Punkt', viewRatings: 'Bewertungen anzeigen', viewReports: 'Beschwerden anzeigen', turkeyWide: 'Landesweit', transport: 'Transport', capacity: 'Kapazität', close: 'Schließen', vehicle: 'Fahrzeug', photo: 'Foto', vehiclePhoto: 'Fahrzeugfoto', previewPhoto: 'Große Fahrzeugfoto-Vorschau' },
-  fr: { kurtarici: 'Dépannage', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passager', otoKurtarma: 'Assistance routière', vinc: 'Grue', domestic: 'National', international: 'International', homeMoving: 'Déménagement', trailer: 'Semi-remorque', truck: 'Camion', van: 'Fourgon', station: 'Station', geziciSarj: 'Charge mobile', loading: 'Chargement...', score: 'NOTE', allTurkey: 'TOUTE LA TURQUIE', tapCall: 'Touchez pour le prix et appeler', verifiedPrice: 'Prix vérifié', mapsOpen: 'OUVRIR DANS GOOGLE MAPS', call: 'APPELER', message: 'MESSAGE', site: 'ALLER AU SITE', listVehicles: 'Voir les véhicules', viewPhotos: 'Voir les photos du véhicule', noVehicles: 'Aucune information véhicule.', noPhotos: 'Aucune photo enregistrée.', reviewsAndReports: 'Avis & Réclamations', noRating: 'Pas encore évalué', scoreText: 'Note', viewRatings: 'Voir les avis', viewReports: 'Voir les réclamations', turkeyWide: 'Dans toute la Turquie', transport: 'Transport', capacity: 'Capacité', close: 'Fermer', vehicle: 'Véhicule', photo: 'Photo', vehiclePhoto: 'Photo du véhicule', previewPhoto: 'Aperçu photo grand format' },
-  it: { kurtarici: 'Soccorso', nakliye: 'Trasporto', sarj: 'Ricarica', yolcu: 'Passeggero', otoKurtarma: 'Soccorso stradale', vinc: 'Gru', domestic: 'Nazionale', international: 'Internazionale', homeMoving: 'Trasloco', trailer: 'Rimorchio', truck: 'Camion', van: 'Furgone', station: 'Stazione', geziciSarj: 'Ricarica mobile', loading: 'Caricamento...', score: 'PUNTEGGIO', allTurkey: 'TUTTA LA TURCHIA', tapCall: 'Tocca per prezzo e chiamata', verifiedPrice: 'Prezzo verificato', mapsOpen: 'APRI IN GOOGLE MAPS', call: 'CHIAMA', message: 'MESSAGGIO', site: 'VAI AL SITO', listVehicles: 'Mostra veicoli', viewPhotos: 'Mostra foto veicolo', noVehicles: 'Nessun veicolo registrato.', noPhotos: 'Nessuna foto registrata.', reviewsAndReports: 'Recensioni e Reclami', noRating: 'Non ancora valutato', scoreText: 'Punteggio', viewRatings: 'Mostra recensioni', viewReports: 'Mostra reclami', turkeyWide: 'In tutta la Turchia', transport: 'Trasporto', capacity: 'Capacità', close: 'Chiudi', vehicle: 'Veicolo', photo: 'Foto', vehiclePhoto: 'Foto veicolo', previewPhoto: 'Anteprima foto grande' },
-  es: { kurtarici: 'Rescate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Pasajero', otoKurtarma: 'Asistencia en carretera', vinc: 'Grúa', domestic: 'Nacional', international: 'Internacional', homeMoving: 'Mudanza', trailer: 'Tráiler', truck: 'Camión', van: 'Furgoneta', station: 'Estación', geziciSarj: 'Carga móvil', loading: 'Cargando...', score: 'PUNTAJE', allTurkey: 'TODA TURQUÍA', tapCall: 'Toca para precio y llamada', verifiedPrice: 'Precio verificado', mapsOpen: 'ABRIR EN GOOGLE MAPS', call: 'LLAMAR', message: 'MENSAJE', site: 'IR AL SITIO', listVehicles: 'Listar vehículos', viewPhotos: 'Ver fotos del vehículo', noVehicles: 'Sin información de vehículo.', noPhotos: 'No hay fotos registradas.', reviewsAndReports: 'Reseñas y Quejas', noRating: 'Aún sin valoración', scoreText: 'Puntaje', viewRatings: 'Ver reseñas', viewReports: 'Ver quejas', turkeyWide: 'En toda Turquía', transport: 'Transporte', capacity: 'Capacidad', close: 'Cerrar', vehicle: 'Vehículo', photo: 'Foto', vehiclePhoto: 'Foto del vehículo', previewPhoto: 'Vista previa grande de foto' },
-  pt: { kurtarici: 'Resgate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Passageiro', otoKurtarma: 'Socorro rodoviário', vinc: 'Guindaste', domestic: 'Nacional', international: 'Internacional', homeMoving: 'Mudança', trailer: 'Carreta', truck: 'Caminhão', van: 'Van', station: 'Estação', geziciSarj: 'Carga móvel', loading: 'Carregando...', score: 'PONTUAÇÃO', allTurkey: 'TODA A TURQUIA', tapCall: 'Toque para preço e ligação', verifiedPrice: 'Preço verificado', mapsOpen: 'ABRIR NO GOOGLE MAPS', call: 'LIGAR', message: 'MENSAGEM', site: 'IR PARA O SITE', listVehicles: 'Listar veículos', viewPhotos: 'Ver fotos do veículo', noVehicles: 'Sem informações de veículo.', noPhotos: 'Sem fotos cadastradas.', reviewsAndReports: 'Avaliações e Reclamações', noRating: 'Ainda sem avaliação', scoreText: 'Pontuação', viewRatings: 'Ver avaliações', viewReports: 'Ver reclamações', turkeyWide: 'Toda a Turquia', transport: 'Transporte', capacity: 'Capacidade', close: 'Fechar', vehicle: 'Veículo', photo: 'Foto', vehiclePhoto: 'Foto do veículo', previewPhoto: 'Prévia grande da foto' },
-  ru: { kurtarici: 'Эвакуация', nakliye: 'Перевозка', sarj: 'Зарядка', yolcu: 'Пассажир', otoKurtarma: 'Дорожная помощь', vinc: 'Кран', domestic: 'Внутри страны', international: 'Международно', homeMoving: 'Переезд', trailer: 'Фура', truck: 'Грузовик', van: 'Фургон', station: 'Станция', geziciSarj: 'Мобильная зарядка', loading: 'Загрузка...', score: 'ОЦЕНКА', allTurkey: 'ВСЯ ТУРЦИЯ', tapCall: 'Нажмите для цены и звонка', verifiedPrice: 'Подтвержденная цена', mapsOpen: 'ОТКРЫТЬ В GOOGLE MAPS', call: 'ПОЗВОНИТЬ', message: 'СООБЩЕНИЕ', site: 'ПЕРЕЙТИ НА САЙТ', listVehicles: 'Показать транспорт', viewPhotos: 'Показать фото транспорта', noVehicles: 'Нет данных о транспорте.', noPhotos: 'Нет загруженных фото.', reviewsAndReports: 'Отзывы и Жалобы', noRating: 'Пока нет оценок', scoreText: 'Оценка', viewRatings: 'Показать отзывы', viewReports: 'Показать жалобы', turkeyWide: 'По всей Турции', transport: 'Перевозка', capacity: 'Вместимость', close: 'Закрыть', vehicle: 'Транспорт', photo: 'Фото', vehiclePhoto: 'Фото транспорта', previewPhoto: 'Большой предпросмотр фото' },
-  zh: { kurtarici: '救援', nakliye: '运输', sarj: '充电', yolcu: '客运', otoKurtarma: '道路救援', vinc: '吊车', domestic: '国内', international: '国际', homeMoving: '搬家', trailer: '半挂车', truck: '卡车', van: '厢式车', station: '充电站', geziciSarj: '移动充电', loading: '加载中...', score: '评分', allTurkey: '全土耳其', tapCall: '点击查看价格并呼叫', verifiedPrice: '已验证价格', mapsOpen: '在 GOOGLE MAPS 打开', call: '呼叫', message: '消息', site: '访问网站', listVehicles: '查看车辆', viewPhotos: '查看车辆照片', noVehicles: '暂无车辆信息。', noPhotos: '暂无照片。', reviewsAndReports: '评价与投诉', noRating: '暂无评分', scoreText: '分', viewRatings: '查看评价', viewReports: '查看投诉', turkeyWide: '土耳其全境', transport: '运输', capacity: '载重', close: '关闭', vehicle: '车辆', photo: '照片', vehiclePhoto: '车辆照片', previewPhoto: '大图预览' },
-  ja: { kurtarici: '救援', nakliye: '輸送', sarj: '充電', yolcu: '旅客', otoKurtarma: 'ロードサービス', vinc: 'クレーン', domestic: '国内', international: '国際', homeMoving: '引っ越し', trailer: 'トレーラー', truck: 'トラック', van: 'バン', station: 'ステーション', geziciSarj: '移動充電', loading: '読み込み中...', score: '評価', allTurkey: 'トルコ全域', tapCall: 'タップして料金確認・電話', verifiedPrice: '確認済み価格', mapsOpen: 'GOOGLE MAPSで開く', call: '電話', message: 'メッセージ', site: 'サイトへ', listVehicles: '車両一覧', viewPhotos: '車両写真を見る', noVehicles: '登録された車両情報はありません。', noPhotos: '登録された写真はありません。', reviewsAndReports: '評価・苦情', noRating: 'まだ評価がありません', scoreText: '点', viewRatings: '評価を見る', viewReports: '苦情を見る', turkeyWide: 'トルコ全域', transport: '輸送', capacity: '容量', close: '閉じる', vehicle: '車両', photo: '写真', vehiclePhoto: '車両写真', previewPhoto: '写真の拡大プレビュー' },
-  ko: { kurtarici: '구난', nakliye: '운송', sarj: '충전', yolcu: '승객', otoKurtarma: '긴급 견인', vinc: '크레인', domestic: '국내', international: '국제', homeMoving: '이사', trailer: '트레일러', truck: '트럭', van: '밴', station: '스테이션', geziciSarj: '이동 충전', loading: '로딩 중...', score: '점수', allTurkey: '터키 전체', tapCall: '가격 확인 후 전화하려면 탭', verifiedPrice: '검증된 가격', mapsOpen: 'GOOGLE MAPS에서 열기', call: '전화', message: '메시지', site: '사이트 이동', listVehicles: '차량 목록', viewPhotos: '차량 사진 보기', noVehicles: '등록된 차량 정보가 없습니다.', noPhotos: '등록된 사진이 없습니다.', reviewsAndReports: '평가 및 신고', noRating: '아직 평가 없음', scoreText: '점', viewRatings: '평가 보기', viewReports: '신고 보기', turkeyWide: '터키 전역', transport: '운송', capacity: '적재량', close: '닫기', vehicle: '차량', photo: '사진', vehiclePhoto: '차량 사진', previewPhoto: '큰 사진 미리보기' },
-  ar: { kurtarici: 'إنقاذ', nakliye: 'نقل', sarj: 'شحن', yolcu: 'ركاب', otoKurtarma: 'مساعدة طريق', vinc: 'رافعة', domestic: 'محلي', international: 'دولي', homeMoving: 'نقل منزلي', trailer: 'مقطورة', truck: 'شاحنة', van: 'فان', station: 'محطة', geziciSarj: 'شحن متنقل', loading: 'جارٍ التحميل...', score: 'التقييم', allTurkey: 'كل تركيا', tapCall: 'اضغط لمعرفة السعر والاتصال', verifiedPrice: 'سعر موثّق', mapsOpen: 'افتح في GOOGLE MAPS', call: 'اتصال', message: 'رسالة', site: 'الذهاب للموقع', listVehicles: 'عرض المركبات', viewPhotos: 'عرض صور المركبات', noVehicles: 'لا توجد معلومات مركبة.', noPhotos: 'لا توجد صور مسجلة.', reviewsAndReports: 'التقييمات والشكاوى', noRating: 'لا يوجد تقييم بعد', scoreText: 'نقطة', viewRatings: 'عرض التقييمات', viewReports: 'عرض الشكاوى', turkeyWide: 'جميع أنحاء تركيا', transport: 'نقل', capacity: 'السعة', close: 'إغلاق', vehicle: 'مركبة', photo: 'صورة', vehiclePhoto: 'صورة المركبة', previewPhoto: 'معاينة صورة كبيرة' }
+  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', lastik: 'Lastik', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeler', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
+  en: { kurtarici: 'Recovery', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger', otoKurtarma: 'Roadside Recovery', vinc: 'Crane', domestic: 'Domestic', international: 'International', homeMoving: 'Home Moving', trailer: 'Trailer', truck: 'Truck', van: 'Van', station: 'Station', geziciSarj: 'Mobile Charge', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE', tapCall: 'Tap To Get Price And Call', verifiedPrice: 'Verified Price', mapsOpen: 'OPEN IN MAPS', call: 'CALL', message: 'MESSAGE', site: 'GO TO SITE', listVehicles: 'List Vehicles', viewPhotos: 'View Vehicle Photos', noVehicles: 'No registered vehicle info.', noPhotos: 'No registered photos.', reviewsAndReports: 'Reviews & Reports', noRating: 'Not rated yet', scoreText: 'Score', viewRatings: 'View Reviews', viewReports: 'View Reports', turkeyWide: 'Nationwide', transport: 'Transport', capacity: 'Capacity', close: 'Close', vehicle: 'Vehicle', photo: 'Photo', vehiclePhoto: 'Vehicle photo', previewPhoto: 'Large vehicle photo preview' },
+  de: { kurtarici: 'Bergung', nakliye: 'Transport', sarj: 'Laden', yolcu: 'Passagier', otoKurtarma: 'Pannenhilfe', vinc: 'Kran', domestic: 'Inland', international: 'International', homeMoving: 'Umzug', trailer: 'Auflieger', truck: 'LKW', van: 'Transporter', station: 'Station', geziciSarj: 'Mobiles Laden', loading: 'Lädt...', score: 'PUNKT', allTurkey: 'GANZE TÜRKEI', tapCall: 'Tippen für Preis und Anruf', verifiedPrice: 'Verifizierter Preis', mapsOpen: 'IN MAPS ÖFFNEN', call: 'ANRUFEN', message: 'NACHRICHT', site: 'ZUR WEBSEITE', listVehicles: 'Fahrzeuge anzeigen', viewPhotos: 'Fahrzeugfotos anzeigen', noVehicles: 'Keine Fahrzeugdaten vorhanden.', noPhotos: 'Keine Fotos vorhanden.', reviewsAndReports: 'Bewertungen & Beschwerden', noRating: 'Noch keine Bewertung', scoreText: 'Punkt', viewRatings: 'Bewertungen anzeigen', viewReports: 'Beschwerden anzeigen', turkeyWide: 'Landesweit', transport: 'Transport', capacity: 'Kapazität', close: 'Schließen', vehicle: 'Fahrzeug', photo: 'Foto', vehiclePhoto: 'Fahrzeugfoto', previewPhoto: 'Große Fahrzeugfoto-Vorschau' },
+  fr: { kurtarici: 'Dépannage', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passager', otoKurtarma: 'Assistance routière', vinc: 'Grue', domestic: 'National', international: 'International', homeMoving: 'Déménagement', trailer: 'Semi-remorque', truck: 'Camion', van: 'Fourgon', station: 'Station', geziciSarj: 'Charge mobile', loading: 'Chargement...', score: 'NOTE', allTurkey: 'TOUTE LA TURQUIE', tapCall: 'Touchez pour le prix et appeler', verifiedPrice: 'Prix vérifié', mapsOpen: 'OUVRIR DANS MAPS', call: 'APPELER', message: 'MESSAGE', site: 'ALLER AU SITE', listVehicles: 'Voir les véhicules', viewPhotos: 'Voir les photos du véhicule', noVehicles: 'Aucune information véhicule.', noPhotos: 'Aucune photo enregistrée.', reviewsAndReports: 'Avis & Réclamations', noRating: 'Pas encore évalué', scoreText: 'Note', viewRatings: 'Voir les avis', viewReports: 'Voir les réclamations', turkeyWide: 'Dans toute la Turquie', transport: 'Transport', capacity: 'Capacité', close: 'Fermer', vehicle: 'Véhicule', photo: 'Photo', vehiclePhoto: 'Photo du véhicule', previewPhoto: 'Aperçu photo grand format' },
+  it: { kurtarici: 'Soccorso', nakliye: 'Trasporto', sarj: 'Ricarica', yolcu: 'Passeggero', otoKurtarma: 'Soccorso stradale', vinc: 'Gru', domestic: 'Nazionale', international: 'Internazionale', homeMoving: 'Trasloco', trailer: 'Rimorchio', truck: 'Camion', van: 'Furgone', station: 'Stazione', geziciSarj: 'Ricarica mobile', loading: 'Caricamento...', score: 'PUNTEGGIO', allTurkey: 'TUTTA LA TURCHIA', tapCall: 'Tocca per prezzo e chiamata', verifiedPrice: 'Prezzo verificato', mapsOpen: 'APRI IN MAPS', call: 'CHIAMA', message: 'MESSAGGIO', site: 'VAI AL SITO', listVehicles: 'Mostra veicoli', viewPhotos: 'Mostra foto veicolo', noVehicles: 'Nessun veicolo registrato.', noPhotos: 'Nessuna foto registrata.', reviewsAndReports: 'Recensioni e Reclami', noRating: 'Non ancora valutato', scoreText: 'Punteggio', viewRatings: 'Mostra recensioni', viewReports: 'Mostra reclami', turkeyWide: 'In tutta la Turchia', transport: 'Trasporto', capacity: 'Capacità', close: 'Chiudi', vehicle: 'Veicolo', photo: 'Foto', vehiclePhoto: 'Foto veicolo', previewPhoto: 'Anteprima foto grande' },
+  es: { kurtarici: 'Rescate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Pasajero', otoKurtarma: 'Asistencia en carretera', vinc: 'Grúa', domestic: 'Nacional', international: 'Internacional', homeMoving: 'Mudanza', trailer: 'Tráiler', truck: 'Camión', van: 'Furgoneta', station: 'Estación', geziciSarj: 'Carga móvil', loading: 'Cargando...', score: 'PUNTAJE', allTurkey: 'TODA TURQUÍA', tapCall: 'Toca para precio y llamada', verifiedPrice: 'Precio verificado', mapsOpen: 'ABRIR EN MAPS', call: 'LLAMAR', message: 'MENSAJE', site: 'IR AL SITIO', listVehicles: 'Listar vehículos', viewPhotos: 'Ver fotos del vehículo', noVehicles: 'Sin información de vehículo.', noPhotos: 'No hay fotos registradas.', reviewsAndReports: 'Reseñas y Quejas', noRating: 'Aún sin valoración', scoreText: 'Puntaje', viewRatings: 'Ver reseñas', viewReports: 'Ver quejas', turkeyWide: 'En toda Turquía', transport: 'Transporte', capacity: 'Capacidad', close: 'Cerrar', vehicle: 'Vehículo', photo: 'Foto', vehiclePhoto: 'Foto del vehículo', previewPhoto: 'Vista previa grande de foto' },
+  pt: { kurtarici: 'Resgate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Passageiro', otoKurtarma: 'Socorro rodoviário', vinc: 'Guindaste', domestic: 'Nacional', international: 'Internacional', homeMoving: 'Mudança', trailer: 'Carreta', truck: 'Caminhão', van: 'Van', station: 'Estação', geziciSarj: 'Carga móvel', loading: 'Carregando...', score: 'PONTUAÇÃO', allTurkey: 'TODA A TURQUIA', tapCall: 'Toque para preço e ligação', verifiedPrice: 'Preço verificado', mapsOpen: 'ABRIR NO MAPS', call: 'LIGAR', message: 'MENSAGEM', site: 'IR PARA O SITE', listVehicles: 'Listar veículos', viewPhotos: 'Ver fotos do veículo', noVehicles: 'Sem informações de veículo.', noPhotos: 'Sem fotos cadastradas.', reviewsAndReports: 'Avaliações e Reclamações', noRating: 'Ainda sem avaliação', scoreText: 'Pontuação', viewRatings: 'Ver avaliações', viewReports: 'Ver reclamações', turkeyWide: 'Toda a Turquia', transport: 'Transporte', capacity: 'Capacidade', close: 'Fechar', vehicle: 'Veículo', photo: 'Foto', vehiclePhoto: 'Foto do veículo', previewPhoto: 'Prévia grande da foto' },
+  ru: { kurtarici: 'Эвакуация', nakliye: 'Перевозка', sarj: 'Зарядка', yolcu: 'Пассажир', otoKurtarma: 'Дорожная помощь', vinc: 'Кран', domestic: 'Внутри страны', international: 'Международно', homeMoving: 'Переезд', trailer: 'Фура', truck: 'Грузовик', van: 'Фургон', station: 'Станция', geziciSarj: 'Мобильная зарядка', loading: 'Загрузка...', score: 'ОЦЕНКА', allTurkey: 'ВСЯ ТУРЦИЯ', tapCall: 'Нажмите для цены и звонка', verifiedPrice: 'Подтвержденная цена', mapsOpen: 'ОТКРЫТЬ В MAPS', call: 'ПОЗВОНИТЬ', message: 'СООБЩЕНИЕ', site: 'ПЕРЕЙТИ НА САЙТ', listVehicles: 'Показать транспорт', viewPhotos: 'Показать фото транспорта', noVehicles: 'Нет данных о транспорте.', noPhotos: 'Нет загруженных фото.', reviewsAndReports: 'Отзывы и Жалобы', noRating: 'Пока нет оценок', scoreText: 'Оценка', viewRatings: 'Показать отзывы', viewReports: 'Показать жалобы', turkeyWide: 'По всей Турции', transport: 'Перевозка', capacity: 'Вместимость', close: 'Закрыть', vehicle: 'Транспорт', photo: 'Фото', vehiclePhoto: 'Фото транспорта', previewPhoto: 'Большой предпросмотр фото' },
+  zh: { kurtarici: '救援', nakliye: '运输', sarj: '充电', yolcu: '客运', otoKurtarma: '道路救援', vinc: '吊车', domestic: '国内', international: '国际', homeMoving: '搬家', trailer: '半挂车', truck: '卡车', van: '厢式车', station: '充电站', geziciSarj: '移动充电', loading: '加载中...', score: '评分', allTurkey: '全土耳其', tapCall: '点击查看价格并呼叫', verifiedPrice: '已验证价格', mapsOpen: '在 MAPS 打开', call: '呼叫', message: '消息', site: '访问网站', listVehicles: '查看车辆', viewPhotos: '查看车辆照片', noVehicles: '暂无车辆信息。', noPhotos: '暂无照片。', reviewsAndReports: '评价与投诉', noRating: '暂无评分', scoreText: '分', viewRatings: '查看评价', viewReports: '查看投诉', turkeyWide: '土耳其全境', transport: '运输', capacity: '载重', close: '关闭', vehicle: '车辆', photo: '照片', vehiclePhoto: '车辆照片', previewPhoto: '大图预览' },
+  ja: { kurtarici: '救援', nakliye: '輸送', sarj: '充電', yolcu: '旅客', otoKurtarma: 'ロードサービス', vinc: 'クレーン', domestic: '国内', international: '国際', homeMoving: '引っ越し', trailer: 'トレーラー', truck: 'トラック', van: 'バン', station: 'ステーション', geziciSarj: '移動充電', loading: '読み込み中...', score: '評価', allTurkey: 'トルコ全域', tapCall: 'タップして料金確認・電話', verifiedPrice: '確認済み価格', mapsOpen: 'MAPSで開く', call: '電話', message: 'メッセージ', site: 'サイトへ', listVehicles: '車両一覧', viewPhotos: '車両写真を見る', noVehicles: '登録された車両情報はありません。', noPhotos: '登録された写真はありません。', reviewsAndReports: '評価・苦情', noRating: 'まだ評価がありません', scoreText: '点', viewRatings: '評価を見る', viewReports: '苦情を見る', turkeyWide: 'トルコ全域', transport: '輸送', capacity: '容量', close: '閉じる', vehicle: '車両', photo: '写真', vehiclePhoto: '車両写真', previewPhoto: '写真の拡大プレビュー' },
+  ko: { kurtarici: '구난', nakliye: '운송', sarj: '충전', yolcu: '승객', otoKurtarma: '긴급 견인', vinc: '크레인', domestic: '국내', international: '국제', homeMoving: '이사', trailer: '트레일러', truck: '트럭', van: '밴', station: '스테이션', geziciSarj: '이동 충전', loading: '로딩 중...', score: '점수', allTurkey: '터키 전체', tapCall: '가격 확인 후 전화하려면 탭', verifiedPrice: '검증된 가격', mapsOpen: 'MAPS에서 열기', call: '전화', message: '메시지', site: '사이트 이동', listVehicles: '차량 목록', viewPhotos: '차량 사진 보기', noVehicles: '등록된 차량 정보가 없습니다.', noPhotos: '등록된 사진이 없습니다.', reviewsAndReports: '평가 및 신고', noRating: '아직 평가 없음', scoreText: '점', viewRatings: '평가 보기', viewReports: '신고 보기', turkeyWide: '터키 전역', transport: '운송', capacity: '적재량', close: '닫기', vehicle: '차량', photo: '사진', vehiclePhoto: '차량 사진', previewPhoto: '큰 사진 미리보기' },
+  ar: { kurtarici: 'إنقاذ', nakliye: 'نقل', sarj: 'شحن', yolcu: 'ركاب', otoKurtarma: 'مساعدة طريق', vinc: 'رافعة', domestic: 'محلي', international: 'دولي', homeMoving: 'نقل منزلي', trailer: 'مقطورة', truck: 'شاحنة', van: 'فان', station: 'محطة', geziciSarj: 'شحن متنقل', loading: 'جارٍ التحميل...', score: 'التقييم', allTurkey: 'كل تركيا', tapCall: 'اضغط لمعرفة السعر والاتصال', verifiedPrice: 'سعر موثّق', mapsOpen: 'افتح في MAPS', call: 'اتصال', message: 'رسالة', site: 'الذهاب للموقع', listVehicles: 'عرض المركبات', viewPhotos: 'عرض صور المركبات', noVehicles: 'لا توجد معلومات مركبة.', noPhotos: 'لا توجد صور مسجلة.', reviewsAndReports: 'التقييمات والشكاوى', noRating: 'لا يوجد تقييم بعد', scoreText: 'نقطة', viewRatings: 'عرض التقييمات', viewReports: 'عرض الشكاوى', turkeyWide: 'جميع أنحاء تركيا', transport: 'نقل', capacity: 'السعة', close: 'إغلاق', vehicle: 'مركبة', photo: 'صورة', vehiclePhoto: 'صورة المركبة', previewPhoto: 'معاينة صورة كبيرة' }
 };
 
 // TİP TANIMLAMASI
@@ -742,6 +743,23 @@ function ActionPanel({
     if (selectedCity ? cityScopedLoading : loading) return visibleDrivers.length > 0;
     return visibleDrivers.length < displayDrivers.length;
   }, [cityScopedLoading, displayDrivers.length, loading, selectedCity, visibleDrivers.length]);
+  const tryReachListEnd = useCallback(() => {
+    if (!onReachListEnd) return;
+    if (selectedCity ? cityScopedLoading : loading) return;
+    if (displayDrivers.length === 0) return;
+    if (visibleDrivers.length < displayDrivers.length) return;
+    const now = Date.now();
+    if (now - lastReachListEndAtRef.current <= 1400) return;
+    lastReachListEndAtRef.current = now;
+    onReachListEnd();
+  }, [
+    cityScopedLoading,
+    displayDrivers.length,
+    loading,
+    onReachListEnd,
+    selectedCity,
+    visibleDrivers.length,
+  ]);
 
   useEffect(() => {
     const targetId = activeDriverId || localSelectedId;
@@ -760,17 +778,13 @@ function ActionPanel({
       const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 560;
       if (nearBottom) {
         setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
-        const now = Date.now();
-        if (renderedCount >= displayDrivers.length && onReachListEnd && now - lastReachListEndAtRef.current > 1400) {
-          lastReachListEndAtRef.current = now;
-          onReachListEnd();
-        }
+        tryReachListEnd();
       }
     };
     onScroll();
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [displayDrivers.length, panelState, renderedCount, onReachListEnd]);
+  }, [displayDrivers.length, panelState, tryReachListEnd]);
 
   useEffect(() => {
     if (panelState <= 0) return;
@@ -782,11 +796,7 @@ function ActionPanel({
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           setRenderedCount((prev) => Math.min(prev + 20, displayDrivers.length));
-          const now = Date.now();
-          if (renderedCount >= displayDrivers.length && onReachListEnd && now - lastReachListEndAtRef.current > 1400) {
-            lastReachListEndAtRef.current = now;
-            onReachListEnd();
-          }
+          tryReachListEnd();
         }
       },
       { root, rootMargin: '320px 0px 460px 0px', threshold: 0 }
@@ -794,7 +804,7 @@ function ActionPanel({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [displayDrivers.length, panelState, renderedCount, onReachListEnd]);
+  }, [displayDrivers.length, panelState, tryReachListEnd]);
 
   const getCurrentPosition = (opts?: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
@@ -1125,7 +1135,28 @@ function ActionPanel({
 
         {panelState > 1 && (
         <div ref={listContainerRef} className="flex-1 overflow-y-scroll pb-40 custom-scrollbar overscroll-contain">
-          {(((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0)) ? ( <div className="space-y-4 py-10 text-center"></div> ) : (
+          {(((selectedCity ? cityScopedLoading : loading) && visibleDrivers.length === 0)) ? (
+            <div className="space-y-3 py-6">
+              <div className="flex items-center justify-center gap-2 text-[11px] font-black uppercase text-slate-500">
+                <Loader2 size={14} className="animate-spin" />
+                {tx.loading}
+              </div>
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div
+                  key={`panel-loading-${idx}`}
+                  className="rounded-2xl border border-white/40 bg-white/70 p-3 shadow-sm animate-pulse"
+                >
+                  <div className="h-3.5 w-40 rounded bg-slate-200" />
+                  <div className="mt-2 h-2.5 w-28 rounded bg-slate-200" />
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="h-7 rounded-xl bg-slate-200" />
+                    <div className="h-7 rounded-xl bg-slate-200" />
+                    <div className="h-7 rounded-xl bg-slate-200" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
             visibleDrivers.map((driver) => {
                 const isSelected = activeDriverId === driver._id || localSelectedId === driver._id;
                 const sub = driver.service?.subType || '';
@@ -1408,12 +1439,14 @@ function ActionPanel({
                               e.stopPropagation();
                               const lat = driver.location?.coordinates?.[1];
                               const lng = driver.location?.coordinates?.[0];
-                              if (lat && lng) window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
+                              if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                                openSystemMap(Number(lat), Number(lng), driver.businessName || 'Destination');
+                              }
                             }}
                             className="py-2 rounded-xl text-[8px] font-black uppercase text-white border border-white/40 flex items-center justify-center"
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           >
-                            MAPS'TE GORUNTULE
+                            {tx.mapsOpen}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
