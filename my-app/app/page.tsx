@@ -181,6 +181,7 @@ export default function Home() {
   const mapMoveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressNextMapMoveFetchRef = useRef(false);
   const listEndFetchLimitRef = useRef(0);
+  const listEndFetchStepRef = useRef(0);
   const lastMapFetchRef = useRef<{
     lat: number;
     lng: number;
@@ -941,17 +942,21 @@ export default function Home() {
     const fallbackLat = base?.[0] ?? DEFAULT_LAT;
     const fallbackLng = base?.[1] ?? DEFAULT_LNG;
     if (!Number.isFinite(fallbackLat) || !Number.isFinite(fallbackLng)) return;
+    const step = listEndFetchStepRef.current + 1;
+    listEndFetchStepRef.current = step;
     const prevLimit = listEndFetchLimitRef.current || ACTION_PANEL_QUERY_LIMIT;
-    const nextLimit = Math.min(12000, prevLimit + 900);
+    const nextLimit = Math.min(60000, prevLimit + 1800);
+    const nextZoom = Math.max(2.4, ACTION_PANEL_QUERY_ZOOM - step * 0.45);
     listEndFetchLimitRef.current = nextLimit;
 
     fetchDrivers(fallbackLat, fallbackLng, actionTypeRef.current, {
-      zoom: ACTION_PANEL_QUERY_ZOOM,
+      zoom: nextZoom,
       limit: nextLimit,
       // List pagination must be independent from current map viewport.
       bbox: undefined,
       append: true,
       force: true,
+      countryFallback: true,
     });
   }, [ACTION_PANEL_QUERY_LIMIT, ACTION_PANEL_QUERY_ZOOM, fetchDrivers]);
 
@@ -999,6 +1004,7 @@ export default function Home() {
 
   useEffect(() => {
     listEndFetchLimitRef.current = 0;
+    listEndFetchStepRef.current = 0;
   }, [actionType, readTypeCache, searchCoords?.[0], searchCoords?.[1]]);
 
   const handleSearchPick = useCallback((driver: any) => {

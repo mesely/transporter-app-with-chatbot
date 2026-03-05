@@ -849,6 +849,19 @@ function ActionPanel({
     return () => observer.disconnect();
   }, [displayDrivers.length, panelState, tryReachListEnd]);
 
+  useEffect(() => {
+    if (panelState <= 0) return;
+    if (selectedCity) return;
+    if (loading) return;
+    const el = listContainerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 560;
+    const doesNotFillViewport = el.scrollHeight <= el.clientHeight + 40;
+    if (nearBottom || doesNotFillViewport) {
+      tryReachListEnd();
+    }
+  }, [displayDrivers.length, loading, panelState, selectedCity, tryReachListEnd]);
+
   const getCurrentPosition = (opts?: PositionOptions) =>
     new Promise<GeolocationPosition>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, opts);
@@ -1441,7 +1454,7 @@ function ActionPanel({
                                       </span>
                                     )}
 
-                                    {!isSpecialCategory && driver.address?.fullText && (
+                                    {(!isMobileCharge && driver.address?.fullText) && (
                                         <span className="text-[8px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
                                             {driver.address.fullText}
                                         </span>
