@@ -173,7 +173,6 @@ export default function KurumKayitPage() {
   const toggleServiceType = (id: string) => {
     const option = SERVICE_OPTIONS.find((s) => s.id === id);
     if (!option) return;
-    const hasSubs = option.subs.length > 0;
     const isSelected = form.serviceTypes.includes(id);
 
     if (!isSelected) {
@@ -181,12 +180,6 @@ export default function KurumKayitPage() {
         ...prev,
         serviceTypes: Array.from(new Set([...(prev.serviceTypes || []), id])),
       }));
-      if (hasSubs) setActiveFolder(id);
-      return;
-    }
-
-    if (hasSubs && activeFolder !== id) {
-      setActiveFolder(id);
       return;
     }
 
@@ -542,17 +535,30 @@ export default function KurumKayitPage() {
                   const selected = form.serviceTypes.includes(opt.id);
                   const Icon = opt.icon;
                   return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => toggleServiceType(opt.id)}
-                      className={`rounded-2xl border px-2 py-3 text-center transition-all ${
-                        selected ? `${opt.color} border-transparent text-white shadow-lg` : 'border-white/70 bg-white/85 text-slate-700'
-                      }`}
-                    >
-                      <Icon size={16} className="mx-auto mb-1" />
-                      <span className="text-[10px] font-black uppercase leading-tight">{opt.label}</span>
-                    </button>
+                    <div key={opt.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => toggleServiceType(opt.id)}
+                        className={`w-full rounded-2xl border px-2 py-3 text-center transition-all ${
+                          selected ? `${opt.color} border-transparent text-white shadow-lg` : 'border-white/70 bg-white/85 text-slate-700'
+                        }`}
+                      >
+                        <Icon size={16} className="mx-auto mb-1" />
+                        <span className="text-[10px] font-black uppercase leading-tight">{opt.label}</span>
+                      </button>
+                      {selected && opt.subs.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveFolder(opt.id);
+                          }}
+                          className="absolute -bottom-2 right-2 rounded-xl bg-slate-900 px-2 py-1 text-[9px] font-black uppercase text-white shadow-lg hover:bg-black"
+                        >
+                          Duzenle
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -659,7 +665,10 @@ export default function KurumKayitPage() {
             >
               <X size={14} className="mx-auto" />
             </button>
-            <h2 className="text-2xl font-black uppercase italic mb-6 text-slate-900">{currentFolderConfig.label} Alt Tur Secimi</h2>
+            <div className="mb-6 flex items-center gap-3">
+              <img src="/apple-icon.png" alt="Transport 245 Uygulama Ikonu" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
+              <h2 className="text-2xl font-black uppercase italic text-slate-900">{currentFolderConfig.label} Alt Tur Secimi</h2>
+            </div>
             <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6 pr-2 custom-scrollbar">
               {currentFolderConfig.subs.map((sub) => (
                 <button

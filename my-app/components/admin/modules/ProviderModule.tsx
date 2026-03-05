@@ -15,7 +15,7 @@ import {
   Loader2, Truck, Zap, Anchor, CarFront, Globe, 
   Navigation, Filter, Home, Package, Container, 
   Snowflake, Layers, Archive, Box, Check, Users, Bus, Crown,
-  ArrowRight, Settings2, LocateFixed
+  ArrowRight, LocateFixed
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
@@ -183,7 +183,6 @@ export default function ProviderModule() {
   const toggleServiceType = (id: string) => {
     const option = SERVICE_OPTIONS.find((s) => s.id === id);
     if (!option) return;
-    const hasSubs = option.subs.length > 0;
     const isSelected = formData.serviceTypes.includes(id);
 
     if (!isSelected) {
@@ -191,12 +190,6 @@ export default function ProviderModule() {
         ...prev,
         serviceTypes: Array.from(new Set([...(prev.serviceTypes || []), id])),
       }));
-      if (hasSubs) setActiveFolder(id);
-      return;
-    }
-
-    if (hasSubs && activeFolder !== id) {
-      setActiveFolder(id);
       return;
     }
 
@@ -504,7 +497,10 @@ export default function ProviderModule() {
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
           <div className="bg-white/80 backdrop-blur-2xl border border-white/50 w-full max-w-5xl h-[90vh] rounded-[3rem] p-10 shadow-2xl relative overflow-y-auto custom-scrollbar text-gray-900 animate-in fade-in zoom-in-95">
             <button onClick={()=>setShowModal(false)} className="absolute top-8 right-8 p-3 bg-white/50 border border-white/60 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm"><X size={24}/></button>
-            <h2 className="text-3xl font-black uppercase italic mb-10 text-slate-900"> {isEditing ? 'Düzenle' : 'Yeni Kayıt'}</h2>
+            <div className="mb-10 flex items-center gap-3">
+              <img src="/apple-icon.png" alt="Transport 245 Uygulama Ikonu" className="w-10 h-10 rounded-2xl object-cover shadow-md" />
+              <h2 className="text-3xl font-black uppercase italic text-slate-900"> {isEditing ? 'Düzenle' : 'Yeni Kayıt'}</h2>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
                 <input placeholder="İŞLETME ADI" value={formData.businessName} onChange={e=>setFormData({...formData, businessName: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-black text-sm outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
@@ -537,7 +533,14 @@ export default function ProviderModule() {
                         )}
                         <span className="text-[9px] font-black uppercase text-center leading-tight break-words">{opt.label}</span>
                       </button>
-                      {formData.serviceTypes.includes(opt.id) && opt.subs.length > 0 && <button onClick={e=>{e.stopPropagation(); setActiveFolder(opt.id)}} className="absolute -top-2 -right-2 bg-slate-900 text-white p-1.5 rounded-full z-10 shadow-lg hover:bg-black transition-colors"><Settings2 size={12}/></button>}
+                      {formData.serviceTypes.includes(opt.id) && opt.subs.length > 0 && (
+                        <button
+                          onClick={e=>{e.stopPropagation(); setActiveFolder(opt.id);}}
+                          className="absolute -bottom-2 right-2 bg-slate-900 text-white px-2 py-1 rounded-xl z-10 shadow-lg hover:bg-black transition-colors text-[9px] font-black uppercase"
+                        >
+                          Düzenle
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
