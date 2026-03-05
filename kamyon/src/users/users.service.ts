@@ -43,13 +43,27 @@ export class UsersService implements OnModuleInit {
     const type = rawType.toLowerCase().trim();
     if (!type) return filterQuery;
 
-    if (type === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
-    else if (type === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
-    else if (type === 'sarj') filterQuery['service.mainType'] = 'SARJ';
-    else if (type === 'yolcu') filterQuery['service.mainType'] = 'YOLCU';
-    else if (type === 'sarj_istasyonu') filterQuery['service.subType'] = 'istasyon';
-    else if (type === 'seyyar_sarj') filterQuery['service.subType'] = { $in: ['seyyar_sarj', 'MOBIL_UNIT'] };
-    else filterQuery['service.subType'] = type;
+    const norm = (v: string) =>
+      String(v || '')
+        .toLocaleLowerCase('tr')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+    const t = norm(type);
+
+    if (t === 'nakliye') filterQuery['service.mainType'] = 'NAKLIYE';
+    else if (t === 'kurtarici') filterQuery['service.mainType'] = 'KURTARICI';
+    else if (t === 'sarj') filterQuery['service.mainType'] = 'SARJ';
+    else if (t === 'yolcu' || t === 'yolcutasima') filterQuery['service.mainType'] = 'YOLCU';
+    else if (t === 'sarjistasyonu' || t === 'istasyonsarj' || t === 'istasyon') {
+      filterQuery['service.subType'] = { $regex: /^(istasyon|sarj_istasyonu)$/i };
+    } else if (t === 'seyyarsarj' || t === 'gezicisarj' || t === 'mobilsarj') {
+      filterQuery['service.subType'] = { $regex: /^(seyyar_sarj|mobil_unit|mobile_unit|gezici_sarj)$/i };
+    } else if (t === 'lastik' || t === 'lastikci') {
+      filterQuery['service.subType'] = { $regex: /^(lastik|lastikci|lastikçi)$/i };
+    } else {
+      filterQuery['service.subType'] = type;
+    }
 
     return filterQuery;
   }
@@ -215,8 +229,8 @@ export class UsersService implements OnModuleInit {
     else { maxDist = 280000; limit = 500; }
 
     if (typeof requestedLimit === 'number' && Number.isFinite(requestedLimit)) {
-      const normalizedLimit = Math.max(20, Math.min(5000, Math.floor(requestedLimit)));
-      limit = Math.min(limit, normalizedLimit);
+      const normalizedLimit = Math.max(20, Math.min(20000, Math.floor(requestedLimit)));
+      limit = Math.max(limit, normalizedLimit);
     }
 
     const filterQuery: any = this.buildServiceFilter(rawType);
