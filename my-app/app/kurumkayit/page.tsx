@@ -2,22 +2,27 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Archive,
   ArrowLeft,
   ArrowRight,
+  Box,
   Bus,
   CarFront,
   Check,
   Crown,
   Globe,
   Home,
+  Layers,
   Loader2,
   LocateFixed,
   Navigation,
   Package,
   ShieldCheck,
+  Snowflake,
   Trash2,
   Truck,
   Upload,
+  X,
   Zap,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -35,37 +40,71 @@ type ServiceOption = {
   label: string;
   color: string;
   icon: any;
+  subs: Array<{ id: string; label: string; icon: any }>;
 };
 
 const SERVICE_OPTIONS: ServiceOption[] = [
-  { id: 'oto_kurtarma', label: 'Kurtarici', color: 'bg-red-600', icon: CarFront },
-  { id: 'vinc', label: 'Vinc', color: 'bg-rose-700', icon: Navigation },
-  { id: 'lastikci', label: 'Lastikci', color: 'bg-orange-600', icon: Truck },
-  { id: 'evden_eve', label: 'Evden Eve', color: 'bg-pink-600', icon: Home },
-  { id: 'kamyon', label: 'Kamyon', color: 'bg-purple-700', icon: Truck },
-  { id: 'kamyonet', label: 'Kamyonet', color: 'bg-fuchsia-700', icon: Package },
-  { id: 'tir', label: 'Tir', color: 'bg-violet-700', icon: Truck },
-  { id: 'istasyon_sarj', label: 'Istasyon Sarj', color: 'bg-blue-700', icon: Zap },
-  { id: 'gezici_sarj', label: 'Gezici Sarj', color: 'bg-cyan-700', icon: Zap },
-  { id: 'minibus', label: 'Minibus', color: 'bg-emerald-700', icon: Bus },
-  { id: 'otobus', label: 'Otobus', color: 'bg-emerald-700', icon: Bus },
-  { id: 'midibus', label: 'Midibus', color: 'bg-emerald-700', icon: Bus },
-  { id: 'vip_tasima', label: 'VIP Tasima', color: 'bg-emerald-800', icon: Crown },
-  { id: 'yurt_disi_nakliye', label: 'Yurt Disi', color: 'bg-indigo-700', icon: Globe },
+  { id: 'oto_kurtarma', label: 'Kurtarici', color: 'bg-red-600', icon: CarFront, subs: [] },
+  { id: 'vinc', label: 'Vinc', color: 'bg-rose-700', icon: Navigation, subs: [] },
+  { id: 'lastikci', label: 'Lastikci', color: 'bg-orange-600', icon: Truck, subs: [] },
+  {
+    id: 'tir',
+    label: 'Tir',
+    color: 'bg-violet-700',
+    icon: Truck,
+    subs: [
+      { id: 'tenteli', label: 'Tenteli', icon: Archive },
+      { id: 'frigorifik', label: 'Frigorifik', icon: Snowflake },
+      { id: 'lowbed', label: 'Lowbed', icon: Layers },
+      { id: 'konteyner', label: 'Konteyner', icon: Box },
+      { id: 'acik_kasa', label: 'Acik Kasa', icon: Box },
+    ],
+  },
+  {
+    id: 'kamyon',
+    label: 'Kamyon',
+    color: 'bg-purple-700',
+    icon: Truck,
+    subs: [
+      { id: '6_teker', label: '6 Teker', icon: Truck },
+      { id: '8_teker', label: '8 Teker', icon: Truck },
+      { id: '10_teker', label: '10 Teker', icon: Truck },
+      { id: '12_teker', label: '12 Teker', icon: Truck },
+      { id: 'kirkayak', label: 'Kirkayak', icon: Layers },
+    ],
+  },
+  {
+    id: 'kamyonet',
+    label: 'Kamyonet',
+    color: 'bg-fuchsia-700',
+    icon: Package,
+    subs: [
+      { id: 'panelvan', label: 'Panelvan', icon: CarFront },
+      { id: 'acik_kasa', label: 'Acik Kasa', icon: Box },
+      { id: 'kapali_kasa', label: 'Kapali Kasa', icon: Archive },
+    ],
+  },
+  { id: 'evden_eve', label: 'Evden Eve', color: 'bg-pink-600', icon: Home, subs: [] },
+  { id: 'istasyon_sarj', label: 'Istasyon Sarj', color: 'bg-blue-700', icon: Zap, subs: [] },
+  { id: 'gezici_sarj', label: 'Gezici Sarj', color: 'bg-cyan-700', icon: Zap, subs: [] },
+  { id: 'minibus', label: 'Minibus', color: 'bg-emerald-700', icon: Bus, subs: [] },
+  { id: 'otobus', label: 'Otobus', color: 'bg-emerald-700', icon: Bus, subs: [] },
+  { id: 'midibus', label: 'Midibus', color: 'bg-emerald-700', icon: Bus, subs: [] },
+  { id: 'vip_tasima', label: 'VIP Tasima', color: 'bg-emerald-800', icon: Crown, subs: [] },
+  { id: 'yurt_disi_nakliye', label: 'Yurt Disi', color: 'bg-indigo-700', icon: Globe, subs: [] },
 ];
 
 const normalizeSubTypeForBackend = (subType: string) => {
   const key = String(subType || '').toLocaleLowerCase('tr').trim();
-  if (key === 'lastikci' || key === 'lastikçi') return 'lastik';
+  if (key === 'lastikci' || key === 'lastikçi') return 'lastikci';
   if (key === 'istasyon_sarj' || key === 'sarj_istasyonu') return 'istasyon';
   if (key === 'gezici_sarj' || key === 'seyyar_sarj' || key === 'mobil_unit') return 'seyyar_sarj';
-  if (key === 'yolcu_tasima') return 'minibus';
   return key;
 };
 
 const mapMainType = (subType: string) => {
   const s = normalizeSubTypeForBackend(subType);
-  if (['oto_kurtarma', 'vinc', 'lastik'].includes(s)) return 'KURTARICI';
+  if (['oto_kurtarma', 'vinc', 'lastikci'].includes(s)) return 'KURTARICI';
   if (['istasyon', 'seyyar_sarj'].includes(s)) return 'SARJ';
   if (['minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(s)) return 'YOLCU';
   if (['yurt_disi_nakliye'].includes(s)) return 'YURT_DISI';
@@ -84,6 +123,7 @@ export default function KurumKayitPage() {
   const [kvkkAccepted, setKvkkAccepted] = useState(false);
   const [contractAccepted, setContractAccepted] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     businessName: '',
@@ -94,7 +134,8 @@ export default function KurumKayitPage() {
     address: '',
     website: '',
     taxNumber: '',
-    subType: '',
+    serviceTypes: [] as string[],
+    filterTags: [] as string[],
     pricePerUnit: '40',
     vehicleItems: [{ name: '', photoUrls: [] }] as VehicleEntry[],
   });
@@ -128,6 +169,44 @@ export default function KurumKayitPage() {
       setForm((prev) => ({ ...prev, district: availableDistricts[0] }));
     }
   }, [availableDistricts, form.district]);
+
+  const toggleServiceType = (id: string) => {
+    const option = SERVICE_OPTIONS.find((s) => s.id === id);
+    if (!option) return;
+    const hasSubs = option.subs.length > 0;
+    const isSelected = form.serviceTypes.includes(id);
+
+    if (!isSelected) {
+      setForm((prev) => ({
+        ...prev,
+        serviceTypes: Array.from(new Set([...(prev.serviceTypes || []), id])),
+      }));
+      if (hasSubs) setActiveFolder(id);
+      return;
+    }
+
+    if (hasSubs && activeFolder !== id) {
+      setActiveFolder(id);
+      return;
+    }
+
+    const subIds = option.subs.map((sub) => sub.id);
+    setForm((prev) => ({
+      ...prev,
+      serviceTypes: (prev.serviceTypes || []).filter((t) => t !== id),
+      filterTags: (prev.filterTags || []).filter((t) => !subIds.includes(t)),
+    }));
+    if (activeFolder === id) setActiveFolder(null);
+  };
+
+  const toggleSubOption = (subId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      filterTags: prev.filterTags.includes(subId)
+        ? prev.filterTags.filter((t) => t !== subId)
+        : [...prev.filterTags, subId],
+    }));
+  };
 
   const getCoordinatesFromAddress = async (addr: string) => {
     try {
@@ -247,8 +326,9 @@ export default function KurumKayitPage() {
     if (!form.businessName.trim()) return 'Isletme adi zorunlu.';
     if (!/^0\d{10}$/.test(form.phoneNumber)) return 'Telefon 0 ile baslayan 11 hane olmali.';
     if (!form.email.trim() || !form.email.includes('@')) return 'Gecerli e-posta girin.';
-    if (!form.subType) return 'Hizmet turu secin.';
+    if (form.serviceTypes.length === 0) return 'En az bir hizmet turu secin.';
     if (!form.city || !form.district || !form.address.trim()) return 'Sehir, ilce ve adres zorunlu.';
+    if (!String(form.taxNumber || '').trim()) return 'Vergi numarasi zorunlu.';
     if (!kvkkAccepted) return 'KVKK onayi gerekli.';
     if (!contractAccepted) return 'Kurum kayit sozlesmesi onayi gerekli.';
     return '';
@@ -263,8 +343,9 @@ export default function KurumKayitPage() {
 
     setLoading(true);
     try {
-      const normalizedSubType = normalizeSubTypeForBackend(form.subType);
-      const mappedMain = mapMainType(normalizedSubType);
+      const normalizedServiceTypes = (form.serviceTypes || []).map(normalizeSubTypeForBackend).filter(Boolean);
+      const selectedPrimary = normalizedServiceTypes[0];
+      const mappedMain = mapMainType(selectedPrimary);
 
       const combined = `${form.address}, ${form.district}, ${form.city}, Turkiye`;
       const coords =
@@ -292,11 +373,11 @@ export default function KurumKayitPage() {
         email: form.email,
         phoneNumber: form.phoneNumber,
         mainType: mappedMain,
-        serviceType: normalizedSubType,
+        serviceType: selectedPrimary,
         service: {
           mainType: mappedMain,
-          subType: normalizedSubType,
-          tags: ['source:manual', 'self_register'],
+          subType: selectedPrimary,
+          tags: Array.from(new Set(['source:manual', 'self_register', ...(form.filterTags || []), ...normalizedServiceTypes.map((t) => `type:${t}`)])),
         },
         address: `${form.address}, ${form.district}, ${form.city}`,
         city: form.city,
@@ -336,19 +417,23 @@ export default function KurumKayitPage() {
         address: '',
         website: '',
         taxNumber: '',
-        subType: '',
+        serviceTypes: [],
+        filterTags: [],
         pricePerUnit: '40',
         vehicleItems: [{ name: '', photoUrls: [] }],
       });
       setSelectedCoords(null);
       setKvkkAccepted(false);
       setContractAccepted(false);
+      setActiveFolder(null);
     } catch (e: any) {
       alert(e?.message || 'Baglanti hatasi.');
     } finally {
       setLoading(false);
     }
   };
+
+  const currentFolderConfig = SERVICE_OPTIONS.find((s) => s.id === activeFolder);
 
   return (
     <main className="min-h-screen bg-[#8ccde6] px-4 py-8 text-slate-900 md:px-8">
@@ -443,7 +528,7 @@ export default function KurumKayitPage() {
               <input
                 value={form.taxNumber}
                 onChange={(e) => setForm((p) => ({ ...p, taxNumber: e.target.value }))}
-                placeholder="Vergi Numarasi (Opsiyonel)"
+                placeholder="Vergi Numarasi (Zorunlu)"
                 className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
               />
             </div>
@@ -454,17 +539,15 @@ export default function KurumKayitPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {SERVICE_OPTIONS.map((opt) => {
-                  const selected = form.subType === opt.id;
+                  const selected = form.serviceTypes.includes(opt.id);
                   const Icon = opt.icon;
                   return (
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setForm((p) => ({ ...p, subType: opt.id }))}
+                      onClick={() => toggleServiceType(opt.id)}
                       className={`rounded-2xl border px-2 py-3 text-center transition-all ${
-                        selected
-                          ? `${opt.color} border-transparent text-white shadow-lg`
-                          : 'border-white/70 bg-white/85 text-slate-700'
+                        selected ? `${opt.color} border-transparent text-white shadow-lg` : 'border-white/70 bg-white/85 text-slate-700'
                       }`}
                     >
                       <Icon size={16} className="mx-auto mb-1" />
@@ -487,11 +570,7 @@ export default function KurumKayitPage() {
               <div className="rounded-2xl border border-white/70 bg-white/85 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[10px] font-black uppercase text-slate-500">Arac Modeli ve Fotograf</p>
-                  <button
-                    type="button"
-                    onClick={addVehicleRow}
-                    className="rounded-xl bg-slate-900 px-3 py-1 text-[10px] font-black uppercase text-white"
-                  >
+                  <button type="button" onClick={addVehicleRow} className="rounded-xl bg-slate-900 px-3 py-1 text-[10px] font-black uppercase text-white">
                     Arac Ekle
                   </button>
                 </div>
@@ -504,19 +583,13 @@ export default function KurumKayitPage() {
                           onChange={(e) =>
                             setForm((prev) => ({
                               ...prev,
-                              vehicleItems: prev.vehicleItems.map((v, i) =>
-                                i === idx ? { ...v, name: e.target.value } : v,
-                              ),
+                              vehicleItems: prev.vehicleItems.map((v, i) => (i === idx ? { ...v, name: e.target.value } : v)),
                             }))
                           }
                           placeholder={`Arac modeli ${idx + 1}`}
                           className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeVehicleRow(idx)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600"
-                        >
+                        <button type="button" onClick={() => removeVehicleRow(idx)} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -537,34 +610,6 @@ export default function KurumKayitPage() {
                           <Loader2 size={12} className="animate-spin" /> Yukleniyor...
                         </p>
                       )}
-                      {vehicle.photoUrls?.length > 0 && (
-                        <div className="mt-2 grid grid-cols-3 gap-2">
-                          {vehicle.photoUrls.map((url, photoIndex) => (
-                            <div key={`${idx}-${photoIndex}`} className="relative overflow-hidden rounded-lg border border-slate-200">
-                              <img src={url} alt="Arac fotografi" className="h-20 w-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setForm((prev) => ({
-                                    ...prev,
-                                    vehicleItems: prev.vehicleItems.map((v, i) =>
-                                      i === idx
-                                        ? {
-                                            ...v,
-                                            photoUrls: v.photoUrls.filter((_, pi) => pi !== photoIndex),
-                                          }
-                                        : v,
-                                    ),
-                                  }))
-                                }
-                                className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white"
-                              >
-                                x
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -575,31 +620,17 @@ export default function KurumKayitPage() {
 
         <section className="mt-6 rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
           <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => setShowKvkk(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700"
-            >
+            <button type="button" onClick={() => setShowKvkk(true)} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700">
               <ShieldCheck size={14} /> KVKK Metnini Goruntule
             </button>
 
             <label className="flex items-start gap-2 text-xs font-bold text-slate-700">
-              <input
-                type="checkbox"
-                checked={kvkkAccepted}
-                onChange={(e) => setKvkkAccepted(e.target.checked)}
-                className="mt-0.5"
-              />
+              <input type="checkbox" checked={kvkkAccepted} onChange={(e) => setKvkkAccepted(e.target.checked)} className="mt-0.5" />
               KVKK Aydinlatma metnini okudum ve kabul ediyorum.
             </label>
 
             <label className="flex items-start gap-2 text-xs font-bold text-slate-700">
-              <input
-                type="checkbox"
-                checked={contractAccepted}
-                onChange={(e) => setContractAccepted(e.target.checked)}
-                className="mt-0.5"
-              />
+              <input type="checkbox" checked={contractAccepted} onChange={(e) => setContractAccepted(e.target.checked)} className="mt-0.5" />
               Kurum kayit basvuru sozlesmesini kabul ediyorum.
             </label>
           </div>
@@ -615,13 +646,42 @@ export default function KurumKayitPage() {
             {!loading && <ArrowRight size={16} />}
           </button>
 
-          {successMessage && (
-            <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">
-              {successMessage}
-            </p>
-          )}
+          {successMessage && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">{successMessage}</p>}
         </section>
       </div>
+
+      {activeFolder && currentFolderConfig && (
+        <div className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white/90 border border-white/60 w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl relative flex flex-col max-h-[80vh] text-gray-900">
+            <button
+              onClick={() => setActiveFolder(null)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/80 border border-white/70 text-gray-700 hover:bg-red-500 hover:text-white transition-colors"
+            >
+              <X size={14} className="mx-auto" />
+            </button>
+            <h2 className="text-2xl font-black uppercase italic mb-6 text-slate-900">{currentFolderConfig.label} Alt Tur Secimi</h2>
+            <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6 pr-2 custom-scrollbar">
+              {currentFolderConfig.subs.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => toggleSubOption(sub.id)}
+                  className={`p-6 rounded-3xl border border-white/40 transition-all flex flex-col items-center gap-2 shadow-sm ${
+                    form.filterTags.includes(sub.id)
+                      ? `${currentFolderConfig.color} text-white shadow-lg border-transparent scale-[1.02]`
+                      : 'bg-white/70 text-[#49b5c2] hover:bg-white'
+                  }`}
+                >
+                  <sub.icon size={24} strokeWidth={1.6} />
+                  <span className="text-[10px] font-black uppercase">{sub.label}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setActiveFolder(null)} className="w-full py-5 bg-slate-900 hover:bg-black text-white rounded-[1.5rem] font-black uppercase text-xs shadow-xl">
+              Tamamlandi
+            </button>
+          </div>
+        </div>
+      )}
 
       <KVKKModal isOpen={showKvkk} onClose={() => setShowKvkk(false)} />
     </main>

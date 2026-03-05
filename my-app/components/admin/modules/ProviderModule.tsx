@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 const TURKEY_CITIES = [
   "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kırıkkale", "Kırklareli", "Kırşehir", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Şanlıurfa", "Siirt", "Sinop", "Şırnak", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
@@ -36,6 +35,7 @@ const SERVICE_IMAGE_ICONS: Record<string, string> = {
 const SERVICE_OPTIONS = [
   { id: 'oto_kurtarma', label: 'KURTARICI', icon: CarFront, color: 'bg-red-600', subs: [] },
   { id: 'vinc', label: 'VİNÇ', icon: Anchor, color: 'bg-rose-600', subs: [] },
+  { id: 'lastikci', label: 'LASTİKÇİ', icon: Truck, color: 'bg-orange-600', subs: [] },
   { id: 'yurt_disi_nakliye', label: 'YURT DIŞI NAKLİYE', icon: Globe, color: 'bg-indigo-600', subs: [] },
   { id: 'tir', label: 'TIR', icon: Container, color: 'bg-violet-600', subs: [
       { id: 'tenteli', label: 'TENTELİ', icon: Archive },
@@ -68,7 +68,7 @@ const SERVICE_OPTIONS = [
 ];
 
 const getIconBadgeClass = (serviceId: string) => {
-  if (['vinc', 'lastik', 'oto_kurtarma'].includes(serviceId)) {
+  if (['vinc', 'lastik', 'lastikci', 'oto_kurtarma'].includes(serviceId)) {
     return 'bg-rose-50 border border-rose-100';
   }
   if (['tir', 'kamyon', 'kamyonet', 'evden_eve', 'yurt_disi_nakliye'].includes(serviceId)) {
@@ -114,6 +114,15 @@ export default function ProviderModule() {
   });
 
   const listContainerRef = useRef<HTMLDivElement>(null);
+
+  const normalizeSubType = (value: string) => {
+    const s = String(value || '').toLocaleLowerCase('tr').trim();
+    if (s === 'lastikçi') return 'lastikci';
+    if (s === 'lastik') return 'lastikci';
+    if (s === 'istasyon_sarj' || s === 'sarj_istasyonu') return 'istasyon';
+    if (s === 'gezici_sarj') return 'seyyar_sarj';
+    return s;
+  };
 
   useEffect(() => {
     fetch('/il_ilce.csv').then(res => res.text()).then(text => {
@@ -172,11 +181,32 @@ export default function ProviderModule() {
   };
 
   const toggleServiceType = (id: string) => {
+    const option = SERVICE_OPTIONS.find((s) => s.id === id);
+    if (!option) return;
+    const hasSubs = option.subs.length > 0;
+    const isSelected = formData.serviceTypes.includes(id);
+
+    if (!isSelected) {
+      setFormData((prev: any) => ({
+        ...prev,
+        serviceTypes: Array.from(new Set([...(prev.serviceTypes || []), id])),
+      }));
+      if (hasSubs) setActiveFolder(id);
+      return;
+    }
+
+    if (hasSubs && activeFolder !== id) {
+      setActiveFolder(id);
+      return;
+    }
+
+    const subIds = option.subs.map((sub) => sub.id);
     setFormData((prev: any) => ({
       ...prev,
-      serviceTypes: prev.serviceTypes.includes(id) ? [] : [id],
-      filterTags: []
+      serviceTypes: (prev.serviceTypes || []).filter((t: string) => t !== id),
+      filterTags: (prev.filterTags || []).filter((t: string) => !subIds.includes(t)),
     }));
+    if (activeFolder === id) setActiveFolder(null);
   };
 
   const toggleSubOption = (subId: string) => {
@@ -189,11 +219,17 @@ export default function ProviderModule() {
   };
 
   const getCoordinatesFromAddress = async (addr: string) => {
-    if (!GOOGLE_MAPS_API_KEY) return null;
     try {
-      const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${GOOGLE_MAPS_API_KEY}&language=tr`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=tr&q=${encodeURIComponent(addr)}`
+      );
+      if (!res.ok) return null;
       const data = await res.json();
-      return data.status === 'OK' ? { lat: data.results[0].geometry.location.lat, lng: data.results[0].geometry.location.lng } : null;
+      const first = Array.isArray(data) ? data[0] : null;
+      const lat = Number(first?.lat);
+      const lng = Number(first?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
     } catch { return null; }
   };
 
@@ -254,9 +290,19 @@ export default function ProviderModule() {
     setFormData({
       _id: p._id, businessName: p.businessName || p.firstName || '', email: p.email || '', phoneNumber: p.phoneNumber || '',
       city: addr.city || 'İstanbul', district: addr.district || 'Tuzla', address: streetPart,
-      serviceTypes: (p.service?.mainType === 'YOLCU' ? ['yolcu'] : [p.service?.subType || p.serviceType || '']),
+      serviceTypes: (() => {
+        const tags: string[] = Array.isArray(p.service?.tags) ? p.service.tags : [];
+        const fromTags = tags
+          .filter((t) => String(t).startsWith('type:'))
+          .map((t) => normalizeSubType(String(t).replace(/^type:/, '')))
+          .filter(Boolean);
+        if (fromTags.length > 0) return Array.from(new Set(fromTags));
+        const fallback = normalizeSubType(p.service?.subType || p.serviceType || '');
+        return fallback ? [fallback] : [];
+      })(),
       pricePerUnit: p.pricing?.pricePerUnit || 40,
-      filterTags: p.service?.tags || [], website: p.website || p.link || '',
+      filterTags: (Array.isArray(p.service?.tags) ? p.service.tags : []).filter((t: string) => !String(t).startsWith('type:')),
+      website: p.website || p.link || '',
       taxNumber: p.taxNumber || '',
       vehicleItems: Array.isArray(p.vehicleItems) && p.vehicleItems.length > 0
         ? p.vehicleItems
@@ -276,6 +322,7 @@ export default function ProviderModule() {
   const handleSave = async () => {
     if (!/^0\d{10}$/.test(formData.phoneNumber)) return alert("Hatalı Numara! 0 ile başlayan 11 hane girin.");
     if (formData.serviceTypes.length === 0) return alert("Hizmet türü seçiniz.");
+    if (!String(formData.taxNumber || '').trim()) return alert('Vergi numarası zorunludur.');
 
     let targetId = formData._id;
     let finalMethod = isEditing ? 'PUT' : 'POST';
@@ -292,11 +339,12 @@ export default function ProviderModule() {
 
     setLoading(true);
     try {
-      const selected = formData.serviceTypes[0];
+      const normalizedServiceTypes = (formData.serviceTypes || []).map((s: string) => normalizeSubType(s)).filter(Boolean);
+      const selected = normalizedServiceTypes[0];
       let mappedMain = 'NAKLIYE';
-      if (['oto_kurtarma', 'vinc'].includes(selected)) mappedMain = 'KURTARICI';
+      if (['oto_kurtarma', 'vinc', 'lastikci'].includes(selected)) mappedMain = 'KURTARICI';
       else if (['istasyon', 'seyyar_sarj'].includes(selected)) mappedMain = 'SARJ';
-      else if (['yolcu'].includes(selected)) mappedMain = 'YOLCU';
+      else if (['yolcu', 'minibus', 'otobus', 'midibus', 'vip_tasima'].includes(selected)) mappedMain = 'YOLCU';
       else if (['yurt_disi_nakliye'].includes(selected)) mappedMain = 'YURT_DISI';
       else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selected)) mappedMain = 'NAKLIYE';
 
@@ -308,7 +356,11 @@ export default function ProviderModule() {
       const payload: any = {
         firstName: formData.businessName, businessName: formData.businessName, email: formData.email, phoneNumber: formData.phoneNumber,
         mainType: mappedMain, serviceType: selected,
-        service: { mainType: mappedMain, subType: selected, tags: formData.filterTags },
+        service: {
+          mainType: mappedMain,
+          subType: selected,
+          tags: Array.from(new Set([...(formData.filterTags || []), ...normalizedServiceTypes.map((t: string) => `type:${t}`)])),
+        },
         address: `${formData.address}, ${formData.district}, ${formData.city}`,
         city: formData.city, district: formData.district, role: 'provider', website: formData.website,
         pricing: { pricePerUnit: Number(formData.pricePerUnit) },
@@ -398,7 +450,10 @@ export default function ProviderModule() {
     <div className="w-full min-h-screen p-6 bg-[#8ccde6] selection:bg-white/30 text-gray-900">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
         <div>
-          <div className="bg-black text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-3 w-fit tracking-widest shadow-md">Transport 245 Admin</div>
+          <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase mb-3 w-fit tracking-widest shadow-md">
+            <img src="/apple-icon.png" alt="Transport 245" className="w-4 h-4 rounded-md object-cover" />
+            Transport 245 Admin
+          </div>
           <h1 className="text-4xl font-black text-gray-900 uppercase italic drop-shadow-sm">Hizmet Ağı <span className="text-blue-800">Yönetimi</span></h1>
         </div>
         <div className="flex gap-3">
@@ -466,7 +521,7 @@ export default function ProviderModule() {
                   Mevcut Konumu Kullan
                 </button>
                 <input placeholder="WEB SİTESİ" value={formData.website} onChange={e=>setFormData({...formData, website: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
-                <input placeholder="VERGİ NUMARASI (OPSİYONEL)" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
+                <input placeholder="VERGİ NUMARASI (ZORUNLU)" value={formData.taxNumber} onChange={e=>setFormData({...formData, taxNumber: e.target.value})} className="w-full bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 font-bold text-xs outline-none placeholder-gray-500 focus:bg-white/80 transition-colors text-gray-900"/>
               </div>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
@@ -561,6 +616,12 @@ export default function ProviderModule() {
       {activeFolder && currentFolderConfig && (
         <div className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 transition-opacity">
           <div className="bg-white/80 backdrop-blur-2xl border border-white/50 w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl relative flex flex-col max-h-[80vh] text-gray-900 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:fade-in-10">
+            <button
+              onClick={() => setActiveFolder(null)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/80 border border-white/70 text-gray-700 hover:bg-red-500 hover:text-white transition-colors"
+            >
+              <X size={14} className="mx-auto" />
+            </button>
             <h2 className="text-2xl font-black uppercase italic mb-6 text-slate-900">{currentFolderConfig.label} Seçimi</h2>
             <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6 pr-2 custom-scrollbar">
               {currentFolderConfig.subs.map(sub => (
