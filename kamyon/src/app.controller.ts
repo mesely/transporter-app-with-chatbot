@@ -1,11 +1,15 @@
 import { Body, Controller, Get, Logger, Post } from '@nestjs/common';
 import { AppService } from './app.service';
+import { HealthProbeService } from './health-probe.service';
 
 @Controller()
 export class AppController {
   private readonly logger = new Logger(AppController.name);
 
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly healthProbeService: HealthProbeService,
+  ) {}
 
   @Get()
   getHello(): string {
@@ -14,7 +18,11 @@ export class AppController {
 
   @Get('healthz')
   healthz() {
-    return { ok: true, ts: Date.now() };
+    return {
+      ok: true,
+      ts: Date.now(),
+      providerProbe: this.healthProbeService.getLastReport(),
+    };
   }
 
   @Post('client-events')

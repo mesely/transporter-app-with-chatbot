@@ -14,6 +14,7 @@ import { DatabaseModule } from './database/database.module';
 import { TariffsModule } from './tariffs/tariffs.module';
 import { DataModule } from './data/data.module';
 import { UploadModule } from './upload/upload.module';
+import { HealthProbeService } from './health-probe.service';
 
 @Module({
   imports: [
@@ -47,6 +48,6 @@ import { UploadModule } from './upload/upload.module';
     UploadModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, HealthProbeService],
 })
 export class AppModule {}
