@@ -70,6 +70,33 @@ function normalizeText(v: string) {
     .trim();
 }
 
+function normalizeServiceToken(v: string) {
+  return (v || '')
+    .toLocaleLowerCase('tr')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function serviceMatchesType(service: any, type: string) {
+  if (!service) return false;
+  const mainType = String(service.mainType || '').toLocaleUpperCase('tr');
+  const subTypeRaw = String(service.subType || '').toLocaleLowerCase('tr');
+  const sub = normalizeServiceToken(subTypeRaw);
+  const wanted = normalizeServiceToken(type);
+
+  const hasAny = (tokens: string[]) => tokens.some((token) => sub.includes(normalizeServiceToken(token)));
+
+  if (type === 'seyyar_sarj') return hasAny(['seyyar_sarj', 'mobil_unit', 'mobile_unit']);
+  if (type === 'sarj') return mainType.includes('SARJ') || hasAny(['istasyon', 'seyyar_sarj', 'mobil_unit', 'sarj']);
+  if (type === 'kurtarici') return mainType.includes('KURTARICI') || hasAny(['oto_kurtarma', 'kurtar', 'cekici', 'vinc', 'lastik']);
+  if (type === 'nakliye') return mainType.includes('NAKLIYE') || hasAny(['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet', 'nakliye']);
+  if (type === 'yolcu') return mainType.includes('YOLCU') || hasAny(['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima']);
+  if (CATEGORY_MAP[type]) return hasAny([type, ...CATEGORY_MAP[type]]);
+  if (wanted) return sub.includes(wanted);
+  return false;
+}
+
 function readManualLocation(): { lat: number; lng: number; city?: string; district?: string } | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -368,8 +395,10 @@ export default function Home() {
       append?: boolean;
       force?: boolean;
       countryFallback?: boolean;
+      typeFallback?: boolean;
       silent?: boolean;
       target?: 'panel' | 'map' | 'both';
+      requestType?: string;
     }
   ) => {
     const target = opts?.target || 'both';
@@ -381,8 +410,10 @@ export default function Home() {
     const seqRef = isMapOnlyRequest ? mapFetchSeqRef : fetchSeqRef;
 
     const requestSeq = ++seqRef.current;
+    const effectiveType = typeof opts?.requestType === 'string' ? opts.requestType : type;
     const key = [
       type,
+      effectiveType,
       lat.toFixed(4),
       lng.toFixed(4),
       String(opts?.zoom ? Math.round(opts.zoom * 10) / 10 : ''),
@@ -425,7 +456,7 @@ export default function Home() {
       const params = new URLSearchParams({
         lat: String(lat),
         lng: String(lng),
-        type,
+        type: effectiveType,
         zoom: String(Math.round((opts?.zoom ?? 9) * 10) / 10),
       });
       if (opts?.limit && Number.isFinite(opts.limit)) {
@@ -442,6 +473,22 @@ export default function Home() {
       const data = await res.json();
       if (requestSeq !== seqRef.current) return;
       const normalizedData = Array.isArray(data) ? data : [];
+
+      if (
+        normalizedData.length === 0 &&
+        effectiveType &&
+        opts?.typeFallback !== false
+      ) {
+        await fetchDrivers(lat, lng, type, {
+          ...opts,
+          requestType: '',
+          force: true,
+          append: opts?.append,
+          countryFallback: false,
+          typeFallback: false,
+        });
+        return;
+      }
 
       if (
         normalizedData.length === 0 &&
@@ -464,7 +511,9 @@ export default function Home() {
       }
 
       driversCacheRef.current[key] = { data: normalizedData, ts: Date.now() };
-      writeTypeCache(type, normalizedData);
+      if (effectiveType === type) {
+        writeTypeCache(type, normalizedData);
+      }
       try {
         localStorage.setItem(LAST_RESULTS_KEY, JSON.stringify({ ts: Date.now(), data: normalizedData }));
       } catch {}
@@ -671,17 +720,7 @@ export default function Home() {
   const matchesActiveFilters = useCallback((d: any) => {
       const s = d.service;
       if (!s) return false;
-      const mainType = String(s.mainType || '').toLocaleUpperCase('tr');
-      const subType = String(s.subType || '').toLocaleLowerCase('tr');
-      let match = false;
-      if (actionType === 'seyyar_sarj')    match = subType === 'seyyar_sarj';
-      else if (actionType === 'sarj')      match = mainType.includes('SARJ') || subType === 'istasyon' || subType === 'seyyar_sarj';
-      else if (actionType === 'kurtarici') match = mainType.includes('KURTARICI') || subType === 'oto_kurtarma' || subType === 'vinc' || subType === 'lastik';
-      else if (actionType === 'nakliye')   match = mainType.includes('NAKLIYE') || ['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].includes(subType);
-      else if (actionType === 'yolcu')     match = mainType.includes('YOLCU') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType);
-      else if (CATEGORY_MAP[actionType])
-        match = subType === actionType || CATEGORY_MAP[actionType].includes(subType);
-      else match = subType === actionType;
+      const match = serviceMatchesType(s, actionType);
       if (!match) return false;
       if (activeTags.length > 0) return activeTags.some((t) => (s.tags || []).includes(t));
       return true;
@@ -842,17 +881,7 @@ export default function Home() {
     } else {
       const merged = [...(driversRef.current || []), ...(mapDriversRef.current || [])];
       const warm = merged.filter((d: any) => {
-        const s = d?.service;
-        if (!s) return false;
-        const mainType = String(s.mainType || '').toLocaleUpperCase('tr');
-        const subType = String(s.subType || '').toLocaleLowerCase('tr');
-        if (type === 'seyyar_sarj') return subType === 'seyyar_sarj';
-        if (type === 'sarj') return mainType.includes('SARJ') || subType === 'istasyon' || subType === 'seyyar_sarj';
-        if (type === 'kurtarici') return mainType.includes('KURTARICI') || subType === 'oto_kurtarma' || subType === 'vinc' || subType === 'lastik';
-        if (type === 'nakliye') return mainType.includes('NAKLIYE') || ['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].includes(subType);
-        if (type === 'yolcu') return mainType.includes('YOLCU') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType);
-        if (CATEGORY_MAP[type]) return subType === type || CATEGORY_MAP[type].includes(subType);
-        return subType === type;
+        return serviceMatchesType(d?.service, type);
       });
       if (warm.length > 0) setDrivers(prioritizePanelDrivers(warm));
     }

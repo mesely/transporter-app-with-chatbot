@@ -652,15 +652,23 @@ function ActionPanel({
     if (!service) return false;
     const mainType = String(service.mainType || '').toLocaleUpperCase('tr');
     const subType = String(service.subType || '').toLocaleLowerCase('tr');
+    const norm = (v: string) =>
+      String(v || '')
+        .toLocaleLowerCase('tr')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+    const subNorm = norm(subType);
+    const hasAny = (tokens: string[]) => tokens.some((token) => subNorm.includes(norm(token)));
 
     let match = false;
-    if (actionType === 'seyyar_sarj') match = subType === 'seyyar_sarj';
-    else if (actionType === 'sarj') match = mainType.includes('SARJ') || subType === 'istasyon' || subType === 'seyyar_sarj';
-    else if (actionType === 'kurtarici') match = mainType.includes('KURTARICI') || subType === 'oto_kurtarma' || subType === 'vinc' || subType === 'lastik';
-    else if (actionType === 'nakliye') match = mainType.includes('NAKLIYE') || ['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet'].includes(subType);
-    else if (actionType === 'yolcu') match = mainType.includes('YOLCU') || ['minibus', 'otobus', 'midibus', 'vip_tasima'].includes(subType);
-    else if (SUB_FILTERS[actionType]) match = subType === actionType || SUB_FILTERS[actionType].some((s) => s.id === subType);
-    else match = subType === actionType;
+    if (actionType === 'seyyar_sarj') match = hasAny(['seyyar_sarj', 'mobil_unit', 'mobile_unit']);
+    else if (actionType === 'sarj') match = mainType.includes('SARJ') || hasAny(['istasyon', 'seyyar_sarj', 'mobil_unit', 'sarj']);
+    else if (actionType === 'kurtarici') match = mainType.includes('KURTARICI') || hasAny(['oto_kurtarma', 'kurtar', 'cekici', 'vinc', 'lastik']);
+    else if (actionType === 'nakliye') match = mainType.includes('NAKLIYE') || hasAny(['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet', 'nakliye']);
+    else if (actionType === 'yolcu') match = mainType.includes('YOLCU') || hasAny(['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima']);
+    else if (SUB_FILTERS[actionType]) match = hasAny([actionType, ...SUB_FILTERS[actionType].map((s) => s.id)]);
+    else match = subNorm.includes(norm(actionType));
     if (!match) return false;
     if (activeTags.length > 0) {
       const tags = Array.isArray(service.tags) ? service.tags : [];
