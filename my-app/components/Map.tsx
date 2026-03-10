@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AppLang, getPreferredLang, LANG_CHANGED_EVENT, LANG_STORAGE_KEY } from '../utils/language';
+import { openSystemMap } from '../lib/openSystemMap';
 
 interface Driver {
   _id: string;
@@ -109,19 +110,19 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Servico', ru: 'Servis', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' },
 };
 
-const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; showGoogle: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
-  tr: { call: 'ARA', message: 'MESAJ AT', showGoogle: "MAPS'TE GORUNTULE", favoriteAdd: 'FAVORIYE EKLE', favoriteRemove: 'FAVORIDEN CIKAR', viewRatings: 'YORUMLARI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
-  en: { call: 'CALL', message: 'MESSAGE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITE', favoriteRemove: 'UNFAVORITE', viewRatings: 'REVIEWS', viewReports: 'REPORTS' },
-  de: { call: 'ANRUF', message: 'NACHRICHT', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE' },
-  fr: { call: 'APPELER', message: 'MESSAGE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES' },
-  it: { call: 'CHIAMA', message: 'MESSAGGIO', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'PREFERITI', favoriteRemove: 'RIMUOVI', viewRatings: 'RECENSIONI', viewReports: 'RECLAMI' },
-  es: { call: 'LLAMAR', message: 'MENSAJE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'QUITAR', viewRatings: 'RESENAS', viewReports: 'QUEJAS' },
-  pt: { call: 'LIGAR', message: 'MENSAGEM', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'REMOVER', viewRatings: 'AVALIACOES', viewReports: 'RECLAMACOES' },
-  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'IZBRANNOE', favoriteRemove: 'UBRAT', viewRatings: 'OTZYVY', viewReports: 'ZHALOBY' },
-  zh: { call: '拨打', message: '消息', showGoogle: 'GOOGLE MAPS', favoriteAdd: '收藏', favoriteRemove: '取消', viewRatings: '评价', viewReports: '投诉' },
-  ja: { call: '電話', message: 'メッセージ', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'お気に入り', favoriteRemove: '解除', viewRatings: '評価', viewReports: '苦情' },
-  ko: { call: '전화', message: '메시지', showGoogle: 'GOOGLE MAPS', favoriteAdd: '즐겨찾기', favoriteRemove: '해제', viewRatings: '리뷰', viewReports: '신고' },
-  ar: { call: 'اتصال', message: 'رسالة', showGoogle: 'GOOGLE MAPS', favoriteAdd: 'مفضلة', favoriteRemove: 'إزالة', viewRatings: 'تقييمات', viewReports: 'شكاوى' },
+const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; showMap: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
+  tr: { call: 'ARA', message: 'MESAJ AT', showMap: "MAPS'TE GORUNTULE", favoriteAdd: 'FAVORIYE EKLE', favoriteRemove: 'FAVORIDEN CIKAR', viewRatings: 'YORUMLARI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
+  en: { call: 'CALL', message: 'MESSAGE', showMap: 'MAPS', favoriteAdd: 'FAVORITE', favoriteRemove: 'UNFAVORITE', viewRatings: 'REVIEWS', viewReports: 'REPORTS' },
+  de: { call: 'ANRUF', message: 'NACHRICHT', showMap: 'MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE' },
+  fr: { call: 'APPELER', message: 'MESSAGE', showMap: 'MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES' },
+  it: { call: 'CHIAMA', message: 'MESSAGGIO', showMap: 'MAPS', favoriteAdd: 'PREFERITI', favoriteRemove: 'RIMUOVI', viewRatings: 'RECENSIONI', viewReports: 'RECLAMI' },
+  es: { call: 'LLAMAR', message: 'MENSAJE', showMap: 'MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'QUITAR', viewRatings: 'RESENAS', viewReports: 'QUEJAS' },
+  pt: { call: 'LIGAR', message: 'MENSAGEM', showMap: 'MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'REMOVER', viewRatings: 'AVALIACOES', viewReports: 'RECLAMACOES' },
+  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', showMap: 'MAPS', favoriteAdd: 'IZBRANNOE', favoriteRemove: 'UBRAT', viewRatings: 'OTZYVY', viewReports: 'ZHALOBY' },
+  zh: { call: '拨打', message: '消息', showMap: 'MAPS', favoriteAdd: '收藏', favoriteRemove: '取消', viewRatings: '评价', viewReports: '投诉' },
+  ja: { call: '電話', message: 'メッセージ', showMap: 'MAPS', favoriteAdd: 'お気に入り', favoriteRemove: '解除', viewRatings: '評価', viewReports: '苦情' },
+  ko: { call: '전화', message: '메시지', showMap: 'MAPS', favoriteAdd: '즐겨찾기', favoriteRemove: '해제', viewRatings: '리뷰', viewReports: '신고' },
+  ar: { call: 'اتصال', message: 'رسالة', showMap: 'MAPS', favoriteAdd: 'مفضلة', favoriteRemove: 'إزالة', viewRatings: 'تقييمات', viewReports: 'شكاوى' },
 };
 
 const BASE_STYLE = {
@@ -270,17 +271,6 @@ function createUserPointGeoJson(coords: [number, number] | null) {
   };
 }
 
-function createUserMarkerElement() {
-  const el = document.createElement('div');
-  el.style.width = '18px';
-  el.style.height = '18px';
-  el.style.borderRadius = '999px';
-  el.style.background = '#2563eb';
-  el.style.border = '3px solid #ffffff';
-  el.style.boxShadow = '0 0 0 6px rgba(37,99,235,0.22), 0 4px 14px rgba(15,23,42,0.35)';
-  return el;
-}
-
 function createApproximateRangeGeoJson(coords: [number, number] | null, radiusKm = 8) {
   if (!coords) return { type: 'FeatureCollection', features: [] };
   const [lat, lng] = coords;
@@ -370,7 +360,7 @@ function buildPopup(
         <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.call}</button>
         <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.message}</button>
       </div>
-      <button data-action="show" style="margin-top:7px;width:100%;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.showGoogle}</button>
+      <button data-action="show" style="margin-top:7px;width:100%;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.showMap}</button>
       <div style="display:flex;gap:7px;margin-top:7px;">
         <button data-action="ratings" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewRatings}</button>
         <button data-action="reports" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewReports}</button>
@@ -399,7 +389,7 @@ function buildPopup(
     const lat = driver.location?.coordinates?.[1];
     const lng = driver.location?.coordinates?.[0];
     if (typeof lat === 'number' && typeof lng === 'number') {
-      window.open(`https://maps.google.com/maps?q=${lat},${lng}`, '_blank');
+      openSystemMap(lat, lng, driver.businessName || 'Destination');
     }
   });
 
@@ -622,12 +612,14 @@ function MapView({
       });
 
       const marker = new maplibregl.Marker({
-        element: createUserMarkerElement(),
-        anchor: 'center',
+        color: '#2563eb',
+        scale: 1.1,
       });
       if (searchCoords) {
         marker.setLngLat([searchCoords[1], searchCoords[0]]).addTo(map);
       }
+      marker.getElement().style.zIndex = '40';
+      marker.getElement().style.filter = 'drop-shadow(0 6px 10px rgba(15, 23, 42, 0.35))';
       userMarkerRef.current = marker;
 
       const clusterLayers = RENDER_SERVICE_TYPES.map((type) => `clusters-${type}`);
