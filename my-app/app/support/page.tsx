@@ -8,6 +8,7 @@ type Lang = 'tr' | 'en' | 'fr';
 
 type Copy = {
   badge: string;
+  home: string;
   title: string;
   desc: string;
   placeholders: {
@@ -25,6 +26,7 @@ type Copy = {
 const COPY: Record<Lang, Copy> = {
   tr: {
     badge: 'DESTEK MERKEZİ',
+    home: 'Ana Sayfa',
     title: 'Size nasıl yardımcı olabiliriz?',
     desc: 'Talebinizi gönderin, supportadmin panelimize düşsün. Yanıtı doğrudan e-posta adresinize iletelim.',
     placeholders: {
@@ -40,6 +42,7 @@ const COPY: Record<Lang, Copy> = {
   },
   en: {
     badge: 'SUPPORT CENTER',
+    home: 'Home',
     title: 'How can we help you?',
     desc: 'Send your request and it will appear in support admin. We will respond directly to your email.',
     placeholders: {
@@ -55,6 +58,7 @@ const COPY: Record<Lang, Copy> = {
   },
   fr: {
     badge: 'CENTRE DE SUPPORT',
+    home: 'Accueil',
     title: 'Comment pouvons-nous vous aider?',
     desc: 'Envoyez votre demande, elle apparaitra dans support admin. Nous vous repondrons directement par e-mail.',
     placeholders: {
@@ -118,7 +122,7 @@ export default function SupportPage() {
           </div>
           <div className="inline-flex items-center gap-2">
             <a href="/marketing" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
-              Ana Sayfa
+              {t.home}
             </a>
             <select
               value={lang}

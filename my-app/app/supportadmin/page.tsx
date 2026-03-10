@@ -187,7 +187,7 @@ export default function SupportAdminPage() {
                   <div>
                     <p className="text-sm font-black text-slate-900">{ticket.subject}</p>
                     <p className="text-xs font-semibold text-slate-600">{ticket.name} - {ticket.email}</p>
-                    <p className="text-xs font-medium text-slate-500">{ticket.platform} / v{ticket.appVersion} - {formatDate(ticket.createdAt)}</p>
+                    <p className="text-xs font-medium text-slate-500">{ticket.platform} / v{ticket.appVersion || '-'} - {formatDate(ticket.createdAt)}</p>
                   </div>
                   {(() => {
                     const statusClass =

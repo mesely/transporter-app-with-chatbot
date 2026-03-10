@@ -1,6 +1,6 @@
 'use client';
 
-import { X, UserCircle2, Save, Heart, CreditCard, BadgeCheck } from 'lucide-react';
+import { X, UserCircle2, Save, Heart, BadgeCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
@@ -27,16 +27,17 @@ function getMembershipText(lang: AppLang) {
   if (lang === 'fr') {
     return {
       title: 'Adhésion',
-      firstYear: '12 premiers mois gratuits',
-      freeUntil: 'Fin de la période gratuite',
-      yearlyAfter: 'Puis annuel',
+      productLabel: 'Produit',
+      priceLabel: 'Prix',
+      storeInfoPending: 'Prix Apple en cours de chargement.',
+      storeInfoUnavailable: 'Les informations App Store ne sont pas encore disponibles.',
       paymentOnlyApple: 'Paiement uniquement via Apple In-App Purchase.',
       status: 'Statut',
       active: 'Actif',
       passive: 'Inactif',
       expiry: 'Expiration',
       iosOnlyInfo: "L'achat d'abonnement est disponible sur iOS via App Store.",
-      start: "Démarrer l'abonnement (IAP)",
+      start: "Démarrer l'abonnement",
       restore: 'Restaurer les achats',
       manage: "Gérer l'abonnement",
       processing: 'Traitement...',
@@ -45,16 +46,17 @@ function getMembershipText(lang: AppLang) {
   if (lang === 'en') {
     return {
       title: 'Membership',
-      firstYear: 'First 12 months free',
-      freeUntil: 'Free period ends',
-      yearlyAfter: 'Then yearly',
+      productLabel: 'Product',
+      priceLabel: 'Price',
+      storeInfoPending: 'Apple price is loading.',
+      storeInfoUnavailable: 'App Store information is not available yet.',
       paymentOnlyApple: 'Payment is available only via Apple In-App Purchase.',
       status: 'Status',
       active: 'Active',
       passive: 'Inactive',
       expiry: 'Expiry',
       iosOnlyInfo: 'Subscription purchase is available on iOS via App Store.',
-      start: 'Start Subscription (IAP)',
+      start: 'Start Subscription',
       restore: 'Restore Purchases',
       manage: 'Manage Subscription',
       processing: 'Processing...',
@@ -62,16 +64,17 @@ function getMembershipText(lang: AppLang) {
   }
   return {
     title: 'Üyelik',
-    firstYear: 'İlk 12 ay ücretsiz',
-    freeUntil: 'Ücretsiz dönem bitiş',
-    yearlyAfter: 'Sonrasında yıllık',
+    productLabel: 'Ürün',
+    priceLabel: 'Fiyat',
+    storeInfoPending: 'Apple fiyatı yükleniyor.',
+    storeInfoUnavailable: 'App Store bilgisi henüz alınamadı.',
     paymentOnlyApple: 'Ödeme yalnızca Apple In-App Purchase ile yapılır.',
     status: 'Durum',
     active: 'Aktif',
     passive: 'Pasif',
     expiry: 'Bitiş',
     iosOnlyInfo: 'Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.',
-    start: 'Aboneliği Başlat (IAP)',
+    start: 'Aboneliği Başlat',
     restore: 'Satın Alımları Geri Yükle',
     manage: 'Aboneliği Yönet',
     processing: 'İşleniyor...',
@@ -88,7 +91,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [name, setName] = useState('');
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [saved, setSaved] = useState(false);
-  const [membershipStartedAt, setMembershipStartedAt] = useState<number | null>(null);
   const [appLang, setAppLang] = useState<AppLang>('tr');
   const membershipIap = useMembershipIap();
 
@@ -104,10 +106,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setFavorites([]);
     }
 
-    const storedMembershipStart = Number(localStorage.getItem('Transport_membership_started_at') || '');
-    if (Number.isFinite(storedMembershipStart) && storedMembershipStart > 0) {
-      setMembershipStartedAt(storedMembershipStart);
-    }
     setAppLang(getPreferredLang());
   }, [isOpen]);
 
@@ -151,13 +149,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     window.location.assign('/auth');
   };
 
-  const freeUntilText = useMemo(() => {
-    if (!membershipStartedAt) return '-';
-    const next = new Date(membershipStartedAt);
-    next.setFullYear(next.getFullYear() + 1);
-    return next.toLocaleDateString(toLocaleTag(appLang));
-  }, [appLang, membershipStartedAt]);
-
   const iapExpiresText = useMemo(() => {
     if (!membershipIap.expiresDate) return '-';
     const dt = new Date(membershipIap.expiresDate);
@@ -165,6 +156,12 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     return dt.toLocaleDateString(toLocaleTag(appLang));
   }, [appLang, membershipIap.expiresDate]);
   const membershipText = useMemo(() => getMembershipText(appLang), [appLang]);
+  const membershipProductName = useMemo(() => {
+    const title = String(membershipIap.productTitle || '').trim();
+    const description = String(membershipIap.productDescription || '').trim();
+    return title || description || '';
+  }, [membershipIap.productDescription, membershipIap.productTitle]);
+  const membershipPrice = useMemo(() => String(membershipIap.priceText || '').trim(), [membershipIap.priceText]);
 
   if (!isOpen) return null;
 
@@ -207,17 +204,25 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           Çıkış Yap
         </button>
 
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/90 p-3">
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
           <div className="flex items-center gap-2">
-            <BadgeCheck className="text-emerald-600" size={16} />
+            <BadgeCheck className="text-cyan-700" size={16} />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{membershipText.title}</p>
           </div>
-          <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-emerald-700 border border-emerald-100">
-            <CreditCard size={12} /> Premium
-          </div>
-          <p className="mt-1 text-[12px] font-black text-slate-900">{membershipText.firstYear}</p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.freeUntil}: {freeUntilText}</p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.yearlyAfter} {membershipIap.priceText || '1 EUR'} (store local price).</p>
+          {membershipProductName ? (
+            <p className="mt-2 text-[11px] font-semibold text-slate-700">
+              {membershipText.productLabel}: {membershipProductName}
+            </p>
+          ) : null}
+          {membershipPrice ? (
+            <p className="mt-1 text-[11px] font-semibold text-slate-700">
+              {membershipText.priceLabel}: {membershipPrice}
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] font-semibold text-slate-600">
+              {membershipProductName ? membershipText.storeInfoPending : membershipText.storeInfoUnavailable}
+            </p>
+          )}
           <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.paymentOnlyApple}</p>
           <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.status}: {membershipIap.isActive ? membershipText.active : membershipText.passive}</p>
           <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.expiry}: {iapExpiresText}</p>
