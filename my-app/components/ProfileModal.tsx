@@ -31,7 +31,7 @@ function getMembershipText(lang: AppLang) {
       priceLabel: 'Prix',
       storeInfoPending: 'Prix Apple en cours de chargement.',
       storeInfoUnavailable: 'Les informations App Store ne sont pas encore disponibles.',
-      paymentOnlyApple: 'Paiement uniquement via Apple In-App Purchase.',
+      paymentOnlyApple: 'Paiement uniquement via abonnement App Store.',
       status: 'Statut',
       active: 'Actif',
       passive: 'Inactif',
@@ -50,7 +50,7 @@ function getMembershipText(lang: AppLang) {
       priceLabel: 'Price',
       storeInfoPending: 'Apple price is loading.',
       storeInfoUnavailable: 'App Store information is not available yet.',
-      paymentOnlyApple: 'Payment is available only via Apple In-App Purchase.',
+      paymentOnlyApple: 'Payment is available only via App Store subscription.',
       status: 'Status',
       active: 'Active',
       passive: 'Inactive',
@@ -68,7 +68,7 @@ function getMembershipText(lang: AppLang) {
     priceLabel: 'Fiyat',
     storeInfoPending: 'Apple fiyatı yükleniyor.',
     storeInfoUnavailable: 'App Store bilgisi henüz alınamadı.',
-    paymentOnlyApple: 'Ödeme yalnızca Apple In-App Purchase ile yapılır.',
+    paymentOnlyApple: 'Ödeme yalnızca App Store aboneliği ile yapılır.',
     status: 'Durum',
     active: 'Aktif',
     passive: 'Pasif',
@@ -233,7 +233,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           )}
           {membershipIap.isNativeIOS && !membershipIap.hasPurchasesPlugin && (
             <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-700">
-              IAP eklentisi bu iOS buildinde aktif değil. Xcode paketlerini yenileyip tekrar build alın.
+              Abonelik eklentisi bu iOS buildinde aktif değil. Xcode paketlerini yenileyip tekrar build alın.
             </p>
           )}
           {membershipIap.errorText && membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin && (
@@ -241,13 +241,15 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           )}
           {membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin ? (
             <div className="mt-3 grid gap-2">
-              <button
-                onClick={membershipIap.purchase}
-                disabled={membershipIap.isLoading}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white disabled:opacity-60"
-              >
-                {membershipIap.isLoading ? membershipText.processing : membershipText.start}
-              </button>
+              {!membershipIap.isActive && (
+                <button
+                  onClick={membershipIap.purchase}
+                  disabled={membershipIap.isLoading}
+                  className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                >
+                  {membershipIap.isLoading ? membershipText.processing : membershipText.start}
+                </button>
+              )}
               <button
                 onClick={membershipIap.restore}
                 disabled={membershipIap.isLoading}
