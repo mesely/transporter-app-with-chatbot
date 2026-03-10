@@ -198,6 +198,7 @@ export default function SettingsPage() {
   const handleDeleteAccount = async () => {
     const confirmed = confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');
     if (!confirmed) return;
+    const isAuthenticatedLocal = localStorage.getItem('Transport_auth_logged_in') === '1';
 
     await deleteProviderRecordIfExists();
 
@@ -228,7 +229,7 @@ export default function SettingsPage() {
       lastDeleteError = e;
     }
 
-    if (!deleteOk && hadFirebaseSession) {
+    if (!deleteOk && (hadFirebaseSession || isAuthenticatedLocal)) {
       const rawError = String(lastDeleteError?.message || lastDeleteError || '').toLowerCase();
       if (
         rawError.includes('requires-recent-login') ||
@@ -251,7 +252,11 @@ export default function SettingsPage() {
       await signOut(auth);
     } catch {}
     clearLocalSession();
-    alert('Hesap silindi.');
+    if (membershipIap.isActive) {
+      alert('Hesap silindi. Not: App Store aboneliği Apple Kimliğinize bağlıdır. Gerekirse App Store abonelikler ekranından iptal edebilirsiniz.');
+    } else {
+      alert('Hesap silindi.');
+    }
     router.replace('/auth');
   };
 
