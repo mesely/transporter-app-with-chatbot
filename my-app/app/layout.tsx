@@ -1,9 +1,6 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
 import { Metadata } from "next";
 import AuthGate from "../components/auth/AuthGate";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Transport 245 | Geleceğin Lojistik Ağı",
@@ -55,7 +52,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body 
-        className={`${inter.className} h-full bg-[#fdfdfd] antialiased`}
+        className="h-full bg-[#fdfdfd] antialiased"
         suppressHydrationWarning
       >
         <AuthGate>{children}</AuthGate>

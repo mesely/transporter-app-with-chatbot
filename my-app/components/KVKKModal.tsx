@@ -62,7 +62,7 @@ export default function KVKKModal({ isOpen, onClose, readOnly = false }: KVKKMod
 
           <section className="space-y-2">
             <h3 className="font-black text-gray-900 uppercase tracking-wide">3. Kişisel Verilerin Kaynakları</h3>
-            <p>Veriler; kullanıcı beyanı, kullanıcı tarafından eklenen/düzeltilen bilgiler ve Google gibi herkese açık üçüncü taraf kaynaklardan elde edilir.</p>
+            <p>Veriler; kullanıcı beyanı, kullanıcı tarafından eklenen/düzeltilen bilgiler ve herkese açık üçüncü taraf kaynaklardan elde edilir.</p>
           </section>
 
           <section className="space-y-2">

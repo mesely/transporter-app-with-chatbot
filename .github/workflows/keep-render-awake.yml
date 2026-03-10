@@ -1,0 +1,28 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Random wait (1-14 min)
+        shell: bash
+        run: |
+          MINUTES=$(( (RANDOM % 14) + 1 ))
+          SECONDS=$(( MINUTES * 60 ))
+          echo "Waiting ${MINUTES} minute(s) before ping..."
+          sleep "${SECONDS}"
+
+      - name: Ping health endpoint
+        env:
+          HEALTH_URL: ${{ secrets.RENDER_HEALTH_URL }}
+        shell: bash
+        run: |
+          URL="${HEALTH_URL:-https://transporter-app-with-chatbot.onrender.com/healthz}"
+          echo "Pinging ${URL}"
+          curl -fsS --max-time 20 "${URL}" > /dev/null
+          echo "Ping successful"

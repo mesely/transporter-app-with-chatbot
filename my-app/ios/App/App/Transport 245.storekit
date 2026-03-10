@@ -1,0 +1,127 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "FD7E8BBB",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6759760684",
+    "_developerTeamID" : "JBYQ99B6X5",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 794350812.90170097,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21959737",
+      "localizations" : [
+
+      ],
+      "name" : "Transport245Membership",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "0.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6759993923",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Yeni nesil lojistik ağının tüm özelliklerine hemen eriş",
+              "displayName" : "Transport 245 Yıllık Üyelik",
+              "locale" : "tr"
+            },
+            {
+              "description" : "Accès instantané aux fonctions logistiques nouvelle gen",
+              "displayName" : "Adhésion annuelle Transport 245",
+              "locale" : "fr"
+            },
+            {
+              "description" : "Instant access to all next-gen logistics features",
+              "displayName" : "Transport 245 Yearly Membership",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mesely.transporter.premium.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Transport245 Yearly Membership",
+          "subscriptionGroupID" : "21959737",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
