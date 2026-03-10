@@ -7,7 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { auth } from '../../lib/firebase';
 
-const PUBLIC_PATHS = new Set(['/', '/auth', '/privacy', '/support', '/supportadmin', '/marketing']);
+const PUBLIC_PATHS = new Set(['/auth', '/privacy', '/support', '/supportadmin', '/marketing']);
 
 export default function AuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
