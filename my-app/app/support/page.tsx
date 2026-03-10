@@ -15,7 +15,6 @@ type Copy = {
     email: string;
     subject: string;
     message: string;
-    appVersion: string;
   };
   submit: string;
   success: string;
@@ -33,7 +32,6 @@ const COPY: Record<Lang, Copy> = {
       email: 'E-posta',
       subject: 'Konu',
       message: 'Mesajınızı yazın...',
-      appVersion: 'Uygulama Sürümü',
     },
     submit: 'Talebi Gönder',
     success: 'Talebiniz alındı. En kısa sürede e-posta ile dönüş yapacağız.',
@@ -49,7 +47,6 @@ const COPY: Record<Lang, Copy> = {
       email: 'Email',
       subject: 'Subject',
       message: 'Write your message...',
-      appVersion: 'App Version',
     },
     submit: 'Send Request',
     success: 'Your request has been received. We will reply by email shortly.',
@@ -65,7 +62,6 @@ const COPY: Record<Lang, Copy> = {
       email: 'E-mail',
       subject: 'Sujet',
       message: 'Ecrivez votre message...',
-      appVersion: 'Version de l\'app',
     },
     submit: 'Envoyer la Demande',
     success: 'Votre demande a ete recue. Nous vous repondrons rapidement par e-mail.',
@@ -81,14 +77,15 @@ export default function SupportPage() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [platform, setPlatform] = useState('iOS');
-  const [appVersion, setAppVersion] = useState('1.0.21');
   const [success, setSuccess] = useState('');
 
   const t = useMemo(() => COPY[lang], [lang]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.includes('@') || !subject.trim() || message.trim().length < 8) {
+    const safeEmail = email.trim();
+    const looksValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail);
+    if (!name.trim() || !looksValidEmail || !subject.trim() || !message.trim()) {
       alert(t.invalid);
       return;
     }
@@ -99,7 +96,6 @@ export default function SupportPage() {
       subject: subject.trim(),
       message: message.trim(),
       platform: platform.trim(),
-      appVersion: appVersion.trim(),
     });
 
     setName('');
@@ -149,13 +145,12 @@ export default function SupportPage() {
             <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t.placeholders.subject} className="w-full border-b border-slate-300 px-1 py-2 text-sm font-semibold outline-none" />
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t.placeholders.message} className="h-36 w-full resize-none border-b border-slate-300 px-1 py-2 text-sm font-medium outline-none" />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-1">
               <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full border-b border-slate-300 bg-white px-1 py-2 text-sm font-semibold outline-none">
                 <option>iOS</option>
                 <option>Android</option>
                 <option>Web</option>
               </select>
-              <input value={appVersion} onChange={(e) => setAppVersion(e.target.value)} placeholder={t.placeholders.appVersion} className="w-full border-b border-slate-300 px-1 py-2 text-sm font-semibold outline-none" />
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">

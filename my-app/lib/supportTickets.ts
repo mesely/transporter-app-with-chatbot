@@ -1,6 +1,6 @@
 'use client';
 
-export type SupportTicketStatus = 'open' | 'resolved';
+export type SupportTicketStatus = 'open' | 'approved' | 'rejected' | 'resolved';
 
 export type SupportTicket = {
   id: string;
@@ -10,7 +10,7 @@ export type SupportTicket = {
   subject: string;
   message: string;
   platform: string;
-  appVersion: string;
+  appVersion?: string;
   status: SupportTicketStatus;
 };
 
@@ -53,6 +53,7 @@ export function listSupportTickets() {
 export function createSupportTicket(input: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) {
   const next: SupportTicket = {
     ...input,
+    appVersion: String(input.appVersion || '').trim() || '-',
     id: genId(),
     createdAt: new Date().toISOString(),
     status: 'open',
