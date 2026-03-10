@@ -1,15 +1,66 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Mail, RefreshCw, Shield, Trash2 } from 'lucide-react';
-import {
-  deleteSupportTicket,
-  listSupportTickets,
-  SupportTicket,
-  updateSupportTicketStatus,
-} from '../../lib/supportTickets';
+import { Mail, RefreshCw, Trash2 } from 'lucide-react';
+import { deleteSupportTicket, listSupportTickets, SupportTicket, updateSupportTicketStatus } from '../../lib/supportTickets';
+
+type Lang = 'tr' | 'en' | 'fr';
 
 const ADMIN_PIN = process.env.NEXT_PUBLIC_SUPPORT_ADMIN_PIN || 'harun245';
+
+const COPY = {
+  tr: {
+    title: 'Support Admin',
+    enterPin: 'Admin PIN girin',
+    login: 'Panele Gir',
+    wrongPin: 'PIN hatalı.',
+    refresh: 'Yenile',
+    hideResolved: 'Çözülenleri Gizle',
+    showResolved: 'Çözülenleri Göster',
+    noTickets: 'Gösterilecek destek talebi yok.',
+    reply: 'Mail ile Cevapla',
+    resolve: 'Çözüldü',
+    reopen: 'Tekrar Aç',
+    del: 'Sil',
+    confirmDelete: 'Bu talep silinsin mi?',
+    open: 'Açık',
+    resolved: 'Çözüldü',
+  },
+  en: {
+    title: 'Support Admin',
+    enterPin: 'Enter admin PIN',
+    login: 'Open Panel',
+    wrongPin: 'Wrong PIN.',
+    refresh: 'Refresh',
+    hideResolved: 'Hide Resolved',
+    showResolved: 'Show Resolved',
+    noTickets: 'No support ticket to display.',
+    reply: 'Reply by Email',
+    resolve: 'Mark Resolved',
+    reopen: 'Reopen',
+    del: 'Delete',
+    confirmDelete: 'Delete this ticket?',
+    open: 'Open',
+    resolved: 'Resolved',
+  },
+  fr: {
+    title: 'Support Admin',
+    enterPin: 'Entrez le PIN admin',
+    login: 'Ouvrir le Panneau',
+    wrongPin: 'PIN incorrect.',
+    refresh: 'Actualiser',
+    hideResolved: 'Masquer Résolus',
+    showResolved: 'Afficher Résolus',
+    noTickets: 'Aucune demande à afficher.',
+    reply: 'Répondre par E-mail',
+    resolve: 'Marquer Résolu',
+    reopen: 'Rouvrir',
+    del: 'Supprimer',
+    confirmDelete: 'Supprimer cette demande ?',
+    open: 'Ouvert',
+    resolved: 'Résolu',
+  },
+} as const;
 
 function formatDate(value: string) {
   const d = new Date(value);
@@ -17,30 +68,29 @@ function formatDate(value: string) {
 }
 
 export default function SupportAdminPage() {
+  const [lang, setLang] = useState<Lang>('tr');
   const [pin, setPin] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [showResolved, setShowResolved] = useState(true);
 
-  const reload = () => {
-    setTickets(listSupportTickets());
-  };
+  const t = COPY[lang];
+
+  const reload = () => setTickets(listSupportTickets());
 
   useEffect(() => {
     if (!unlocked) return;
     reload();
   }, [unlocked]);
 
-  const visibleTickets = useMemo(() => {
-    return tickets.filter((t) => (showResolved ? true : t.status === 'open'));
-  }, [showResolved, tickets]);
+  const visibleTickets = useMemo(() => tickets.filter((item) => (showResolved ? true : item.status === 'open')), [showResolved, tickets]);
 
   const tryUnlock = () => {
     if (pin === ADMIN_PIN) {
       setUnlocked(true);
       return;
     }
-    alert('PIN hatali.');
+    alert(t.wrongPin);
   };
 
   const buildReplyHref = (ticket: SupportTicket) => {
@@ -52,7 +102,7 @@ export default function SupportAdminPage() {
         'Destek talebiniz incelendi.',
         `Talep ID: ${ticket.id}`,
         '',
-        '[Buraya yanitinizi yazin]',
+        '[Yanıt]',
         '',
         'Transport 245 Support Team',
       ].join('\n'),
@@ -62,26 +112,29 @@ export default function SupportAdminPage() {
 
   if (!unlocked) {
     return (
-      <main className="min-h-screen bg-[#8ccde6] px-4 py-8 text-slate-900 md:px-8">
-        <div className="mx-auto max-w-lg rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-xl backdrop-blur-xl">
-          <div className="mb-4 flex items-center gap-2">
-            <Shield size={18} className="text-cyan-700" />
-            <h1 className="text-lg font-black uppercase tracking-wide">Support Admin</h1>
-          </div>
-          <p className="text-sm font-semibold text-slate-600">Paneli acmak icin admin PIN girin.</p>
+      <main className="min-h-screen bg-white text-slate-900">
+        <div className="mx-auto max-w-lg px-5 py-8">
+          <header className="mb-8 flex items-center justify-between border-b border-slate-200 pb-4">
+            <div className="inline-flex items-center gap-3">
+              <img src="/favicon.png" alt="Transport 245" className="h-10 w-10 rounded-xl object-cover" />
+              <p className="text-sm font-black uppercase tracking-[0.15em] text-cyan-700">{t.title}</p>
+            </div>
+            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+              <option value="tr">Türkçe</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+            </select>
+          </header>
+
           <input
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             type="password"
-            placeholder="Admin PIN"
-            className="mt-4 w-full rounded-xl border border-white/70 bg-white/90 px-3 py-2 text-sm font-bold outline-none"
+            placeholder={t.enterPin}
+            className="w-full border-b border-slate-300 px-1 py-2 text-sm font-semibold outline-none"
           />
-          <button
-            onClick={tryUnlock}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2 text-xs font-black uppercase text-white"
-          >
-            <Shield size={14} />
-            Panele Gir
+          <button onClick={tryUnlock} className="mt-4 rounded-xl bg-cyan-700 px-5 py-2.5 text-xs font-black uppercase tracking-wide text-white">
+            {t.login}
           </button>
         </div>
       </main>
@@ -89,104 +142,72 @@ export default function SupportAdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#8ccde6] px-4 py-8 text-slate-900 md:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img src="/favicon.png" alt="Transport 245" className="h-10 w-10 rounded-xl object-cover shadow-md" />
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Transport 245</p>
-                <h1 className="text-xl font-black uppercase">Support Admin Panel</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={reload} className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-[11px] font-black uppercase">
-                <span className="inline-flex items-center gap-1"><RefreshCw size={13} /> Yenile</span>
-              </button>
-              <button
-                onClick={() => setShowResolved((v) => !v)}
-                className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-[11px] font-black uppercase"
-              >
-                {showResolved ? 'Resolved Gizle' : 'Resolved Goster'}
-              </button>
-            </div>
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="inline-flex items-center gap-3">
+            <img src="/favicon.png" alt="Transport 245" className="h-10 w-10 rounded-xl object-cover" />
+            <p className="text-sm font-black uppercase tracking-[0.15em] text-cyan-700">{t.title}</p>
+          </div>
+
+          <div className="inline-flex items-center gap-2">
+            <button onClick={reload} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">
+              <span className="inline-flex items-center gap-1"><RefreshCw size={13} /> {t.refresh}</span>
+            </button>
+            <button onClick={() => setShowResolved((v) => !v)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">
+              {showResolved ? t.hideResolved : t.showResolved}
+            </button>
+            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+              <option value="tr">Türkçe</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+            </select>
           </div>
         </header>
 
         <div className="space-y-4">
           {visibleTickets.length === 0 ? (
-            <div className="rounded-2xl border border-white/70 bg-white/80 p-6 text-sm font-bold text-slate-600">
-              Gosterilecek destek talebi yok.
-            </div>
+            <p className="text-sm font-semibold text-slate-500">{t.noTickets}</p>
           ) : (
             visibleTickets.map((ticket) => (
-              <article key={ticket.id} className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <article key={ticket.id} className="border-b border-slate-200 pb-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="text-[10px] font-black uppercase text-slate-500">Ticket</p>
-                    <h2 className="text-sm font-black uppercase text-slate-900">{ticket.subject}</h2>
-                    <p className="mt-1 text-xs font-semibold text-slate-600">
-                      {ticket.name} - {ticket.email}
-                    </p>
-                    <p className="text-[11px] font-semibold text-slate-600">
-                      {ticket.platform} / v{ticket.appVersion} - {formatDate(ticket.createdAt)}
-                    </p>
+                    <p className="text-sm font-black text-slate-900">{ticket.subject}</p>
+                    <p className="text-xs font-semibold text-slate-600">{ticket.name} - {ticket.email}</p>
+                    <p className="text-xs font-medium text-slate-500">{ticket.platform} / v{ticket.appVersion} - {formatDate(ticket.createdAt)}</p>
                   </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${
-                      ticket.status === 'open' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                    }`}
-                  >
-                    {ticket.status}
+                  <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${ticket.status === 'open' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {ticket.status === 'open' ? t.open : t.resolved}
                   </span>
                 </div>
 
-                <p className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-                  {ticket.message}
-                </p>
+                <p className="mt-2 text-sm font-medium text-slate-700">{ticket.message}</p>
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <a
-                    href={buildReplyHref(ticket)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-cyan-700 px-3 py-2 text-[11px] font-black uppercase text-white"
-                  >
-                    <Mail size={13} />
-                    Mail ile Cevapla
+                  <a href={buildReplyHref(ticket)} className="inline-flex items-center gap-1 rounded-xl bg-cyan-700 px-3 py-2 text-[11px] font-black uppercase text-white">
+                    <Mail size={13} /> {t.reply}
                   </a>
+
                   {ticket.status === 'open' ? (
-                    <button
-                      onClick={() => {
-                        updateSupportTicketStatus(ticket.id, 'resolved');
-                        reload();
-                      }}
-                      className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700"
-                    >
-                      <CheckCircle2 size={13} />
-                      Cozuldu Isaretle
+                    <button onClick={() => { updateSupportTicketStatus(ticket.id, 'resolved'); reload(); }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700">
+                      {t.resolve}
                     </button>
                   ) : (
-                    <button
-                      onClick={() => {
-                        updateSupportTicketStatus(ticket.id, 'open');
-                        reload();
-                      }}
-                      className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-black uppercase text-amber-700"
-                    >
-                      <RefreshCw size={13} />
-                      Tekrar Ac
+                    <button onClick={() => { updateSupportTicketStatus(ticket.id, 'open'); reload(); }} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-black uppercase text-amber-700">
+                      {t.reopen}
                     </button>
                   )}
+
                   <button
                     onClick={() => {
-                      if (!confirm('Bu talep silinsin mi?')) return;
+                      if (!confirm(t.confirmDelete)) return;
                       deleteSupportTicket(ticket.id);
                       reload();
                     }}
                     className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-black uppercase text-red-700"
                   >
-                    <Trash2 size={13} />
-                    Sil
+                    <Trash2 size={13} /> {t.del}
                   </button>
                 </div>
               </article>
