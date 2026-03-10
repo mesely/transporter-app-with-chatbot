@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteUser, signOut } from 'firebase/auth';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { Capacitor } from '@capacitor/core';
 import { auth } from '../../lib/firebase';
 import KVKKModal from '../../components/KVKKModal';
 import UserAgreementModal from '../../components/UserAgreementModal';
@@ -170,7 +171,20 @@ export default function SettingsPage() {
     localStorage.removeItem('Transport_user_country_code');
   };
 
+  const deleteProviderRecordIfExists = async () => {
+    if (!normalizedPhone) return;
+    try {
+      const byPhoneRes = await fetch(`${API_URL}/users/by-phone?phone=${encodeURIComponent(normalizedPhone)}`);
+      if (!byPhoneRes.ok) return;
+      const provider = await byPhoneRes.json();
+      const providerId = String(provider?._id || '').trim();
+      if (!providerId) return;
+      await fetch(`${API_URL}/users/self/${providerId}`, { method: 'DELETE' });
+    } catch {}
+  };
+
   const handleLogout = async () => {
+    await membershipIap.resetSession();
     try {
       await FirebaseAuthentication.signOut();
     } catch {}
@@ -185,14 +199,39 @@ export default function SettingsPage() {
     const confirmed = confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');
     if (!confirmed) return;
 
+    await deleteProviderRecordIfExists();
+
+    let lastDeleteError: any = null;
     let deleteOk = false;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await FirebaseAuthentication.deleteUser();
+        deleteOk = true;
+      }
+    } catch (e) {
+      lastDeleteError = e;
+    }
+
     try {
       if (auth.currentUser) {
         await deleteUser(auth.currentUser);
         deleteOk = true;
       }
-    } catch {}
+    } catch (e) {
+      lastDeleteError = e;
+    }
 
+    if (!deleteOk) {
+      const rawError = String(lastDeleteError?.message || lastDeleteError || '').toLowerCase();
+      if (rawError.includes('requires-recent-login')) {
+        alert('Güvenlik nedeniyle hesap silme için yeniden doğrulama gerekiyor. Lütfen tekrar giriş yapıp yeniden deneyin.');
+        return;
+      }
+      alert('Hesap silinemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
+      return;
+    }
+
+    await membershipIap.resetSession();
     try {
       await FirebaseAuthentication.signOut();
     } catch {}
@@ -200,12 +239,7 @@ export default function SettingsPage() {
       await signOut(auth);
     } catch {}
     clearLocalSession();
-
-    if (!deleteOk) {
-      alert('Hesap cihazdan kapatıldı. Firebase hesabını silmek için tekrar giriş yapıp yeniden deneyin.');
-    } else {
-      alert('Hesap silindi.');
-    }
+    alert('Hesap silindi.');
     router.replace('/auth');
   };
 

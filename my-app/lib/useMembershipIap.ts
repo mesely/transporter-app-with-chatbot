@@ -56,7 +56,9 @@ export function useMembershipIap() {
   const [isConfigured, setIsConfigured] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [expiresDate, setExpiresDate] = useState<string | null>(null);
-  const [priceText, setPriceText] = useState<string>('Yıllık');
+  const [priceText, setPriceText] = useState<string>('');
+  const [productTitle, setProductTitle] = useState<string>('');
+  const [productDescription, setProductDescription] = useState<string>('');
   const [errorText, setErrorText] = useState<string | null>(null);
   const configuredOnceRef = useRef(false);
 
@@ -113,6 +115,10 @@ export function useMembershipIap() {
 
       const productRes = await Purchases.getProducts({ productIdentifiers: [PRODUCT_ID] });
       const product: PurchasesStoreProduct | undefined = productRes?.products?.[0];
+      const productTitleRaw = String((product as any)?.title || '').trim();
+      const productDescriptionRaw = String((product as any)?.description || '').trim();
+      if (productTitleRaw) setProductTitle(productTitleRaw);
+      if (productDescriptionRaw) setProductDescription(productDescriptionRaw);
       if (product?.priceString) {
         const localized = String(product.priceString).trim();
         if (localized) setPriceText(localized);
@@ -120,7 +126,11 @@ export function useMembershipIap() {
         const offeringsRes = await Purchases.getOfferings();
         const annualPackage = findAnnualPackage(offeringsRes);
         const packagePrice = String(annualPackage?.storeProduct?.priceString || '').trim();
+        const packageTitle = String(annualPackage?.storeProduct?.title || '').trim();
+        const packageDescription = String(annualPackage?.storeProduct?.description || '').trim();
         if (packagePrice) setPriceText(packagePrice);
+        if (packageTitle) setProductTitle(packageTitle);
+        if (packageDescription) setProductDescription(packageDescription);
       }
 
       const infoRes = await Purchases.getCustomerInfo();
@@ -198,6 +208,19 @@ export function useMembershipIap() {
     }
   }, []);
 
+  const resetSession = useCallback(async () => {
+    if (!isNativeIOS || !hasPurchasesPlugin) return;
+    try {
+      const ok = await configureIfNeeded();
+      if (!ok) return;
+      await Purchases.logOut();
+      setIsActive(false);
+      setExpiresDate(null);
+    } catch (e) {
+      console.warn('[IAP resetSession error]', e);
+    }
+  }, [configureIfNeeded, hasPurchasesPlugin, isNativeIOS]);
+
   useEffect(() => {
     void loadProductAndStatus();
   }, [loadProductAndStatus]);
@@ -210,10 +233,13 @@ export function useMembershipIap() {
     isActive,
     expiresDate,
     priceText,
+    productTitle,
+    productDescription,
     errorText,
     purchase,
     restore,
     openManageSubscriptions,
     refresh: loadProductAndStatus,
+    resetSession,
   };
 }

@@ -611,15 +611,23 @@ function MapView({
         },
       });
 
+      const markerEl = document.createElement('div');
+      markerEl.style.width = '18px';
+      markerEl.style.height = '18px';
+      markerEl.style.borderRadius = '999px';
+      markerEl.style.background = '#2563eb';
+      markerEl.style.border = '3px solid #ffffff';
+      markerEl.style.boxShadow = '0 0 0 6px rgba(37, 99, 235, 0.25), 0 6px 12px rgba(15, 23, 42, 0.35)';
+      markerEl.style.pointerEvents = 'none';
+
       const marker = new maplibregl.Marker({
-        color: '#2563eb',
-        scale: 1.1,
+        element: markerEl,
+        anchor: 'center',
       });
       if (searchCoords) {
         marker.setLngLat([searchCoords[1], searchCoords[0]]).addTo(map);
       }
-      marker.getElement().style.zIndex = '40';
-      marker.getElement().style.filter = 'drop-shadow(0 6px 10px rgba(15, 23, 42, 0.35))';
+      marker.getElement().style.zIndex = '120';
       userMarkerRef.current = marker;
 
       const clusterLayers = RENDER_SERVICE_TYPES.map((type) => `clusters-${type}`);

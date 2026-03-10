@@ -132,6 +132,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   };
 
   const handleLogout = async () => {
+    await membershipIap.resetSession();
     try {
       await FirebaseAuthentication.signOut();
     } catch {}
