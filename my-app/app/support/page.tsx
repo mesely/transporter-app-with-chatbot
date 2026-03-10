@@ -3,15 +3,14 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { CircleCheckBig, LifeBuoy, Mail, MessageSquare, Smartphone } from 'lucide-react';
 import { createSupportTicket } from '../../lib/supportTickets';
-const APP_STORE_URL = process.env.NEXT_PUBLIC_APP_STORE_URL || '#';
 
-type Lang = 'tr' | 'en';
+type Lang = 'tr' | 'en' | 'fr';
 
 const COPY = {
   tr: {
     badge: 'TRANSPORT 245 DESTEK',
     title: 'Destek Talebi Olustur',
-    desc: 'Sorun, oneriler ve teknik destek taleplerinizi form ile iletin. Talebiniz support paneline dusup e-posta ile yanitlanir.',
+    desc: 'Sorun, oneriler ve teknik destek taleplerinizi form ile iletin. Talebiniz support paneline duser, yanit e-posta ile size ulasir.',
     formTitle: 'Hizli Destek Formu',
     name: 'Ad Soyad',
     email: 'E-posta',
@@ -22,16 +21,14 @@ const COPY = {
     submit: 'Talep Gonder',
     success: 'Talebiniz alindi. En kisa surede e-posta ile donus yapacagiz.',
     contactTitle: 'Dogrudan Iletisim',
-    contactText: 'Acil durumlarda bize dogrudan yazabilirsiniz:',
-    emailLabel: 'Mail Ac',
-    langButton: 'EN',
-    marketing: 'Marketing Sayfasi',
-    appStore: 'App Store',
+    contactText: 'Acil durumlar icin dogrudan iletisim:',
+    emailLabel: 'Mail Gonder',
+    langButton: 'EN / FR',
   },
   en: {
     badge: 'TRANSPORT 245 SUPPORT',
     title: 'Create a Support Request',
-    desc: 'Send issues, suggestions, and support requests through this form. Your request appears in support admin and can be answered by email.',
+    desc: 'Send issues, suggestions, and technical requests through this form. Your request appears in support admin and the reply is sent by email.',
     formTitle: 'Quick Support Form',
     name: 'Full Name',
     email: 'Email',
@@ -40,15 +37,37 @@ const COPY = {
     platform: 'Platform',
     appVersion: 'App Version',
     submit: 'Send Request',
-    success: 'Your request has been received. We will reply by email soon.',
+    success: 'Your request has been received. We will reply by email shortly.',
     contactTitle: 'Direct Contact',
-    contactText: 'For urgent cases, contact us directly:',
-    emailLabel: 'Open Mail',
-    langButton: 'TR',
-    marketing: 'Marketing Page',
-    appStore: 'App Store',
+    contactText: 'For urgent needs, contact us directly:',
+    emailLabel: 'Send Email',
+    langButton: 'FR / TR',
+  },
+  fr: {
+    badge: 'ASSISTANCE TRANSPORT 245',
+    title: 'Creer une Demande de Support',
+    desc: 'Envoyez vos problemes, suggestions et demandes techniques via ce formulaire. Votre demande apparait dans le panneau support et la reponse est envoyee par e-mail.',
+    formTitle: 'Formulaire Rapide',
+    name: 'Nom Complet',
+    email: 'E-mail',
+    subject: 'Sujet',
+    message: 'Message',
+    platform: 'Plateforme',
+    appVersion: 'Version de l\'app',
+    submit: 'Envoyer',
+    success: 'Votre demande a ete recue. Nous vous repondrons par e-mail rapidement.',
+    contactTitle: 'Contact Direct',
+    contactText: 'Pour les cas urgents, contactez-nous directement :',
+    emailLabel: 'Envoyer un E-mail',
+    langButton: 'TR / EN',
   },
 } as const;
+
+function nextLang(current: Lang): Lang {
+  if (current === 'tr') return 'en';
+  if (current === 'en') return 'fr';
+  return 'tr';
+}
 
 export default function SupportPage() {
   const [lang, setLang] = useState<Lang>('tr');
@@ -64,7 +83,7 @@ export default function SupportPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.includes('@') || !subject.trim() || message.trim().length < 8) {
-      alert(lang === 'tr' ? 'Lutfen tum alanlari dogru doldurun.' : 'Please complete all fields correctly.');
+      alert(lang === 'tr' ? 'Lutfen tum alanlari dogru doldurun.' : lang === 'fr' ? 'Veuillez remplir correctement tous les champs.' : 'Please complete all fields correctly.');
       return;
     }
 
@@ -86,13 +105,16 @@ export default function SupportPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#8ccde6] text-slate-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(15,23,42,0.12),transparent_42%),radial-gradient(circle_at_85%_25%,rgba(2,132,199,0.2),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(59,130,246,0.2),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(15,23,42,0.1),transparent_42%),radial-gradient(circle_at_85%_25%,rgba(2,132,199,0.18),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(59,130,246,0.18),transparent_45%)]" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 py-6 sm:px-8 sm:py-8">
         <div className="mb-8 flex items-center justify-between gap-3">
-          <img src="/apple-icon.png" alt="Transport 245 Logo" className="h-11 w-11 rounded-2xl object-cover shadow-md" />
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-sm backdrop-blur-md">
+            <img src="/favicon.png" alt="Transport 245 Logo" className="h-8 w-8 rounded-lg object-cover" />
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Transport 245</p>
+          </div>
           <button
-            onClick={() => setLang((prev) => (prev === 'tr' ? 'en' : 'tr'))}
+            onClick={() => setLang((prev) => nextLang(prev))}
             className="rounded-xl border border-white/60 bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-wide text-slate-700 shadow-md backdrop-blur-md"
           >
             {t.langButton}
@@ -100,7 +122,7 @@ export default function SupportPage() {
         </div>
 
         <section className="rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-xl backdrop-blur-xl sm:p-8">
-          <span className="inline-flex items-center rounded-full bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-white">
+          <span className="inline-flex items-center rounded-full bg-cyan-700 px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-white">
             {t.badge}
           </span>
 
@@ -130,7 +152,7 @@ export default function SupportPage() {
                 <input value={appVersion} onChange={(e) => setAppVersion(e.target.value)} placeholder={t.appVersion} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none" />
               </div>
 
-              <button type="submit" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white shadow-md">
+              <button type="submit" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white shadow-md">
                 <LifeBuoy size={14} />
                 {t.submit}
               </button>
@@ -151,7 +173,7 @@ export default function SupportPage() {
 
               <a
                 href="mailto:iletisimtransporter@gmail.com"
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white shadow-md"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white shadow-md"
               >
                 <Mail size={15} />
                 {t.emailLabel}
@@ -159,15 +181,7 @@ export default function SupportPage() {
 
               <p className="mt-3 break-all text-sm font-bold text-slate-700">iletisimtransporter@gmail.com</p>
               <p className="mt-1 text-xs font-semibold text-slate-600">+90 537 408 10 74</p>
-
-              <div className="mt-5 grid gap-2">
-                <a href="/marketing" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-slate-700">
-                  {t.marketing}
-                </a>
-                <a href={APP_STORE_URL} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-slate-700">
-                  {t.appStore}
-                </a>
-              </div>
+              <p className="mt-1 text-xs font-semibold text-slate-600">Tuzla, Istanbul, Turkiye</p>
             </div>
           </div>
         </section>

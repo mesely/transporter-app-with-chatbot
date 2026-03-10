@@ -9,7 +9,7 @@ import {
   updateSupportTicketStatus,
 } from '../../lib/supportTickets';
 
-const ADMIN_PIN = process.env.NEXT_PUBLIC_SUPPORT_ADMIN_PIN || '245245';
+const ADMIN_PIN = process.env.NEXT_PUBLIC_SUPPORT_ADMIN_PIN || 'harun245';
 
 function formatDate(value: string) {
   const d = new Date(value);
@@ -78,7 +78,7 @@ export default function SupportAdminPage() {
           />
           <button
             onClick={tryUnlock}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase text-white"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2 text-xs font-black uppercase text-white"
           >
             <Shield size={14} />
             Panele Gir
@@ -94,7 +94,7 @@ export default function SupportAdminPage() {
         <header className="mb-6 rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img src="/apple-icon.png" alt="Transport 245" className="h-10 w-10 rounded-xl object-cover shadow-md" />
+              <img src="/favicon.png" alt="Transport 245" className="h-10 w-10 rounded-xl object-cover shadow-md" />
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Transport 245</p>
                 <h1 className="text-xl font-black uppercase">Support Admin Panel</h1>
@@ -149,7 +149,7 @@ export default function SupportAdminPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <a
                     href={buildReplyHref(ticket)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase text-white"
+                    className="inline-flex items-center gap-1 rounded-xl bg-cyan-700 px-3 py-2 text-[11px] font-black uppercase text-white"
                   >
                     <Mail size={13} />
                     Mail ile Cevapla
