@@ -203,10 +203,16 @@ export default function SettingsPage() {
 
     let lastDeleteError: any = null;
     let deleteOk = false;
+    let hadFirebaseSession = false;
     try {
       if (Capacitor.isNativePlatform()) {
-        await FirebaseAuthentication.deleteUser();
-        deleteOk = true;
+        const nativeCurrent = await FirebaseAuthentication.getCurrentUser();
+        const nativeUser = (nativeCurrent as any)?.user;
+        hadFirebaseSession = hadFirebaseSession || Boolean(nativeUser?.uid || nativeUser?.email || nativeUser);
+        if (hadFirebaseSession) {
+          await FirebaseAuthentication.deleteUser();
+          deleteOk = true;
+        }
       }
     } catch (e) {
       lastDeleteError = e;
@@ -214,6 +220,7 @@ export default function SettingsPage() {
 
     try {
       if (auth.currentUser) {
+        hadFirebaseSession = true;
         await deleteUser(auth.currentUser);
         deleteOk = true;
       }
@@ -221,13 +228,18 @@ export default function SettingsPage() {
       lastDeleteError = e;
     }
 
-    if (!deleteOk) {
+    if (!deleteOk && hadFirebaseSession) {
       const rawError = String(lastDeleteError?.message || lastDeleteError || '').toLowerCase();
-      if (rawError.includes('requires-recent-login')) {
+      if (
+        rawError.includes('requires-recent-login') ||
+        rawError.includes('recent login') ||
+        rawError.includes('credential') ||
+        rawError.includes('auth/requires-recent-login')
+      ) {
         alert('Güvenlik nedeniyle hesap silme için yeniden doğrulama gerekiyor. Lütfen tekrar giriş yapıp yeniden deneyin.');
         return;
       }
-      alert('Hesap silinemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
+      alert('Hesap silinemedi. Lütfen tekrar deneyin. Sorun sürerse tekrar giriş yapıp yeniden silin.');
       return;
     }
 

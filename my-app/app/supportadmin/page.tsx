@@ -19,9 +19,7 @@ const COPY = {
     showResolved: 'Çözülenleri Göster',
     noTickets: 'Gösterilecek destek talebi yok.',
     reply: 'Mail ile Cevapla',
-    approve: 'Onayla',
-    reject: 'Reddet',
-    resolve: 'Çözüldü',
+    resolve: 'Çözüldü Olarak İşaretle',
     reopen: 'Tekrar Aç',
     del: 'Sil',
     confirmDelete: 'Bu talep silinsin mi?',
@@ -40,9 +38,7 @@ const COPY = {
     showResolved: 'Show Resolved',
     noTickets: 'No support ticket to display.',
     reply: 'Reply by Email',
-    approve: 'Approve',
-    reject: 'Reject',
-    resolve: 'Mark Resolved',
+    resolve: 'Mark as Resolved',
     reopen: 'Reopen',
     del: 'Delete',
     confirmDelete: 'Delete this ticket?',
@@ -61,9 +57,7 @@ const COPY = {
     showResolved: 'Afficher Résolus',
     noTickets: 'Aucune demande à afficher.',
     reply: 'Répondre par E-mail',
-    approve: 'Approuver',
-    reject: 'Rejeter',
-    resolve: 'Marquer Résolu',
+    resolve: 'Marquer comme Résolu',
     reopen: 'Rouvrir',
     del: 'Supprimer',
     confirmDelete: 'Supprimer cette demande ?',
@@ -96,6 +90,7 @@ export default function SupportAdminPage() {
   }, [unlocked]);
 
   const visibleTickets = useMemo(() => tickets.filter((item) => (showResolved ? true : item.status !== 'resolved')), [showResolved, tickets]);
+  const normalizeStatus = (status: SupportTicket['status']) => (status === 'resolved' ? 'resolved' : 'open');
 
   const tryUnlock = () => {
     if (pin === ADMIN_PIN) {
@@ -190,54 +185,26 @@ export default function SupportAdminPage() {
                     <p className="text-xs font-medium text-slate-500">{ticket.platform} / v{ticket.appVersion || '-'} - {formatDate(ticket.createdAt)}</p>
                   </div>
                   {(() => {
-                    const statusClass =
-                      ticket.status === 'approved'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : ticket.status === 'rejected'
-                          ? 'bg-rose-100 text-rose-700'
-                          : ticket.status === 'resolved'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-amber-100 text-amber-700';
-                    const statusLabel =
-                      ticket.status === 'approved'
-                        ? t.approved
-                        : ticket.status === 'rejected'
-                          ? t.rejected
-                          : ticket.status === 'resolved'
-                            ? t.resolved
-                            : t.open;
+                    const status = normalizeStatus(ticket.status);
+                    const statusClass = status === 'resolved' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+                    const statusLabel = status === 'resolved' ? t.resolved : t.open;
                     return <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${statusClass}`}>{statusLabel}</span>;
                   })()}
                 </div>
 
-                <p className="mt-2 text-sm font-medium text-slate-700">{ticket.message}</p>
+                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <p className="text-[11px] font-black uppercase text-slate-500">E-mail</p>
+                  <p className="mt-0.5 text-sm font-semibold text-slate-800 break-all">{ticket.email}</p>
+                  <p className="mt-3 text-[11px] font-black uppercase text-slate-500">Mesaj</p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-slate-700">{ticket.message}</p>
+                </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <a href={buildReplyHref(ticket)} className="inline-flex items-center gap-1 rounded-xl bg-cyan-700 px-3 py-2 text-[11px] font-black uppercase text-white">
                     <Mail size={13} /> {t.reply}
                   </a>
 
-                  <button
-                    onClick={() => {
-                      updateSupportTicketStatus(ticket.id, 'approved');
-                      reload();
-                    }}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700"
-                  >
-                    {t.approve}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      updateSupportTicketStatus(ticket.id, 'rejected');
-                      reload();
-                    }}
-                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-black uppercase text-rose-700"
-                  >
-                    {t.reject}
-                  </button>
-
-                  {ticket.status === 'open' ? (
+                  {normalizeStatus(ticket.status) === 'open' ? (
                     <button onClick={() => { updateSupportTicketStatus(ticket.id, 'resolved'); reload(); }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700">
                       {t.resolve}
                     </button>
