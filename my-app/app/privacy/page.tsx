@@ -27,11 +27,11 @@ const CONTENT: any = {
       },
       {
         h: "2. İşlenen Kişisel Veriler",
-        p: "Uygulama kapsamında şu veriler işlenir: (a) Kullanıcıya Ait Veriler: Kimlik (ad, soyad), İletişim (tel, e-posta), Profil bilgileri, Kullanım kayıtları ve Konum bilgisi. (b) Hizmet Sağlayıcılara Ait Veriler: Firma adı, İşyeri telefonu, Adres/Konum ve Tanıtım bilgileri. (c) Ödeme Bilgileri: İşlemler Apple/Google üzerinden yapıldığından kart bilgileri Platform tarafından saklanmaz."
+        p: "Uygulama kapsamında şu veriler işlenir: (a) Kullanıcıya Ait Veriler: Kimlik (ad, soyad), İletişim (tel, e-posta), Profil bilgileri, Kullanım kayıtları ve Konum bilgisi. (b) Hizmet Sağlayıcılara Ait Veriler: Firma adı, İşyeri telefonu, Adres/Konum ve Tanıtım bilgileri. (c) Ödeme Bilgileri: İşlemler uygulama mağazası üzerinden yapıldığından kart bilgileri Platform tarafından saklanmaz."
       },
       {
         h: "3. Kişisel Verilerin Kaynakları",
-        p: "Kişisel veriler; (a) Kullanıcı Beyanı (kendi rızanızla girdiğiniz bilgiler), (b) Kullanıcı Tarafından Eklenen Veriler, (c) Herkese Açık Kaynaklar (Google vb. platformlardan elde edilen kamuya açık firma bilgileri) yoluyla toplanır."
+        p: "Kişisel veriler; (a) Kullanıcı Beyanı (kendi rızanızla girdiğiniz bilgiler), (b) Kullanıcı Tarafından Eklenen Veriler, (c) Herkese Açık Kaynaklar (kamuya açık platformlardan elde edilen firma bilgileri) yoluyla toplanır."
       },
       {
         h: "4. İşlenme Amaçları",
@@ -169,7 +169,7 @@ export default function PrivacyPage() {
       {/* HEADER */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
         <button 
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/app')}
           className="text-slate-900 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:text-blue-600 transition-colors"
         >
           <ArrowLeft size={16} /> {(PRIVACY_UI[lang] && PRIVACY_UI[lang].back) || (lang === 'tr' ? 'Ana Sayfaya Dön' : 'Back to Home')}

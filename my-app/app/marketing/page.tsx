@@ -283,7 +283,7 @@ export default function MarketingPage() {
           </div>
 
           <div className="inline-flex items-center gap-2">
-            <a href="/" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+            <a href="/marketing" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
               {t.navHome}
             </a>
             <a href="/support" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
@@ -348,7 +348,7 @@ export default function MarketingPage() {
         </section>
 
         <section className="mt-14">
-          <h2 className="text-2xl font-black">{t.sectionB}</h2>
+          <h2 className="text-center text-2xl font-black">{t.sectionB}</h2>
           <div className="mt-6 space-y-10">
             {t.details.map((detail, idx) => {
               const shotIndex = idx + 2;

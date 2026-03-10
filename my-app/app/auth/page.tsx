@@ -101,7 +101,7 @@ export default function AuthPage() {
     localStorage.removeItem('Transport_user_email');
     localStorage.removeItem('Transport_user_phone');
     localStorage.removeItem('Transport_user_name');
-    router.replace('/');
+    router.replace('/app');
   };
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function AuthPage() {
         if (!active) return;
         if (result?.user) {
           persistLocalUser(result.user);
-          router.replace('/');
+          router.replace('/app');
           return;
         }
         setLoading(false);
@@ -174,7 +174,7 @@ export default function AuthPage() {
               const jsResult = await withTimeout(signInWithCredential(auth, googleCred), 20000);
               if (jsResult?.user) {
                 persistLocalUser(jsResult.user);
-                router.replace('/');
+                router.replace('/app');
                 return;
               }
             }
@@ -182,20 +182,20 @@ export default function AuthPage() {
 
           if (nativeResult?.user) {
             persistLocalUser(nativeResult.user);
-            router.replace('/');
+            router.replace('/app');
             return;
           }
-          throw new Error('Google giriş tamamlanamadı.');
+          throw new Error('Hesap girişi tamamlanamadı.');
         }
 
         const nativeAuth: any = FirebaseAuthentication;
         if (typeof nativeAuth?.signInWithApple !== 'function') {
           throw new Error('Bu sürümde Apple giriş native olarak desteklenmiyor.');
         }
-        const appleResult = await withTimeout(nativeAuth.signInWithApple(), 20000);
+        const appleResult: any = await withTimeout(nativeAuth.signInWithApple(), 20000);
         if (appleResult?.user) {
           persistLocalUser(appleResult.user);
-          router.replace('/');
+          router.replace('/app');
           return;
         }
         throw new Error('Apple giriş tamamlanamadı.');
@@ -210,10 +210,10 @@ export default function AuthPage() {
       const cred = await signInWithPopup(auth, selectedProvider);
       if (cred?.user) {
         persistLocalUser(cred.user);
-        router.replace('/');
+        router.replace('/app');
         return;
       }
-      throw new Error(provider === 'google' ? 'Google giriş tamamlanamadı.' : 'Apple giriş tamamlanamadı.');
+      throw new Error(provider === 'google' ? 'Hesap girişi tamamlanamadı.' : 'Apple giriş tamamlanamadı.');
     } catch (err: any) {
       if (String(err?.message || '').includes('AUTH_TIMEOUT')) {
         setError('Giriş işlemi zaman aşımına uğradı. Tekrar deneyin.');
@@ -227,10 +227,10 @@ export default function AuthPage() {
   };
 
   const authHint = useMemo(() => {
-    if (isNative && platform === 'android') return 'Uygulamaya Google hesabınızla giriş yapabilirsiniz.';
+    if (isNative && platform === 'android') return 'Uygulamaya hesabınızla giriş yapabilirsiniz.';
     return showAppleButton
-      ? 'Uygulamaya Google veya Apple hesabınızla giriş yapabilirsiniz.'
-      : 'Uygulamaya Google hesabınızla giriş yapabilirsiniz.';
+      ? 'Uygulamaya hesabınızla giriş yapabilirsiniz.'
+      : 'Uygulamaya hesabınızla giriş yapabilirsiniz.';
   }, [isNative, platform, showAppleButton]);
 
   return (
@@ -260,7 +260,7 @@ export default function AuthPage() {
               disabled={loading}
               className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
+              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Hesap ile Giriş'}
             </button>
           )}
 

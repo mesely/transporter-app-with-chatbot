@@ -39,7 +39,7 @@ export default function LocationRequiredPage() {
     navigator.geolocation.getCurrentPosition(
       () => {
         setChecking(false);
-        router.replace('/');
+        router.replace('/app');
       },
       () => {
         setChecking(false);
@@ -104,7 +104,7 @@ export default function LocationRequiredPage() {
         district: selectedDistrict,
         ts: Date.now(),
       }));
-      router.replace('/');
+      router.replace('/app');
     } catch {
       alert('Konum seçimi işlenemedi. Lütfen tekrar deneyin.');
     } finally {

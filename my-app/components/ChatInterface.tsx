@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Bot, Loader2, MapPin, Phone, Send, Shield, Trash2, User, UserCog, X, Zap } from 'lucide-react';
+import { openSystemMap } from '../lib/openSystemMap';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -301,7 +302,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
             </button>
           ) : (
             <Link
-              href="/"
+              href="/app"
               className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
               aria-label="Ana sayfaya don"
             >
@@ -373,9 +374,7 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
                       const phone = (driver?.phoneNumber || '').toString().replace(/\D/g, '');
                       const lat = driver?.location?.coordinates?.[1];
                       const lng = driver?.location?.coordinates?.[0];
-                      const mapUrl = Number.isFinite(lat) && Number.isFinite(lng)
-                        ? `https://www.google.com/maps?q=${lat},${lng}`
-                        : null;
+                      const hasMap = Number.isFinite(lat) && Number.isFinite(lng);
                       const distanceText = driver?.distance ? `${Math.round(Number(driver.distance) / 1000)} km` : 'Mesafe yok';
                       const badgeClass = badgeTheme(driver?.service?.mainType);
                       const actionTheme = actionButtonTheme(driver);
@@ -403,10 +402,14 @@ export default function ChatInterface({ onClose }: { onClose?: () => void }) {
                                 Mesaj At
                               </a>
                             )}
-                            {mapUrl && (
-                              <a href={mapUrl} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${actionTheme.solid}`}>
-                                Google Maps
-                              </a>
+                            {hasMap && (
+                              <button
+                                type="button"
+                                onClick={() => openSystemMap(Number(lat), Number(lng), String(driver?.businessName || 'Destination'))}
+                                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${actionTheme.solid}`}
+                              >
+                                Maps
+                              </button>
                             )}
                           </div>
                         </div>

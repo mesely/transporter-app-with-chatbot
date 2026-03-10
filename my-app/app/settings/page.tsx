@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   BookText,
-  CreditCard,
   Globe2,
   Heart,
   Phone,
@@ -78,9 +77,10 @@ function getMembershipText(lang: AppLang) {
   if (lang === 'fr') {
     return {
       title: 'Adhésion',
-      firstYear: '12 premiers mois gratuits',
-      freeUntil: 'Fin de la période gratuite',
-      yearlyAfter: 'Puis annuel',
+      productLabel: 'Produit',
+      priceLabel: 'Prix',
+      storeInfoPending: 'Prix Apple en cours de chargement.',
+      storeInfoUnavailable: 'Les informations App Store ne sont pas encore disponibles.',
       paymentOnlyApple: 'Paiement uniquement via Apple In-App Purchase.',
       status: 'Statut',
       active: 'Actif',
@@ -96,9 +96,10 @@ function getMembershipText(lang: AppLang) {
   if (lang === 'en') {
     return {
       title: 'Membership',
-      firstYear: 'First 12 months free',
-      freeUntil: 'Free period ends',
-      yearlyAfter: 'Then yearly',
+      productLabel: 'Product',
+      priceLabel: 'Price',
+      storeInfoPending: 'Apple price is loading.',
+      storeInfoUnavailable: 'App Store information is not available yet.',
       paymentOnlyApple: 'Payment is available only via Apple In-App Purchase.',
       status: 'Status',
       active: 'Active',
@@ -113,9 +114,10 @@ function getMembershipText(lang: AppLang) {
   }
   return {
     title: 'Üyelik Bilgisi',
-    firstYear: 'İlk 12 ay ücretsiz',
-    freeUntil: 'Ücretsiz dönem bitiş',
-    yearlyAfter: 'Sonrasında yıllık',
+    productLabel: 'Ürün',
+    priceLabel: 'Fiyat',
+    storeInfoPending: 'Apple fiyatı yükleniyor.',
+    storeInfoUnavailable: 'App Store bilgisi henüz alınamadı.',
     paymentOnlyApple: 'Ödeme yalnızca Apple In-App Purchase ile yapılır.',
     status: 'Durum',
     active: 'Aktif',
@@ -154,7 +156,6 @@ export default function SettingsPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
   const [appLang, setAppLang] = useState<AppLang>('tr');
-  const [membershipStartedAt, setMembershipStartedAt] = useState<number | null>(null);
   const membershipIap = useMembershipIap();
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
@@ -228,14 +229,6 @@ export default function SettingsPage() {
       setFavorites([]);
     }
 
-    const storedMembershipStart = Number(localStorage.getItem('Transport_membership_started_at') || '');
-    if (Number.isFinite(storedMembershipStart) && storedMembershipStart > 0) {
-      setMembershipStartedAt(storedMembershipStart);
-    } else {
-      const now = Date.now();
-      localStorage.setItem('Transport_membership_started_at', String(now));
-      setMembershipStartedAt(now);
-    }
   }, []);
 
   useEffect(() => {
@@ -353,12 +346,6 @@ export default function SettingsPage() {
     }
   };
 
-  const freeUntilText = useMemo(() => {
-    if (!membershipStartedAt) return '-';
-    const next = new Date(membershipStartedAt);
-    next.setFullYear(next.getFullYear() + 1);
-    return next.toLocaleDateString(toLocaleTag(appLang));
-  }, [appLang, membershipStartedAt]);
   const iapExpiresText = useMemo(() => {
     if (!membershipIap.expiresDate) return '-';
     const dt = new Date(membershipIap.expiresDate);
@@ -366,6 +353,12 @@ export default function SettingsPage() {
     return dt.toLocaleDateString(toLocaleTag(appLang));
   }, [appLang, membershipIap.expiresDate]);
   const membershipText = useMemo(() => getMembershipText(appLang), [appLang]);
+  const membershipProductName = useMemo(() => {
+    const title = String(membershipIap.productTitle || '').trim();
+    const description = String(membershipIap.productDescription || '').trim();
+    return title || description || '';
+  }, [membershipIap.productDescription, membershipIap.productTitle]);
+  const membershipPrice = useMemo(() => String(membershipIap.priceText || '').trim(), [membershipIap.priceText]);
 
   const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
     const providerId = selectedOrder?.driver?._id;
@@ -412,7 +405,7 @@ export default function SettingsPage() {
                 if (typeof window !== 'undefined') {
                   sessionStorage.setItem(SKIP_SPLASH_ONCE_KEY, '1');
                 }
-                router.push('/');
+                router.push('/app');
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
             >
@@ -435,7 +428,7 @@ export default function SettingsPage() {
                 activeTab === 'history' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'
               }`}
             >
-              Geçmiş Siparişler
+              Siparişler
             </button>
           </div>
         </header>
@@ -517,17 +510,25 @@ export default function SettingsPage() {
                 <option value="ar">العربية</option>
               </select>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-gradient-to-br from-white/80 to-slate-50/70 p-4 backdrop-blur-md shadow-inner">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2">
-                <BadgeCheck className="text-emerald-600" size={16} />
+                <BadgeCheck className="text-cyan-700" size={16} />
                 <p className="text-[10px] font-black uppercase text-slate-400">{membershipText.title}</p>
               </div>
-              <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase text-emerald-700 border border-emerald-100">
-                <CreditCard size={12} /> Premium
-              </div>
-              <p className="mt-2 text-sm font-black text-slate-900">{membershipText.firstYear}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.freeUntil}: {freeUntilText}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.yearlyAfter} {membershipIap.priceText || '1 EUR'} (store local price).</p>
+              {membershipProductName ? (
+                <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                  {membershipText.productLabel}: {membershipProductName}
+                </p>
+              ) : null}
+              {membershipPrice ? (
+                <p className="mt-1 text-[11px] font-semibold text-slate-700">
+                  {membershipText.priceLabel}: {membershipPrice}
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                  {membershipProductName ? membershipText.storeInfoPending : membershipText.storeInfoUnavailable}
+                </p>
+              )}
               <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.paymentOnlyApple}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.status}: {membershipIap.isActive ? membershipText.active : membershipText.passive}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.expiry}: {iapExpiresText}</p>
@@ -600,7 +601,7 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Phone className="text-blue-600" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Geçmiş Siparişler</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Siparişler</p>
           </div>
           <div className="mt-4 space-y-2">
             {ordersLoading ? (

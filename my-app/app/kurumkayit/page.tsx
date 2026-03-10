@@ -435,7 +435,7 @@ export default function KurumKayitPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/app')}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/80 text-slate-700"
               >
                 <ArrowLeft size={18} />

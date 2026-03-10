@@ -121,7 +121,7 @@ export default function SupportPage() {
             </div>
           </div>
           <div className="inline-flex items-center gap-2">
-            <a href="/" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+            <a href="/marketing" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
               Ana Sayfa
             </a>
             <select
