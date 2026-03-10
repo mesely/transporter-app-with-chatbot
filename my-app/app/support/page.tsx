@@ -111,7 +111,7 @@ export default function SupportPage() {
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto max-w-4xl px-5 py-6 md:px-8 md:py-8">
+      <div className="mx-auto max-w-[1400px] px-5 py-6 md:px-10 md:py-8">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="inline-flex items-center gap-3">
             <img src="/favicon.png" alt="Transport 245" className="h-10 w-10 rounded-xl object-cover" />
@@ -120,16 +120,20 @@ export default function SupportPage() {
               <p className="text-sm font-semibold text-slate-600">{t.badge}</p>
             </div>
           </div>
-
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value as Lang)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none"
-          >
-            <option value="tr">Türkçe</option>
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-          </select>
+          <div className="inline-flex items-center gap-2">
+            <a href="/" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+              Ana Sayfa
+            </a>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value as Lang)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none"
+            >
+              <option value="tr">Türkçe</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
         </header>
 
         <section>
