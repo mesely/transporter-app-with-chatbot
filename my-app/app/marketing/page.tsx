@@ -17,7 +17,10 @@ type Copy = {
   note: string;
   sectionA: string;
   sectionB: string;
-  sectionC: string;
+  details: {
+    title: string;
+    desc: string;
+  }[];
 };
 
 const COPY: Record<Lang, Copy> = {
@@ -48,8 +51,29 @@ const COPY: Record<Lang, Copy> = {
     note:
       'Not: En doğru sonuçlar için konum izni gerekir. Konum kapalıysa bazı özellikler sınırlı çalışabilir.',
     sectionA: 'İlk deneyim akışı',
-    sectionB: 'Keşif ve seçim deneyimi',
-    sectionC: 'Operasyon akışı ve hız',
+    sectionB: 'Detaylı ürün deneyimi',
+    details: [
+      {
+        title: 'Dünya çapında ağ',
+        desc: 'Avrupa, Amerika ve Türkiye genelinde yüzlerce kurumla çalışan bu yapı sayesinde kullanıcılar bulunduğu bölgeye göre doğru sağlayıcılara çok hızlı ulaşır. Kurum ağı büyüdükçe sistem daha iyi eşleşme, daha kısa bekleme süresi ve daha yüksek hizmet sürekliliği sunar.',
+      },
+      {
+        title: 'Nakliye akışı',
+        desc: 'Nakliye ve yük taşımacılığı senaryolarında kurum seçimi, hizmet karşılaştırması ve iletişim adımları tek ekranda sade bir akışa indirgenir. Bu yapı hem bireysel hem kurumsal kullanımda karar süresini azaltır.',
+      },
+      {
+        title: 'Kişiselleştirme',
+        desc: 'Favori kurumlar, değerlendirme ve şikayet mekanizmaları ile kullanıcı deneyimi kişiye özel hale gelir. Zamanla sistem kullanım alışkanlıklarına göre daha hızlı seçim yapılmasına yardımcı olur.',
+      },
+      {
+        title: 'Şarj çözümleri',
+        desc: 'İstasyon şarj ve gezici şarj hizmetleri birlikte sunulur. Kullanıcı ihtiyaca göre sabit istasyon veya mobil ekip tercih ederek uygun çözüme hızlıca yönlenebilir.',
+      },
+      {
+        title: 'Yolcu taşıma',
+        desc: 'Etkinlik, organizasyon ve parti gibi toplu planlarda minibüs/otobüs kiralama süreçleri daha düzenli yönetilir. Uygun araç tipini belirleyip sağlayıcı ile doğrudan iletişime geçmek kolaylaşır.',
+      },
+    ],
   },
   en: {
     navSupport: 'Support',
@@ -78,8 +102,29 @@ const COPY: Record<Lang, Copy> = {
     note:
       'Note: Location permission is needed for best results. Some features are limited without location.',
     sectionA: 'First-touch journey',
-    sectionB: 'Discovery and selection',
-    sectionC: 'Operational speed and flow',
+    sectionB: 'Detailed product experience',
+    details: [
+      {
+        title: 'Global network',
+        desc: 'With a broad network across Europe, the US, and Türkiye, users quickly reach relevant providers based on location. As the network grows, matching quality and service continuity improve.',
+      },
+      {
+        title: 'Logistics flow',
+        desc: 'For logistics and cargo use-cases, provider selection, comparison, and communication are simplified into a single clear flow for both individual and business users.',
+      },
+      {
+        title: 'Personalization',
+        desc: 'Favorites, ratings, and complaint workflows create a personalized experience and improve provider quality over time.',
+      },
+      {
+        title: 'Charging solutions',
+        desc: 'Both station charging and mobile charging are supported, helping users choose the right option based on urgency and location.',
+      },
+      {
+        title: 'Passenger transport',
+        desc: 'For events and parties, bus/minibus planning becomes easier with direct provider contact and practical service comparison.',
+      },
+    ],
   },
   fr: {
     navSupport: 'Support',
@@ -108,8 +153,29 @@ const COPY: Record<Lang, Copy> = {
     note:
       'Remarque : l’autorisation de localisation est requise pour les meilleurs résultats.',
     sectionA: 'Première expérience',
-    sectionB: 'Découverte et choix',
-    sectionC: 'Vitesse opérationnelle',
+    sectionB: 'Expérience produit détaillée',
+    details: [
+      {
+        title: 'Réseau international',
+        desc: 'Avec un réseau étendu en Europe, aux États-Unis et en Turquie, les utilisateurs accèdent rapidement aux bons prestataires selon leur position.',
+      },
+      {
+        title: 'Flux logistique',
+        desc: 'La sélection, la comparaison et le contact prestataire sont réunis dans un flux unique plus lisible pour les besoins logistiques.',
+      },
+      {
+        title: 'Personnalisation',
+        desc: 'Favoris, évaluations et réclamations permettent une expérience personnalisée et une amélioration continue de la qualité.',
+      },
+      {
+        title: 'Solutions de recharge',
+        desc: 'Recharge en station et recharge mobile sont proposées ensemble pour couvrir différents scénarios terrain.',
+      },
+      {
+        title: 'Transport passagers',
+        desc: 'Pour événements et groupes, l’organisation minibus/autobus est plus simple grâce au contact direct et au comparatif rapide.',
+      },
+    ],
   },
 };
 
@@ -121,7 +187,7 @@ export default function MarketingPage() {
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto max-w-6xl px-5 py-6 md:px-8 md:py-8">
+      <div className="mx-auto max-w-[1400px] px-5 py-6 md:px-10 md:py-8">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="inline-flex items-center gap-3">
             <img src="/favicon.png" alt="Transport 245" className="h-11 w-11 rounded-xl object-cover" />
@@ -156,9 +222,11 @@ export default function MarketingPage() {
             <p className="mt-4 text-sm font-medium leading-relaxed text-slate-600 md:text-base">{t.intro}</p>
           </div>
 
-          <div className="overflow-hidden rounded-3xl border border-slate-200">
-            <div className="grid grid-cols-2 gap-0">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="aspect-[9/19] overflow-hidden rounded-3xl border border-slate-200">
               <img src={SHOTS[0]} alt="ios 1" className="h-full w-full object-cover" />
+            </div>
+            <div className="aspect-[9/19] overflow-hidden rounded-3xl border border-slate-200">
               <img src={SHOTS[1]} alt="ios 2" className="h-full w-full object-cover" />
             </div>
           </div>
@@ -191,30 +259,25 @@ export default function MarketingPage() {
           </article>
         </section>
 
-        <section className="mt-14 space-y-10">
-          <div className="grid gap-5 md:grid-cols-[0.95fr_1.05fr] md:items-center">
-            <img src={SHOTS[2]} alt="ios 3" className="w-full rounded-2xl border border-slate-200 object-cover" />
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-700">{t.sectionA}</p>
-              <img src={SHOTS[3]} alt="ios 4" className="mt-3 w-full rounded-2xl border border-slate-200 object-cover" />
-            </div>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            <img src={SHOTS[4]} alt="ios 5" className="w-full rounded-2xl border border-slate-200 object-cover" />
-            <img src={SHOTS[5]} alt="ios 6" className="w-full rounded-2xl border border-slate-200 object-cover" />
-            <div className="flex flex-col gap-3">
-              <img src={SHOTS[6]} alt="ios 7" className="w-full rounded-2xl border border-slate-200 object-cover" />
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-cyan-700">{t.sectionC}</p>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 pt-8">
-            <p className="text-sm font-semibold text-slate-600">
-              {lang === 'tr' && 'Mobil kullanımda akıcı performans için optimize edildi. Harita etkileşimi, listeleme ve veri yükleme süreçleri hızlı ve stabil çalışacak şekilde geliştirilmeye devam ediyor.'}
-              {lang === 'en' && 'Optimized for smooth mobile performance. Map interaction, listing and data loading are continuously improved for speed and stability.'}
-              {lang === 'fr' && 'Optimisé pour une performance mobile fluide. Les interactions cartographiques et le chargement des données sont continuellement améliorés.'}
-            </p>
+        <section className="mt-14">
+          <h2 className="text-2xl font-black">{t.sectionB}</h2>
+          <div className="mt-6 space-y-10">
+            {t.details.map((detail, idx) => {
+              const shotIndex = idx + 2;
+              const reverse = idx % 2 === 1;
+              return (
+                <article key={detail.title} className={`grid gap-6 md:grid-cols-[0.75fr_1.25fr] md:items-center ${reverse ? 'md:[&>*:first-child]:order-2' : ''}`}>
+                  <div className="aspect-[9/19] overflow-hidden rounded-2xl border border-slate-200">
+                    <img src={SHOTS[shotIndex]} alt={`ios ${shotIndex + 1}`} className="h-full w-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-700">{t.sectionA}</p>
+                    <h3 className="mt-2 text-2xl font-black leading-tight">{detail.title}</h3>
+                    <p className="mt-3 text-sm font-medium leading-relaxed text-slate-600 md:text-base">{detail.desc}</p>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       </div>
