@@ -75,6 +75,25 @@ function getOrCreateDeviceId(): string {
 }
 
 function getMembershipText(lang: AppLang) {
+  if (lang === 'tr') {
+    return {
+      title: 'Üyelik Bilgisi',
+      productLabel: 'Ürün',
+      priceLabel: 'Fiyat',
+      storeInfoPending: 'Apple fiyatı yükleniyor.',
+      storeInfoUnavailable: 'App Store bilgisi henüz alınamadı.',
+      paymentOnlyApple: 'Ödeme yalnızca App Store aboneliği ile yapılır.',
+      status: 'Durum',
+      active: 'Aktif',
+      passive: 'Pasif',
+      expiry: 'Bitiş',
+      iosOnlyInfo: 'Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.',
+      start: 'Aboneliği Başlat',
+      restore: 'Satın Alımları Geri Yükle',
+      manage: 'Aboneliği Yönet',
+      processing: 'İşleniyor...',
+    };
+  }
   if (lang === 'fr') {
     return {
       title: 'Adhésion',
@@ -114,33 +133,191 @@ function getMembershipText(lang: AppLang) {
     };
   }
   return {
-    title: 'Üyelik Bilgisi',
-    productLabel: 'Ürün',
-    priceLabel: 'Fiyat',
-    storeInfoPending: 'Apple fiyatı yükleniyor.',
-    storeInfoUnavailable: 'App Store bilgisi henüz alınamadı.',
-    paymentOnlyApple: 'Ödeme yalnızca App Store aboneliği ile yapılır.',
-    status: 'Durum',
-    active: 'Aktif',
-    passive: 'Pasif',
-    expiry: 'Bitiş',
-    iosOnlyInfo: 'Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.',
-    start: 'Aboneliği Başlat',
-    restore: 'Satın Alımları Geri Yükle',
-    manage: 'Aboneliği Yönet',
-    processing: 'İşleniyor...',
+    title: 'Membership',
+    productLabel: 'Product',
+    priceLabel: 'Price',
+    storeInfoPending: 'Apple price is loading.',
+    storeInfoUnavailable: 'App Store information is not available yet.',
+    paymentOnlyApple: 'Payment is available only via App Store subscription.',
+    status: 'Status',
+    active: 'Active',
+    passive: 'Inactive',
+    expiry: 'Expiry',
+    iosOnlyInfo: 'Subscription purchase is available on iOS via App Store.',
+    start: 'Start Subscription',
+    restore: 'Restore Purchases',
+    manage: 'Manage Subscription',
+    processing: 'Processing...',
   };
 }
 
 function toLocaleTag(lang: AppLang): string {
+  if (lang === 'tr') return 'tr-TR';
   if (lang === 'fr') return 'fr-FR';
   if (lang === 'en') return 'en-US';
-  return 'tr-TR';
+  if (lang === 'de') return 'de-DE';
+  if (lang === 'it') return 'it-IT';
+  if (lang === 'es') return 'es-ES';
+  if (lang === 'pt') return 'pt-PT';
+  if (lang === 'ru') return 'ru-RU';
+  if (lang === 'zh') return 'zh-CN';
+  if (lang === 'ja') return 'ja-JP';
+  if (lang === 'ko') return 'ko-KR';
+  if (lang === 'ar') return 'ar-SA';
+  return 'en-US';
+}
+
+function getSettingsText(lang: AppLang) {
+  if (lang === 'tr') {
+    return {
+      defaultUser: 'Kullanıcı',
+      settingsTitle: 'Ayarlar',
+      tabGeneral: 'Genel',
+      tabOrders: 'Siparişler',
+      accountInfo: 'Hesap Bilgileri',
+      guestMode: 'Misafir Modu',
+      guestHint: 'Profil, değerlendirme ve şikayet işlemleri için giriş yapmanız gerekir.',
+      login: 'Giriş Yap',
+      fullName: 'Ad Soyad',
+      email: 'E-posta',
+      logout: 'Çıkış Yap',
+      deleteAccount: 'Hesabı Sil',
+      contractsAndContact: 'Sözleşme ve İletişim',
+      language: 'Dil',
+      userAgreement: 'Kullanıcı Sözleşmesi',
+      kvkk: 'KVKK Aydınlatma',
+      contact: 'İletişim',
+      orders: 'Siparişler',
+      loading: 'Yükleniyor...',
+      noOrderHistory: 'Henüz geçmiş sipariş yok.',
+      service: 'Hizmet',
+      date: 'Tarih',
+      rating: 'Değerlendirme',
+      complaint: 'Şikayet',
+      favorites: 'Favori Firmalar',
+      noFavorites: 'Henüz favori firma yok.',
+      myRatings: 'Yaptığım Değerlendirmeler',
+      noRatings: 'Henüz değerlendirme yok.',
+      score: 'Puan',
+      myComplaints: 'Yaptığım Şikayetler',
+      noComplaints: 'Henüz şikayet yok.',
+      donationNote: "Net gelirin %10'una kadar yardım kuruluşlarına bağışlanır.",
+      statusCompleted: 'Tamamlandı',
+      statusClosed: 'Kapandı',
+      statusPending: 'Bekliyor',
+      statusInProgress: 'İşlemde',
+      accountDeleteConfirm: 'Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+      accountDeleteReauth: 'Güvenlik nedeniyle hesap silme için yeniden doğrulama gerekiyor. Lütfen tekrar giriş yapıp yeniden deneyin.',
+      accountDeleteFailed: 'Hesap silinemedi. Lütfen tekrar deneyin. Sorun sürerse tekrar giriş yapıp yeniden silin.',
+      accountDeletedWithSub: 'Hesap silindi. Not: App Store aboneliği Apple Kimliğinize bağlıdır. Gerekirse App Store abonelikler ekranından iptal edebilirsiniz.',
+      accountDeleted: 'Hesap silindi.',
+      noProviderInfo: 'Bu sipariş için firma bilgisi bulunamadı.',
+      phoneRequired: 'Değerlendirme için profil telefon bilgisi gerekli.',
+      ratingSent: 'Değerlendirme admin onayına gönderildi.',
+      ratingFailed: 'Değerlendirme gönderilemedi. Lütfen tekrar deneyin.',
+    };
+  }
+  if (lang === 'fr') {
+    return {
+      defaultUser: 'Utilisateur',
+      settingsTitle: 'Paramètres',
+      tabGeneral: 'Général',
+      tabOrders: 'Commandes',
+      accountInfo: 'Informations du compte',
+      guestMode: 'Mode Invité',
+      guestHint: 'Vous devez vous connecter pour le profil, les avis et les réclamations.',
+      login: 'Se connecter',
+      fullName: 'Nom complet',
+      email: 'E-mail',
+      logout: 'Déconnexion',
+      deleteAccount: 'Supprimer le compte',
+      contractsAndContact: 'Contrats et Contact',
+      language: 'Langue',
+      userAgreement: "Contrat d'utilisation",
+      kvkk: 'Informations KVKK',
+      contact: 'Contact',
+      orders: 'Commandes',
+      loading: 'Chargement...',
+      noOrderHistory: 'Aucune commande passée.',
+      service: 'Service',
+      date: 'Date',
+      rating: 'Évaluer',
+      complaint: 'Réclamation',
+      favorites: 'Prestataires favoris',
+      noFavorites: 'Aucun favori.',
+      myRatings: 'Mes évaluations',
+      noRatings: 'Aucune évaluation.',
+      score: 'Note',
+      myComplaints: 'Mes réclamations',
+      noComplaints: 'Aucune réclamation.',
+      donationNote: "Jusqu'à 10 % du revenu net est reversé à des associations.",
+      statusCompleted: 'Terminé',
+      statusClosed: 'Fermé',
+      statusPending: 'En attente',
+      statusInProgress: 'En cours',
+      accountDeleteConfirm: 'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
+      accountDeleteReauth: 'Pour des raisons de sécurité, une nouvelle authentification est requise. Veuillez vous reconnecter puis réessayer.',
+      accountDeleteFailed: "Échec de suppression du compte. Veuillez réessayer. Si le problème persiste, reconnectez-vous et réessayez.",
+      accountDeletedWithSub: "Compte supprimé. Remarque : l'abonnement App Store est lié à votre identifiant Apple. Si nécessaire, annulez-le dans l'écran Abonnements de l'App Store.",
+      accountDeleted: 'Compte supprimé.',
+      noProviderInfo: 'Aucune information prestataire pour cette commande.',
+      phoneRequired: 'Le numéro de téléphone du profil est requis pour évaluer.',
+      ratingSent: "L'évaluation a été envoyée pour validation admin.",
+      ratingFailed: "Échec de l'envoi de l'évaluation. Veuillez réessayer.",
+    };
+  }
+  return {
+    defaultUser: 'User',
+    settingsTitle: 'Settings',
+    tabGeneral: 'General',
+    tabOrders: 'Orders',
+    accountInfo: 'Account Information',
+    guestMode: 'Guest Mode',
+    guestHint: 'You need to sign in for profile, ratings, and complaints.',
+    login: 'Sign In',
+    fullName: 'Full Name',
+    email: 'Email',
+    logout: 'Log Out',
+    deleteAccount: 'Delete Account',
+    contractsAndContact: 'Agreements & Contact',
+    language: 'Language',
+    userAgreement: 'User Agreement',
+    kvkk: 'KVKK Disclosure',
+    contact: 'Contact',
+    orders: 'Orders',
+    loading: 'Loading...',
+    noOrderHistory: 'No order history yet.',
+    service: 'Service',
+    date: 'Date',
+    rating: 'Rate',
+    complaint: 'Complaint',
+    favorites: 'Favorite Providers',
+    noFavorites: 'No favorite providers yet.',
+    myRatings: 'My Ratings',
+    noRatings: 'No ratings yet.',
+    score: 'Score',
+    myComplaints: 'My Complaints',
+    noComplaints: 'No complaints yet.',
+    donationNote: 'Up to 10% of net revenue is donated to charities.',
+    statusCompleted: 'Completed',
+    statusClosed: 'Closed',
+    statusPending: 'Pending',
+    statusInProgress: 'In Progress',
+    accountDeleteConfirm: 'Are you sure you want to delete your account? This action cannot be undone.',
+    accountDeleteReauth: 'For security reasons, re-authentication is required. Please sign in again and retry.',
+    accountDeleteFailed: 'Account could not be deleted. Please try again. If the issue persists, sign in again and retry.',
+    accountDeletedWithSub: 'Account deleted. Note: App Store subscription is tied to your Apple ID. If needed, cancel it from App Store Subscriptions.',
+    accountDeleted: 'Account deleted.',
+    noProviderInfo: 'No provider information found for this order.',
+    phoneRequired: 'Profile phone number is required for rating.',
+    ratingSent: 'Rating sent for admin approval.',
+    ratingFailed: 'Rating could not be sent. Please try again.',
+  };
 }
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [name, setName] = useState('Kullanıcı');
+  const [name, setName] = useState('User');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [isGuest, setIsGuest] = useState(false);
@@ -158,6 +335,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
   const [appLang, setAppLang] = useState<AppLang>('tr');
   const membershipIap = useMembershipIap();
+  const uiText = useMemo(() => getSettingsText(appLang), [appLang]);
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
 
@@ -196,7 +374,7 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = confirm('Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');
+    const confirmed = confirm(uiText.accountDeleteConfirm);
     if (!confirmed) return;
     const isAuthenticatedLocal = localStorage.getItem('Transport_auth_logged_in') === '1';
 
@@ -237,10 +415,10 @@ export default function SettingsPage() {
         rawError.includes('credential') ||
         rawError.includes('auth/requires-recent-login')
       ) {
-        alert('Güvenlik nedeniyle hesap silme için yeniden doğrulama gerekiyor. Lütfen tekrar giriş yapıp yeniden deneyin.');
+        alert(uiText.accountDeleteReauth);
         return;
       }
-      alert('Hesap silinemedi. Lütfen tekrar deneyin. Sorun sürerse tekrar giriş yapıp yeniden silin.');
+      alert(uiText.accountDeleteFailed);
       return;
     }
 
@@ -253,15 +431,15 @@ export default function SettingsPage() {
     } catch {}
     clearLocalSession();
     if (membershipIap.isActive) {
-      alert('Hesap silindi. Not: App Store aboneliği Apple Kimliğinize bağlıdır. Gerekirse App Store abonelikler ekranından iptal edebilirsiniz.');
+      alert(uiText.accountDeletedWithSub);
     } else {
-      alert('Hesap silindi.');
+      alert(uiText.accountDeleted);
     }
     router.replace('/auth');
   };
 
   useEffect(() => {
-    const storedName = localStorage.getItem('Transport_user_name') || 'Kullanıcı';
+    const storedName = localStorage.getItem('Transport_user_name') || uiText.defaultUser;
     const storedEmail = localStorage.getItem('Transport_user_email') || '';
     const storedPhone = localStorage.getItem('Transport_user_phone') || '';
     const guestMode = localStorage.getItem('Transport_guest_mode') === '1';
@@ -280,7 +458,7 @@ export default function SettingsPage() {
       setFavorites([]);
     }
 
-  }, []);
+  }, [uiText.defaultUser]);
 
   useEffect(() => {
     const syncLang = () => setAppLang(getPreferredLang());
@@ -368,15 +546,15 @@ export default function SettingsPage() {
   const getStatusChip = (statusRaw: string) => {
     const status = String(statusRaw || '').toUpperCase();
     if (status === 'APPROVED' || status === 'RESOLVED' || status === 'COMPLETED') {
-      return { label: 'Tamamlandı', className: 'bg-emerald-100 text-emerald-700' };
+      return { label: uiText.statusCompleted, className: 'bg-emerald-100 text-emerald-700' };
     }
     if (status === 'REJECTED' || status === 'CLOSED' || status === 'CANCELLED') {
-      return { label: 'Kapandı', className: 'bg-slate-200 text-slate-600' };
+      return { label: uiText.statusClosed, className: 'bg-slate-200 text-slate-600' };
     }
     if (status === 'PENDING') {
-      return { label: 'Bekliyor', className: 'bg-amber-100 text-amber-700' };
+      return { label: uiText.statusPending, className: 'bg-amber-100 text-amber-700' };
     }
-    return { label: 'İşlemde', className: 'bg-blue-100 text-blue-700' };
+    return { label: uiText.statusInProgress, className: 'bg-blue-100 text-blue-700' };
   };
 
   const handleOpenRating = (order: OrderItem) => {
@@ -414,13 +592,13 @@ export default function SettingsPage() {
   const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
     const providerId = selectedOrder?.driver?._id;
     if (!providerId) {
-      alert('Bu sipariş için firma bilgisi bulunamadı.');
+      alert(uiText.noProviderInfo);
       return;
     }
 
     const reporterPhone = normalizedPhone;
     if (!reporterPhone) {
-      alert('Değerlendirme için profil telefon bilgisi gerekli.');
+      alert(uiText.phoneRequired);
       return;
     }
 
@@ -440,9 +618,9 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) throw new Error('rating_failed');
-      alert('Değerlendirme admin onayına gönderildi.');
+      alert(uiText.ratingSent);
     } catch {
-      alert('Değerlendirme gönderilemedi. Lütfen tekrar deneyin.');
+      alert(uiText.ratingFailed);
     }
   };
 
@@ -462,7 +640,7 @@ export default function SettingsPage() {
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Ayarlar</h1>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">{uiText.settingsTitle}</h1>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-white/55 p-1.5 backdrop-blur-md border border-white/70">
             <button
@@ -471,7 +649,7 @@ export default function SettingsPage() {
                 activeTab === 'general' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'
               }`}
             >
-              Genel
+              {uiText.tabGeneral}
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -479,7 +657,7 @@ export default function SettingsPage() {
                 activeTab === 'history' ? 'bg-white text-slate-900 shadow' : 'text-slate-500'
               }`}
             >
-              Siparişler
+              {uiText.tabOrders}
             </button>
           </div>
         </header>
@@ -489,29 +667,29 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <UserCircle2 className="text-cyan-700" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Hesap Bilgileri</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.accountInfo}</p>
           </div>
           {isGuest && (
             <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-xs font-black uppercase text-blue-700">Misafir Modu</p>
+              <p className="text-xs font-black uppercase text-blue-700">{uiText.guestMode}</p>
               <p className="mt-1 text-xs font-semibold text-blue-700">
-                Profil, değerlendirme ve şikayet işlemleri için giriş yapmanız gerekir.
+                {uiText.guestHint}
               </p>
               <button
                 onClick={() => router.push('/auth')}
                 className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
               >
-                Giriş Yap
+                {uiText.login}
               </button>
             </div>
           )}
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
-              <p className="text-[10px] font-black uppercase text-slate-400">Ad Soyad</p>
+              <p className="text-[10px] font-black uppercase text-slate-400">{uiText.fullName}</p>
               <p className="mt-1 text-sm font-black text-slate-900">{name || '-'}</p>
             </div>
             <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
-              <p className="text-[10px] font-black uppercase text-slate-400">E-posta</p>
+              <p className="text-[10px] font-black uppercase text-slate-400">{uiText.email}</p>
               <p className="mt-1 text-sm font-black text-slate-900 break-all">{email || '-'}</p>
             </div>
           </div>
@@ -520,13 +698,13 @@ export default function SettingsPage() {
               onClick={handleLogout}
               className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
             >
-              Çıkış Yap
+              {uiText.logout}
             </button>
             <button
               onClick={handleDeleteAccount}
               className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
             >
-              Hesabı Sil
+              {uiText.deleteAccount}
             </button>
           </div>
         </section>
@@ -534,13 +712,13 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <BookText className="text-indigo-600" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Sözleşme ve İletişim</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.contractsAndContact}</p>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Globe2 className="text-sky-600" size={16} />
-                <p className="text-[10px] font-black uppercase text-slate-400">Dil</p>
+                <p className="text-[10px] font-black uppercase text-slate-400">{uiText.language}</p>
               </div>
               <select
                 value={appLang}
@@ -629,18 +807,18 @@ export default function SettingsPage() {
               onClick={() => setShowAgreementModal(true)}
               className="rounded-2xl border border-white/70 bg-white/70 p-4 text-left backdrop-blur-md"
             >
-              <p className="text-[10px] font-black uppercase text-slate-400">Kullanıcı Sözleşmesi</p>
+              <p className="text-[10px] font-black uppercase text-slate-400">{uiText.userAgreement}</p>
             </button>
 
             <button
               onClick={() => setShowKvkkModal(true)}
               className="rounded-2xl border border-white/70 bg-white/70 p-4 text-left backdrop-blur-md"
             >
-              <p className="text-[10px] font-black uppercase text-slate-400">KVKK Aydınlatma</p>
+              <p className="text-[10px] font-black uppercase text-slate-400">{uiText.kvkk}</p>
             </button>
           </div>
           <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
-            <p className="text-[10px] font-black uppercase text-slate-400">İletişim</p>
+            <p className="text-[10px] font-black uppercase text-slate-400">{uiText.contact}</p>
             <a href="mailto:iletisimtransporter@gmail.com" className="mt-1 block text-sm font-black text-slate-900 break-all">
               iletisimtransporter@gmail.com
             </a>
@@ -654,18 +832,18 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Phone className="text-blue-600" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Siparişler</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.orders}</p>
           </div>
           <div className="mt-4 space-y-2">
             {ordersLoading ? (
-              <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.loading}</p>
             ) : orderHistory.length === 0 ? (
-              <p className="text-xs font-bold text-slate-500">Henüz geçmiş sipariş yok.</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.noOrderHistory}</p>
             ) : (
               orderHistory.map((order) => {
                 const chip = getStatusChip(String(order.status || ''));
                 const createdAtText = order.createdAt
-                  ? new Date(order.createdAt).toLocaleString('tr-TR')
+                  ? new Date(order.createdAt).toLocaleString(toLocaleTag(appLang))
                   : '-';
 
                 return (
@@ -679,22 +857,22 @@ export default function SettingsPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-[11px] font-semibold text-slate-600">
-                      Hizmet: {order.serviceType || '-'}
+                      {uiText.service}: {order.serviceType || '-'}
                     </p>
-                    <p className="text-[11px] font-semibold text-slate-600">Tarih: {createdAtText}</p>
+                    <p className="text-[11px] font-semibold text-slate-600">{uiText.date}: {createdAtText}</p>
 
                     <div className="mt-2 flex gap-2">
                       <button
                         onClick={() => handleOpenRating(order)}
                         className="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-[10px] font-black uppercase text-white"
                       >
-                        Değerlendirme
+                        {uiText.rating}
                       </button>
                       <button
                         onClick={() => handleOpenReport(order)}
                         className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-[10px] font-black uppercase text-white"
                       >
-                        Şikayet
+                        {uiText.complaint}
                       </button>
                     </div>
                   </div>
@@ -707,11 +885,11 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Heart className="text-rose-600" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Favori Firmalar</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.favorites}</p>
           </div>
           <div className="mt-4 space-y-2">
             {favorites.length === 0 ? (
-              <p className="text-xs font-bold text-slate-500">Henüz favori firma yok.</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.noFavorites}</p>
             ) : (
               favorites.map((fav) => (
                 <div key={fav._id} className="rounded-xl border border-rose-100 bg-rose-50/70 p-3">
@@ -728,13 +906,13 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <Star className="text-amber-500" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Yaptığım Değerlendirmeler</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.myRatings}</p>
           </div>
           <div className="mt-4 space-y-2">
             {loading ? (
-              <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.loading}</p>
             ) : myRatings.length === 0 ? (
-              <p className="text-xs font-bold text-slate-500">Henüz değerlendirme yok.</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.noRatings}</p>
             ) : (
               myRatings.map((item) => {
                 const chip = getStatusChip(item.status);
@@ -744,7 +922,7 @@ export default function SettingsPage() {
                       <p className="text-xs font-black uppercase text-slate-800">{item.providerName || '-'}</p>
                       <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase ${chip.className}`}>{chip.label}</span>
                     </div>
-                    <p className="mt-1 text-[11px] font-bold text-slate-600">Puan: {item.rating}/5</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-600">{uiText.score}: {item.rating}/5</p>
                     {item.comment && <p className="mt-1 text-[11px] font-medium text-slate-600">{item.comment}</p>}
                   </div>
                 );
@@ -756,20 +934,20 @@ export default function SettingsPage() {
         <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
             <AlertTriangle className="text-red-500" size={20} />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Yaptığım Şikayetler</p>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.myComplaints}</p>
           </div>
           <div className="mt-4 space-y-2">
             {loading ? (
-              <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.loading}</p>
             ) : myReports.length === 0 ? (
-              <p className="text-xs font-bold text-slate-500">Henüz şikayet yok.</p>
+              <p className="text-xs font-bold text-slate-500">{uiText.noComplaints}</p>
             ) : (
               myReports.map((item: any) => {
                 const chip = getStatusChip(item.status);
                 return (
                   <div key={item._id} className="rounded-xl border border-red-100 bg-red-50/70 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-black uppercase text-slate-800">{item.reason || 'Şikayet'}</p>
+                      <p className="text-xs font-black uppercase text-slate-800">{item.reason || uiText.complaint}</p>
                       <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase ${chip.className}`}>{chip.label}</span>
                     </div>
                     {item.details && <p className="mt-1 text-[11px] font-medium text-slate-600">{item.details}</p>}
@@ -784,7 +962,7 @@ export default function SettingsPage() {
 
         <footer className="rounded-[2rem] border border-white/60 bg-white/45 p-4 text-center shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">
-            Net gelirin %10&apos;una kadar yardım kuruluşlarına bağışlanır.
+            {uiText.donationNote}
           </p>
         </footer>
       </div>
