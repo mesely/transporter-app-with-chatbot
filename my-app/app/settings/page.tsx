@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   BookText,
+  ExternalLink,
   Globe2,
   Heart,
   Phone,
@@ -215,6 +216,18 @@ function getSettingsText(lang: AppLang) {
       phoneRequired: 'Değerlendirme için profil telefon bilgisi gerekli.',
       ratingSent: 'Değerlendirme admin onayına gönderildi.',
       ratingFailed: 'Değerlendirme gönderilemedi. Lütfen tekrar deneyin.',
+      subscriptionName: 'Transport 245 Yillik Uyelik',
+      subscriptionPeriodLabel: 'Sure',
+      subscriptionPeriodValue: '1 yil, otomatik yenilenir',
+      subscriptionIncludesLabel: 'Abonelik kapsaminda',
+      subscriptionBenefits: [
+        'Harita ve liste ekranlarinda hizmet saglayici kesfi',
+        'Hizmet turune gore filtreleme ve yakin saglayici goruntuleme',
+        'Favoriler, degerlendirme ve sikayet ozelliklerine devam eden erisim',
+      ],
+      subscriptionLegalLabel: 'Yasal baglantilar',
+      privacyLink: 'Gizlilik Politikasi',
+      termsLink: 'Kullanim Kosullari',
     };
   }
   if (lang === 'fr') {
@@ -264,6 +277,18 @@ function getSettingsText(lang: AppLang) {
       phoneRequired: 'Le numéro de téléphone du profil est requis pour évaluer.',
       ratingSent: "L'évaluation a été envoyée pour validation admin.",
       ratingFailed: "Échec de l'envoi de l'évaluation. Veuillez réessayer.",
+      subscriptionName: 'Adhesion annuelle Transport 245',
+      subscriptionPeriodLabel: 'Duree',
+      subscriptionPeriodValue: '1 an, renouvellement automatique',
+      subscriptionIncludesLabel: "L'abonnement inclut",
+      subscriptionBenefits: [
+        'Decouverte de prestataires sur carte et liste',
+        'Filtrage par type de service et affichage des prestataires proches',
+        'Acces continu aux favoris, evaluations et reclamations',
+      ],
+      subscriptionLegalLabel: 'Liens juridiques',
+      privacyLink: 'Politique de confidentialite',
+      termsLink: "Conditions d'utilisation",
     };
   }
   return {
@@ -312,6 +337,18 @@ function getSettingsText(lang: AppLang) {
     phoneRequired: 'Profile phone number is required for rating.',
     ratingSent: 'Rating sent for admin approval.',
     ratingFailed: 'Rating could not be sent. Please try again.',
+    subscriptionName: 'Transport 245 Yearly Membership',
+    subscriptionPeriodLabel: 'Length',
+    subscriptionPeriodValue: '1 year, auto-renewable',
+    subscriptionIncludesLabel: 'Subscription includes',
+    subscriptionBenefits: [
+      'Provider discovery on map and list screens',
+      'Service-type filtering and nearby provider access',
+      'Continued access to favorites, ratings, and complaint flows',
+    ],
+    subscriptionLegalLabel: 'Legal links',
+    privacyLink: 'Privacy Policy',
+    termsLink: 'Terms of Use',
   };
 }
 
@@ -744,6 +781,10 @@ export default function SettingsPage() {
                 <BadgeCheck className="text-cyan-700" size={16} />
                 <p className="text-[10px] font-black uppercase text-slate-400">{membershipText.title}</p>
               </div>
+              <p className="mt-2 text-sm font-black text-slate-900">{uiText.subscriptionName}</p>
+              <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                {uiText.subscriptionPeriodLabel}: {uiText.subscriptionPeriodValue}
+              </p>
               {membershipProductName ? (
                 <p className="mt-2 text-[11px] font-semibold text-slate-700">
                   {membershipText.productLabel}: {membershipProductName}
@@ -761,6 +802,33 @@ export default function SettingsPage() {
               <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.paymentOnlyApple}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.status}: {membershipIap.isActive ? membershipText.active : membershipText.passive}</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.expiry}: {iapExpiresText}</p>
+              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{uiText.subscriptionIncludesLabel}</p>
+                <ul className="mt-2 space-y-1">
+                  {uiText.subscriptionBenefits.map((item: string) => (
+                    <li key={item} className="text-[11px] font-medium leading-relaxed text-slate-700">
+                      - {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{uiText.subscriptionLegalLabel}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <a
+                    href="/privacy"
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
+                  >
+                    <ExternalLink size={12} /> {uiText.privacyLink}
+                  </a>
+                  <a
+                    href="/terms"
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
+                  >
+                    <ExternalLink size={12} /> {uiText.termsLink}
+                  </a>
+                </div>
+              </div>
               {!membershipIap.isNativeIOS && (
                 <p className="mt-2 text-[11px] font-semibold text-slate-500">
                   {membershipText.iosOnlyInfo}
