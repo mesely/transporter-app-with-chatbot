@@ -29,6 +29,7 @@ import { useMembershipIap } from '../../lib/useMembershipIap';
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const FAVORITES_KEY = 'Transport_favorites_v1';
 const SKIP_SPLASH_ONCE_KEY = 'Transport_skip_splash_once';
+const APPLE_STANDARD_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 type FavoriteItem = {
   _id: string;
@@ -822,7 +823,9 @@ export default function SettingsPage() {
                     <ExternalLink size={12} /> {uiText.privacyLink}
                   </a>
                   <a
-                    href="/terms"
+                    href={APPLE_STANDARD_EULA_URL}
+                    target="_blank"
+                    rel="noreferrer"
                     className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
                   >
                     <ExternalLink size={12} /> {uiText.termsLink}
