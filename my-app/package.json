@@ -15,7 +15,6 @@
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
-    "@revenuecat/purchases-capacitor": "^12.2.1",
     "clsx": "^2.1.1",
     "firebase": "^12.10.0",
     "framer-motion": "^11.0.0",

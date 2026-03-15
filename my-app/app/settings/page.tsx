@@ -3,9 +3,7 @@
 import {
   AlertTriangle,
   ArrowLeft,
-  BadgeCheck,
   BookText,
-  ExternalLink,
   Globe2,
   Heart,
   Phone,
@@ -24,12 +22,10 @@ import UserAgreementModal from '../../components/UserAgreementModal';
 import RatingModal from '../../components/RatingModal';
 import ReportModal from '../../components/ReportModal';
 import { AppLang, LANG_CHANGED_EVENT, getPreferredLang, setPreferredLang } from '../../utils/language';
-import { useMembershipIap } from '../../lib/useMembershipIap';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const FAVORITES_KEY = 'Transport_favorites_v1';
 const SKIP_SPLASH_ONCE_KEY = 'Transport_skip_splash_once';
-const APPLE_STANDARD_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 type FavoriteItem = {
   _id: string;
@@ -74,83 +70,6 @@ function getOrCreateDeviceId(): string {
     localStorage.setItem('Transport_device_id', id);
   }
   return id;
-}
-
-function getMembershipText(lang: AppLang) {
-  if (lang === 'tr') {
-    return {
-      title: 'Üyelik Bilgisi',
-      productLabel: 'Ürün',
-      priceLabel: 'Fiyat',
-      storeInfoPending: 'Apple fiyatı yükleniyor.',
-      storeInfoUnavailable: 'App Store bilgisi henüz alınamadı.',
-      paymentOnlyApple: 'Ödeme yalnızca App Store aboneliği ile yapılır.',
-      status: 'Durum',
-      active: 'Aktif',
-      passive: 'Pasif',
-      expiry: 'Bitiş',
-      iosOnlyInfo: 'Abonelik satın alma iOS uygulamasında App Store üzerinden yapılır.',
-      start: 'Aboneliği Başlat',
-      restore: 'Satın Alımları Geri Yükle',
-      manage: 'Aboneliği Yönet',
-      processing: 'İşleniyor...',
-    };
-  }
-  if (lang === 'fr') {
-    return {
-      title: 'Adhésion',
-      productLabel: 'Produit',
-      priceLabel: 'Prix',
-      storeInfoPending: 'Prix Apple en cours de chargement.',
-      storeInfoUnavailable: 'Les informations App Store ne sont pas encore disponibles.',
-      paymentOnlyApple: 'Paiement uniquement via abonnement App Store.',
-      status: 'Statut',
-      active: 'Actif',
-      passive: 'Inactif',
-      expiry: 'Expiration',
-      iosOnlyInfo: "L'achat d'abonnement est disponible sur iOS via App Store.",
-      start: "Démarrer l'abonnement",
-      restore: 'Restaurer les achats',
-      manage: "Gérer l'abonnement",
-      processing: 'Traitement...',
-    };
-  }
-  if (lang === 'en') {
-    return {
-      title: 'Membership',
-      productLabel: 'Product',
-      priceLabel: 'Price',
-      storeInfoPending: 'Apple price is loading.',
-      storeInfoUnavailable: 'App Store information is not available yet.',
-      paymentOnlyApple: 'Payment is available only via App Store subscription.',
-      status: 'Status',
-      active: 'Active',
-      passive: 'Inactive',
-      expiry: 'Expiry',
-      iosOnlyInfo: 'Subscription purchase is available on iOS via App Store.',
-      start: 'Start Subscription',
-      restore: 'Restore Purchases',
-      manage: 'Manage Subscription',
-      processing: 'Processing...',
-    };
-  }
-  return {
-    title: 'Membership',
-    productLabel: 'Product',
-    priceLabel: 'Price',
-    storeInfoPending: 'Apple price is loading.',
-    storeInfoUnavailable: 'App Store information is not available yet.',
-    paymentOnlyApple: 'Payment is available only via App Store subscription.',
-    status: 'Status',
-    active: 'Active',
-    passive: 'Inactive',
-    expiry: 'Expiry',
-    iosOnlyInfo: 'Subscription purchase is available on iOS via App Store.',
-    start: 'Start Subscription',
-    restore: 'Restore Purchases',
-    manage: 'Manage Subscription',
-    processing: 'Processing...',
-  };
 }
 
 function toLocaleTag(lang: AppLang): string {
@@ -211,24 +130,11 @@ function getSettingsText(lang: AppLang) {
       accountDeleteConfirm: 'Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
       accountDeleteReauth: 'Güvenlik nedeniyle hesap silme için yeniden doğrulama gerekiyor. Lütfen tekrar giriş yapıp yeniden deneyin.',
       accountDeleteFailed: 'Hesap silinemedi. Lütfen tekrar deneyin. Sorun sürerse tekrar giriş yapıp yeniden silin.',
-      accountDeletedWithSub: 'Hesap silindi. Not: App Store aboneliği Apple Kimliğinize bağlıdır. Gerekirse App Store abonelikler ekranından iptal edebilirsiniz.',
       accountDeleted: 'Hesap silindi.',
       noProviderInfo: 'Bu sipariş için firma bilgisi bulunamadı.',
       phoneRequired: 'Değerlendirme için profil telefon bilgisi gerekli.',
       ratingSent: 'Değerlendirme admin onayına gönderildi.',
       ratingFailed: 'Değerlendirme gönderilemedi. Lütfen tekrar deneyin.',
-      subscriptionName: 'Transport 245 Yillik Uyelik',
-      subscriptionPeriodLabel: 'Sure',
-      subscriptionPeriodValue: '1 yil, otomatik yenilenir',
-      subscriptionIncludesLabel: 'Abonelik kapsaminda',
-      subscriptionBenefits: [
-        'Harita ve liste ekranlarinda hizmet saglayici kesfi',
-        'Hizmet turune gore filtreleme ve yakin saglayici goruntuleme',
-        'Favoriler, degerlendirme ve sikayet ozelliklerine devam eden erisim',
-      ],
-      subscriptionLegalLabel: 'Yasal baglantilar',
-      privacyLink: 'Gizlilik Politikasi',
-      termsLink: 'Kullanim Kosullari',
     };
   }
   if (lang === 'fr') {
@@ -272,24 +178,11 @@ function getSettingsText(lang: AppLang) {
       accountDeleteConfirm: 'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
       accountDeleteReauth: 'Pour des raisons de sécurité, une nouvelle authentification est requise. Veuillez vous reconnecter puis réessayer.',
       accountDeleteFailed: "Échec de suppression du compte. Veuillez réessayer. Si le problème persiste, reconnectez-vous et réessayez.",
-      accountDeletedWithSub: "Compte supprimé. Remarque : l'abonnement App Store est lié à votre identifiant Apple. Si nécessaire, annulez-le dans l'écran Abonnements de l'App Store.",
       accountDeleted: 'Compte supprimé.',
       noProviderInfo: 'Aucune information prestataire pour cette commande.',
       phoneRequired: 'Le numéro de téléphone du profil est requis pour évaluer.',
       ratingSent: "L'évaluation a été envoyée pour validation admin.",
       ratingFailed: "Échec de l'envoi de l'évaluation. Veuillez réessayer.",
-      subscriptionName: 'Adhesion annuelle Transport 245',
-      subscriptionPeriodLabel: 'Duree',
-      subscriptionPeriodValue: '1 an, renouvellement automatique',
-      subscriptionIncludesLabel: "L'abonnement inclut",
-      subscriptionBenefits: [
-        'Decouverte de prestataires sur carte et liste',
-        'Filtrage par type de service et affichage des prestataires proches',
-        'Acces continu aux favoris, evaluations et reclamations',
-      ],
-      subscriptionLegalLabel: 'Liens juridiques',
-      privacyLink: 'Politique de confidentialite',
-      termsLink: "Conditions d'utilisation",
     };
   }
   return {
@@ -332,24 +225,11 @@ function getSettingsText(lang: AppLang) {
     accountDeleteConfirm: 'Are you sure you want to delete your account? This action cannot be undone.',
     accountDeleteReauth: 'For security reasons, re-authentication is required. Please sign in again and retry.',
     accountDeleteFailed: 'Account could not be deleted. Please try again. If the issue persists, sign in again and retry.',
-    accountDeletedWithSub: 'Account deleted. Note: App Store subscription is tied to your Apple ID. If needed, cancel it from App Store Subscriptions.',
     accountDeleted: 'Account deleted.',
     noProviderInfo: 'No provider information found for this order.',
     phoneRequired: 'Profile phone number is required for rating.',
     ratingSent: 'Rating sent for admin approval.',
     ratingFailed: 'Rating could not be sent. Please try again.',
-    subscriptionName: 'Transport 245 Yearly Membership',
-    subscriptionPeriodLabel: 'Length',
-    subscriptionPeriodValue: '1 year, auto-renewable',
-    subscriptionIncludesLabel: 'Subscription includes',
-    subscriptionBenefits: [
-      'Provider discovery on map and list screens',
-      'Service-type filtering and nearby provider access',
-      'Continued access to favorites, ratings, and complaint flows',
-    ],
-    subscriptionLegalLabel: 'Legal links',
-    privacyLink: 'Privacy Policy',
-    termsLink: 'Terms of Use',
   };
 }
 
@@ -372,7 +252,6 @@ export default function SettingsPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'history'>('general');
   const [appLang, setAppLang] = useState<AppLang>('tr');
-  const membershipIap = useMembershipIap();
   const uiText = useMemo(() => getSettingsText(appLang), [appLang]);
 
   const normalizedPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
@@ -400,7 +279,6 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    await membershipIap.resetSession();
     try {
       await FirebaseAuthentication.signOut();
     } catch {}
@@ -460,7 +338,6 @@ export default function SettingsPage() {
       return;
     }
 
-    await membershipIap.resetSession();
     try {
       await FirebaseAuthentication.signOut();
     } catch {}
@@ -468,11 +345,7 @@ export default function SettingsPage() {
       await signOut(auth);
     } catch {}
     clearLocalSession();
-    if (membershipIap.isActive) {
-      alert(uiText.accountDeletedWithSub);
-    } else {
-      alert(uiText.accountDeleted);
-    }
+    alert(uiText.accountDeleted);
     router.replace('/auth');
   };
 
@@ -613,20 +486,6 @@ export default function SettingsPage() {
     }
   };
 
-  const iapExpiresText = useMemo(() => {
-    if (!membershipIap.expiresDate) return '-';
-    const dt = new Date(membershipIap.expiresDate);
-    if (Number.isNaN(dt.getTime())) return '-';
-    return dt.toLocaleDateString(toLocaleTag(appLang));
-  }, [appLang, membershipIap.expiresDate]);
-  const membershipText = useMemo(() => getMembershipText(appLang), [appLang]);
-  const membershipProductName = useMemo(() => {
-    const title = String(membershipIap.productTitle || '').trim();
-    const description = String(membershipIap.productDescription || '').trim();
-    return title || description || '';
-  }, [membershipIap.productDescription, membershipIap.productTitle]);
-  const membershipPrice = useMemo(() => String(membershipIap.priceText || '').trim(), [membershipIap.priceText]);
-
   const handleRateOrder = async (data: { rating: number; comment: string; tags: string[] }) => {
     const providerId = selectedOrder?.driver?._id;
     if (!providerId) {
@@ -752,8 +611,8 @@ export default function SettingsPage() {
             <BookText className="text-indigo-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.contractsAndContact}</p>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+          <div className="mt-4">
+            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md md:max-w-sm">
               <div className="flex items-center gap-2">
                 <Globe2 className="text-sky-600" size={16} />
                 <p className="text-[10px] font-black uppercase text-slate-400">{uiText.language}</p>
@@ -776,101 +635,6 @@ export default function SettingsPage() {
                 <option value="ko">한국어</option>
                 <option value="ar">العربية</option>
               </select>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2">
-                <BadgeCheck className="text-cyan-700" size={16} />
-                <p className="text-[10px] font-black uppercase text-slate-400">{membershipText.title}</p>
-              </div>
-              <p className="mt-2 text-sm font-black text-slate-900">{uiText.subscriptionName}</p>
-              <p className="mt-2 text-[11px] font-semibold text-slate-700">
-                {uiText.subscriptionPeriodLabel}: {uiText.subscriptionPeriodValue}
-              </p>
-              {membershipProductName ? (
-                <p className="mt-2 text-[11px] font-semibold text-slate-700">
-                  {membershipText.productLabel}: {membershipProductName}
-                </p>
-              ) : null}
-              {membershipPrice ? (
-                <p className="mt-1 text-[11px] font-semibold text-slate-700">
-                  {membershipText.priceLabel}: {membershipPrice}
-                </p>
-              ) : (
-                <p className="mt-1 text-[11px] font-semibold text-slate-600">
-                  {membershipProductName ? membershipText.storeInfoPending : membershipText.storeInfoUnavailable}
-                </p>
-              )}
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.paymentOnlyApple}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.status}: {membershipIap.isActive ? membershipText.active : membershipText.passive}</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-600">{membershipText.expiry}: {iapExpiresText}</p>
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{uiText.subscriptionIncludesLabel}</p>
-                <ul className="mt-2 space-y-1">
-                  {uiText.subscriptionBenefits.map((item: string) => (
-                    <li key={item} className="text-[11px] font-medium leading-relaxed text-slate-700">
-                      - {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mt-3">
-                <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{uiText.subscriptionLegalLabel}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <a
-                    href="/privacy"
-                    className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
-                  >
-                    <ExternalLink size={12} /> {uiText.privacyLink}
-                  </a>
-                  <a
-                    href={APPLE_STANDARD_EULA_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
-                  >
-                    <ExternalLink size={12} /> {uiText.termsLink}
-                  </a>
-                </div>
-              </div>
-              {!membershipIap.isNativeIOS && (
-                <p className="mt-2 text-[11px] font-semibold text-slate-500">
-                  {membershipText.iosOnlyInfo}
-                </p>
-              )}
-              {membershipIap.isNativeIOS && !membershipIap.hasPurchasesPlugin && (
-                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-700">
-                  Abonelik eklentisi bu iOS buildinde aktif değil. Xcode paketlerini yenileyip tekrar build alın.
-                </p>
-              )}
-              {membershipIap.errorText && membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin && (
-                <p className="mt-2 text-[11px] font-semibold text-red-600">{membershipIap.errorText}</p>
-              )}
-              {membershipIap.isNativeIOS && membershipIap.hasPurchasesPlugin ? (
-                <div className="mt-3 grid gap-2">
-                  {!membershipIap.isActive && (
-                    <button
-                      onClick={membershipIap.purchase}
-                      disabled={membershipIap.isLoading}
-                      className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-white disabled:opacity-60"
-                    >
-                      {membershipIap.isLoading ? membershipText.processing : membershipText.start}
-                    </button>
-                  )}
-                  <button
-                    onClick={membershipIap.restore}
-                    disabled={membershipIap.isLoading}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700 disabled:opacity-60"
-                  >
-                    {membershipText.restore}
-                  </button>
-                  <button
-                    onClick={membershipIap.openManageSubscriptions}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-wider text-slate-700"
-                  >
-                    {membershipText.manage}
-                  </button>
-                </div>
-              ) : null}
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">

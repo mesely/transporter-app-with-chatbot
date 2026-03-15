@@ -1,10 +1,3 @@
-/**
- * @file KVKKModal.tsx
- * @description Transport 245 KVKK Aydınlatma Metni (Tam Metin).
- * FIX: Gönderilen 10 maddelik tam metin işlendi.
- * FIX: readOnly prop'u ile onay butonu kontrolü sağlandı.
- */
-
 'use client';
 
 import { X, ShieldCheck } from 'lucide-react';
@@ -12,7 +5,7 @@ import { X, ShieldCheck } from 'lucide-react';
 interface KVKKModalProps {
   isOpen: boolean;
   onClose: () => void;
-  readOnly?: boolean; 
+  readOnly?: boolean;
 }
 
 export default function KVKKModal({ isOpen, onClose, readOnly = false }: KVKKModalProps) {
@@ -22,90 +15,118 @@ export default function KVKKModal({ isOpen, onClose, readOnly = false }: KVKKMod
     <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-slate-700/35 backdrop-blur-md" onClick={onClose}></div>
 
-      <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in duration-300">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 sm:p-8 border-b border-gray-100 shrink-0 text-gray-900">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-50 rounded-xl">
-              <ShieldCheck className="text-green-600" size={24} />
+      <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2.5rem] bg-white shadow-2xl animate-in zoom-in duration-300">
+        <div className="shrink-0 border-b border-gray-100 p-6 text-gray-900 sm:p-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-green-50 p-2">
+                <ShieldCheck className="text-green-600" size={24} />
+              </div>
+              <h2 className="text-lg font-black uppercase tracking-tighter sm:text-xl">KVKK Aydinlatma Metni</h2>
             </div>
-            <h2 className="text-lg sm:text-xl font-black uppercase tracking-tighter">
-              KVKK Aydınlatma Metni
-            </h2>
+            <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-all hover:bg-red-500 hover:text-white">
+              <X size={20} />
+            </button>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 hover:bg-red-500 hover:text-white transition-all">
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar text-gray-600 text-sm leading-relaxed space-y-8 font-medium">
-          
-          <div className="bg-green-50/50 p-4 rounded-2xl border border-green-100 italic text-green-800 text-xs">
-            İşbu Aydınlatma Metni, mobil uygulamayı kullanan kullanıcıların, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında kişisel verilerinin işlenme süreçlerini açıklar.
+        <div className="custom-scrollbar space-y-8 overflow-y-auto p-6 text-sm font-medium leading-relaxed text-gray-600 sm:p-10">
+          <div className="rounded-2xl border border-green-100 bg-green-50/50 p-4 text-xs italic text-green-800">
+            Isbu Aydinlatma Metni, mobil uygulamayi kullanan kullanicilarin kisisel verilerinin hangi amaclarla
+            islendigini, hangi kaynaklardan elde edildigini ve kullanicilarin sahip oldugu haklari aciklamak amaciyla
+            hazirlanmistir.
           </div>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">1. Veri Sorumlusu</h3>
-            <p>Kişisel verileriniz, mobil uygulamanın işletmecisi olan Platform (Transport 245) tarafından, KVKK’ya uygun olarak işlenmektedir.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">1. Veri Sorumlusu</h3>
+            <p>Kisisel verileriniz, mobil uygulamanin isletmecisi olan Platform tarafindan veri sorumlusu sifatoyla islenmektedir.</p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">2. İşlenen Kişisel Veriler</h3>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Kullanıcı Verileri:</strong> Kimlik (Ad, Soyad), İletişim (Tel, E-posta), Profil bilgileri, Kullanım kayıtları ve Konum bilgisi.</li>
-              <li><strong>Hizmet Sağlayıcı Verileri:</strong> Firma adı, İşyeri telefonu, Adres/Konum ve Hizmet tanıtım bilgileri.</li>
-              <li><strong>Ödeme Bilgileri:</strong> İşlemler uygulama mağazası üzerinden yapıldığından, kart bilgileri Platform tarafından saklanmaz.</li>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">2. Islenen Kisisel Veriler</h3>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Kimlik bilgileri, iletisim bilgileri, kullanici hesap ve profil bilgileri.</li>
+              <li>Uygulama kullanim ve islem kayitlari, cihaz bilgileri ve teknik kullanim verileri.</li>
+              <li>Kullanicinin acik rizasi ve cihaz izni dogrultusunda konum bilgisi.</li>
+              <li>Firma adi, isyeri telefonu, yaklasik adres veya konum bilgisi ve hizmete iliskin genel tanitim bilgileri.</li>
             </ul>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">3. Kişisel Verilerin Kaynakları</h3>
-            <p>Veriler; kullanıcı beyanı, kullanıcı tarafından eklenen/düzeltilen bilgiler ve herkese açık üçüncü taraf kaynaklardan elde edilir.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">3. Kisisel Verilerin Kaynaklari</h3>
+            <p>
+              Kisisel veriler; kullanici beyanlari, kullanicilar tarafindan uygulamaya eklenen veya guncellenen
+              bilgiler ve herkese acik kaynaklardan elde edilen bilgilerden olusabilir.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">4. İşlenme Amaçları</h3>
-            <p>Hizmetlerin sunulması, hesap güvenliği, eşleştirme faaliyetleri, abonelik takibi, talep yönetimi ve yasal yükümlülüklerin yerine getirilmesi amacıyla işlenir.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">4. Kisisel Verilerin Islenme Amaclari</h3>
+            <p>
+              Kisisel veriler; uygulama hizmetlerinin sunulmasi ve yonetilmesi, kullanici hesabinin olusturulmasi ve
+              guvenliginin saglanmasi, hizmet eslestirme ve bilgilendirme faaliyetleri, destek basvurularinin
+              yanitlanmasi, performans iyilestirme, teknik sorunlarin tespiti ve hukuki yukumluluklerin yerine
+              getirilmesi amaclariyla islenmektedir.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">5. Hukuki Sebepler</h3>
-            <p>KVKK Madde 5 uyarınca; sözleşmenin ifası, hukuki yükümlülük, meşru menfaat ve gerektiğinde açık rıza sebeplerine dayanılır.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">5. Islenmenin Hukuki Sebepleri</h3>
+            <p>
+              Kisisel veriler KVKK'nin 5. maddesi uyarinca; bir sozlesmenin kurulmasi ve ifasi, hukuki yukumluluklerin
+              yerine getirilmesi, veri sorumlusunun mesru menfaati ve gerektigi durumlarda acik riza sebeplerine
+              dayanilarak islenmektedir.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">6. Verilerin Aktarılması</h3>
-            <p>Yasal yükümlülükler kapsamında kamu kurumlarına ve abonelik süreçleri için uygulama mağazalarına aktarılabilir. Üçüncü kişilere satılmaz.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">6. Kisisel Verilerin Aktarilmasi</h3>
+            <p>
+              Kisisel veriler; yasal yukumlulukler kapsaminda yetkili kamu kurum ve kuruluslarina ve uygulama
+              altyapisinin guvenli ve saglikli sekilde calismasini saglayan teknik hizmet saglayicilara mevzuata uygun
+              sekilde aktarilabilir. Bunun disinda ucuncu kisilere satilmaz, kiralanmaz veya ticari amacla paylasilmaz.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">7. Saklama Süresi</h3>
-            <p>Veriler işlenme amacı süresince ve yasal saklama süreleri kadar muhafaza edilir. Hesap silindiğinde yasal zorunluluk dışındaki veriler imha edilir.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">7. Kisisel Verilerin Saklama Suresi</h3>
+            <p>
+              Kisisel veriler; islenme amacinin gerektirdigi sure boyunca ve ilgili mevzuatta ongorulen yasal saklama
+              sureleri kadar saklanir. Kullanici hesabinin silinmesi halinde yasal zorunluluk disindaki veriler silinir,
+              yok edilir veya anonim hale getirilir.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">8. Haklarınız (Madde 11)</h3>
-            <p>Verilerinizin işlenip işlenmediğini öğrenme, düzeltme, silme ve zararın giderilmesini talep etme haklarına sahipsiniz.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">8. Ilgili Kisinin Haklari</h3>
+            <p>
+              Kullanicilar; kisisel verilerinin islenip islenmedigini ogrenme, buna iliskin bilgi talep etme, yanlis
+              veya eksik islenen verilerin duzeltilmesini isteme, silme veya yok etmeyi talep etme ve kanuna aykiri
+              isleme nedeniyle zararin giderilmesini talep etme haklarina sahiptir.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">9. Başvuru Yöntemi</h3>
-            <p>Taleplerinizi uygulama içerisindeki iletişim kanalları aracılığıyla Platform’a iletebilirsiniz.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">9. Basvuru ve Iletisim</h3>
+            <p>
+              Kullanicilar, kisisel verilerine iliskin taleplerini uygulama icerisindeki iletisim kanallari veya destek
+              e-posta adresi uzerinden Platform'a iletebilir. Platform, basvurulari yururlukteki mevzuat kapsaminda
+              makul sure icerisinde degerlendirir.
+            </p>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black text-gray-900 uppercase tracking-wide">10. Yürürlük</h3>
-            <p>Bu metin yayımlandığı tarihte yürürlüğe girer. Uygulamayı kullanarak bu metni kabul etmiş sayılırsınız.</p>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">10. Yurutme</h3>
+            <p>
+              Isbu Aydinlatma Metni uygulama icerisinde yayimlandigi tarihten itibaren yururluge girer. Kullanici,
+              uygulamayi kullanmaya devam ederek bu metni okudugunu, anladigini ve kabul ettigini beyan eder.
+            </p>
           </section>
-
         </div>
 
-        {/* Footer */}
         {!readOnly && (
-          <div className="p-6 sm:p-8 bg-gray-50 border-t border-gray-100 flex justify-end">
-            <button onClick={onClose} className="w-full sm:w-auto px-10 py-4 bg-black text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all">
+          <div className="flex justify-end border-t border-gray-100 bg-gray-50 p-6 sm:p-8">
+            <button onClick={onClose} className="w-full rounded-2xl bg-black px-10 py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95 sm:w-auto">
               OKUDUM, ANLADIM
             </button>
           </div>
