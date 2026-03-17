@@ -289,11 +289,13 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
     const option = SERVICE_OPTIONS.find((s) => s.id === id);
     if (!option) return;
     const isSelected = form.serviceTypes.includes(id);
+    const allSubIds = SERVICE_OPTIONS.flatMap((service) => service.subs.map((sub) => sub.id));
 
     if (!isSelected) {
       setForm((prev) => ({
         ...prev,
-        serviceTypes: Array.from(new Set([...(prev.serviceTypes || []), id])),
+        serviceTypes: [id],
+        filterTags: (prev.filterTags || []).filter((tag) => !allSubIds.includes(tag)),
       }));
       if (option.subs.length > 0) setActiveFolder(id);
       return;
@@ -302,7 +304,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
     const subIds = option.subs.map((sub) => sub.id);
     setForm((prev) => ({
       ...prev,
-      serviceTypes: (prev.serviceTypes || []).filter((t) => t !== id),
+      serviceTypes: [],
       filterTags: (prev.filterTags || []).filter((t) => !subIds.includes(t)),
     }));
     if (activeFolder === id) setActiveFolder(null);
@@ -545,14 +547,14 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
   const currentFolderConfig = SERVICE_OPTIONS.find((s) => s.id === activeFolder);
 
   return (
-    <main className="min-h-screen bg-[#8ccde6] px-4 py-8 text-slate-900 md:px-8">
+    <main className="min-h-screen bg-white px-4 py-6 text-slate-900 md:px-8 md:py-8">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-6 rounded-[2.2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
+        <header className="mb-8 border-b border-slate-200 pb-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push('/app')}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/80 text-slate-700"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -566,14 +568,14 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 <button
                   type="button"
                   onClick={() => router.push('/companyregister=TR')}
-                  className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase ${lang === 'tr' ? 'bg-slate-900 text-white' : 'border border-white/70 bg-white/80 text-slate-700'}`}
+                  className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase ${lang === 'tr' ? 'bg-cyan-700 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
                 >
                   {tx.useTr}
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push('/companyregister=EN')}
-                  className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase ${lang === 'en' ? 'bg-slate-900 text-white' : 'border border-white/70 bg-white/80 text-slate-700'}`}
+                  className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase ${lang === 'en' ? 'bg-cyan-700 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
                 >
                   {tx.useEn}
                 </button>
@@ -584,34 +586,34 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section className="rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
-            <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">{tx.companyInfo}</h2>
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-5 text-sm font-black uppercase tracking-wide text-slate-700">{tx.companyInfo}</h2>
             <div className="space-y-3">
               <input
                 value={form.businessName}
                 onChange={(e) => setForm((p) => ({ ...p, businessName: e.target.value }))}
                 placeholder={tx.businessName}
-                className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
+                className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
               />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   value={form.email}
                   onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                   placeholder={tx.email}
-                  className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
+                  className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
                 />
                 <input
                   value={form.phoneNumber}
                   onChange={(e) => setForm((p) => ({ ...p, phoneNumber: e.target.value }))}
                   placeholder={tx.phone}
-                  className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
+                  className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
                 />
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <select
                   value={form.city}
                   onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-black outline-none"
+                  className="w-full border-b border-slate-300 bg-white px-1 py-3 text-sm font-black outline-none"
                 >
                   {Object.keys(cityData).map((city) => (
                     <option key={city} value={city}>
@@ -622,7 +624,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 <select
                   value={form.district}
                   onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-black outline-none"
+                  className="w-full border-b border-slate-300 bg-white px-1 py-3 text-sm font-black outline-none"
                 >
                   {availableDistricts.map((district) => (
                     <option key={district} value={district}>
@@ -635,13 +637,13 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 value={form.address}
                 onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
                 placeholder={tx.address}
-                className="h-28 w-full resize-none rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-medium outline-none"
+                className="h-28 w-full resize-none border-b border-slate-300 px-1 py-3 text-sm font-medium outline-none"
               />
               <button
                 type="button"
                 onClick={useCurrentLocationForAddress}
                 disabled={addressLocating}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black uppercase text-white disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-black uppercase text-white disabled:opacity-60"
               >
                 {addressLocating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
                 {tx.currentLocation}
@@ -650,19 +652,19 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 value={form.website}
                 onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
                 placeholder={tx.website}
-                className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
+                className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
               />
               <input
                 value={form.taxNumber}
                 onChange={(e) => setForm((p) => ({ ...p, taxNumber: e.target.value }))}
                 placeholder={tx.taxNumber}
-                className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
+                className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
               />
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
-            <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">{tx.serviceInfo}</h2>
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-5 text-sm font-black uppercase tracking-wide text-slate-700">{tx.serviceInfo}</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {SERVICE_OPTIONS.map((opt) => {
@@ -674,7 +676,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                         type="button"
                         onClick={() => toggleServiceType(opt.id)}
                         className={`w-full rounded-2xl border px-2 py-3 text-center transition-all ${
-                          selected ? `${opt.color} border-transparent text-white shadow-lg` : 'border-white/70 bg-white/85 text-slate-700'
+                          selected ? `${opt.color} border-transparent text-white shadow-md` : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         <Icon size={16} className="mx-auto mb-1" />
@@ -697,26 +699,26 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 })}
               </div>
 
-              <div className="rounded-2xl border border-white/70 bg-white/85 p-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">{tx.servicePrice}</label>
                 <input
                   type="number"
                   value={form.pricePerUnit}
                   onChange={(e) => setForm((p) => ({ ...p, pricePerUnit: e.target.value }))}
-                  className="w-full bg-transparent text-lg font-black outline-none"
+                  className="w-full border-b border-slate-300 bg-transparent py-2 text-lg font-black outline-none"
                 />
               </div>
 
-              <div className="rounded-2xl border border-white/70 bg-white/85 p-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[10px] font-black uppercase text-slate-500">{tx.vehicleSection}</p>
-                  <button type="button" onClick={addVehicleRow} className="rounded-xl bg-slate-900 px-3 py-1 text-[10px] font-black uppercase text-white">
+                  <button type="button" onClick={addVehicleRow} className="rounded-xl bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase text-white">
                     {tx.addVehicle}
                   </button>
                 </div>
                 <div className="space-y-3">
                   {form.vehicleItems.map((vehicle, idx) => (
-                    <div key={idx} className="rounded-xl border border-white/70 bg-white p-3">
+                    <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3">
                       <div className="mb-2 flex gap-2">
                         <input
                           value={vehicle.name}
@@ -727,7 +729,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                             }))
                           }
                           placeholder={`${tx.vehicleSection} ${idx + 1}`}
-                          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none"
+                          className="min-w-0 flex-1 border-b border-slate-300 px-1 py-2 text-xs font-bold outline-none"
                         />
                         <button type="button" onClick={() => removeVehicleRow(idx)} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600">
                           <Trash2 size={14} />
@@ -758,7 +760,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
           </section>
         </div>
 
-        <section className="mt-6 rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
+        <section className="mt-6 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="space-y-3">
             <button type="button" onClick={() => setShowKvkk(true)} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700">
               <ShieldCheck size={14} /> {tx.kvkkView}
@@ -779,7 +781,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
             type="button"
             onClick={() => void submit()}
             disabled={loading}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[1.5rem] bg-slate-900 px-5 py-4 text-sm font-black uppercase text-white shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-5 py-4 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
             {tx.submit}
@@ -792,10 +794,10 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
 
       {activeFolder && currentFolderConfig && (
         <div className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white/90 border border-white/60 w-full max-w-xl rounded-[2.5rem] p-8 shadow-2xl relative flex flex-col max-h-[80vh] text-gray-900">
+          <div className="w-full max-w-xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl relative flex flex-col max-h-[80vh] text-gray-900">
             <button
               onClick={() => setActiveFolder(null)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/80 border border-white/70 text-gray-700 hover:bg-red-500 hover:text-white transition-colors"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white border border-slate-200 text-gray-700 hover:bg-red-500 hover:text-white transition-colors"
             >
               <X size={14} className="mx-auto" />
             </button>
@@ -810,8 +812,8 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                   onClick={() => toggleSubOption(sub.id)}
                   className={`p-6 rounded-3xl border border-white/40 transition-all flex flex-col items-center gap-2 shadow-sm ${
                     form.filterTags.includes(sub.id)
-                      ? `${currentFolderConfig.color} text-white shadow-lg border-transparent scale-[1.02]`
-                      : 'bg-white/70 text-[#49b5c2] hover:bg-white'
+                      ? `${currentFolderConfig.color} text-white shadow-md border-transparent scale-[1.02]`
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
                   }`}
                 >
                   <sub.icon size={24} strokeWidth={1.6} />
@@ -819,7 +821,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 </button>
               ))}
             </div>
-            <button onClick={() => setActiveFolder(null)} className="w-full py-5 bg-slate-900 hover:bg-black text-white rounded-[1.5rem] font-black uppercase text-xs shadow-xl">
+            <button onClick={() => setActiveFolder(null)} className="w-full rounded-xl bg-cyan-700 py-4 font-black uppercase text-xs text-white">
               {tx.complete}
             </button>
           </div>
