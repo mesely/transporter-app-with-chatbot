@@ -25,8 +25,9 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import KVKKModal from '../../components/KVKKModal';
+import { mapProviderMainType, normalizeProviderServiceType } from '../../utils/providerServices';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
@@ -94,25 +95,139 @@ const SERVICE_OPTIONS: ServiceOption[] = [
   { id: 'yurt_disi_nakliye', label: 'Yurt Disi', color: 'bg-indigo-700', icon: Globe, subs: [] },
 ];
 
-const normalizeSubTypeForBackend = (subType: string) => {
-  const key = String(subType || '').toLocaleLowerCase('tr').trim();
-  if (key === 'lastikci' || key === 'lastikçi') return 'lastikci';
-  if (key === 'istasyon_sarj' || key === 'sarj_istasyonu') return 'istasyon';
-  if (key === 'gezici_sarj' || key === 'seyyar_sarj' || key === 'mobil_unit') return 'seyyar_sarj';
-  return key;
-};
+const COPY = {
+  tr: {
+    pageTitle: 'Kurum Kayit Formu',
+    companyInfo: 'Kurum Bilgileri',
+    serviceInfo: 'Hizmet ve Arac Bilgileri',
+    kvkkView: 'KVKK Metnini Goruntule',
+    kvkkAccept: 'KVKK Aydinlatma metnini okudum ve kabul ediyorum.',
+    contractAccept: 'Kurum kayit basvuru sozlesmesini kabul ediyorum.',
+    submit: 'Basvuruyu Gonder',
+    sent: 'Kurum kayit talebiniz alindi. Ekibimiz en kisa surede inceleyecektir.',
+    businessName: 'Isletme Adi',
+    email: 'E-posta',
+    phone: 'Telefon (05...)',
+    city: 'Sehir',
+    district: 'Ilce',
+    address: 'Mahalle, sokak, cadde, no...',
+    currentLocation: 'Mevcut Konumu Kullan',
+    website: 'Web Sitesi',
+    taxNumber: 'Vergi Numarasi (Zorunlu)',
+    servicePrice: 'Birim Fiyat (Opsiyonel)',
+    vehicleSection: 'Arac Modeli ve Fotograf',
+    addVehicle: 'Arac Ekle',
+    uploadPhoto: 'Fotograf Yukle',
+    uploading: 'Yukleniyor...',
+    edit: 'Duzenle',
+    complete: 'Tamamlandi',
+    subTypeSelect: 'Alt Tur Secimi',
+    useTr: 'TR',
+    useEn: 'EN',
+    alerts: {
+      locationUnsupported: 'Konum servisi desteklenmiyor.',
+      locationFailed: 'Konum alinamadi.',
+      uploadFailed: 'Fotograf yukleme hatasi.',
+      businessRequired: 'Isletme adi zorunlu.',
+      phoneInvalid: 'Telefon 0 ile baslayan 11 hane olmali.',
+      emailInvalid: 'Gecerli e-posta girin.',
+      serviceRequired: 'En az bir hizmet turu secin.',
+      addressRequired: 'Sehir, ilce ve adres zorunlu.',
+      taxRequired: 'Vergi numarasi zorunlu.',
+      kvkkRequired: 'KVKK onayi gerekli.',
+      contractRequired: 'Kurum kayit sozlesmesi onayi gerekli.',
+      addressNotFound: 'Adres haritada bulunamadi.',
+      submitFailed: 'Kayit tamamlanamadi.',
+      networkFailed: 'Baglanti hatasi.',
+    },
+  },
+  en: {
+    pageTitle: 'Company Registration Form',
+    companyInfo: 'Company Details',
+    serviceInfo: 'Service and Vehicle Details',
+    kvkkView: 'View Privacy Notice',
+    kvkkAccept: 'I have read and accept the privacy notice.',
+    contractAccept: 'I accept the company registration application agreement.',
+    submit: 'Submit Application',
+    sent: 'Your company registration request has been received. Our team will review it shortly.',
+    businessName: 'Company Name',
+    email: 'Email',
+    phone: 'Phone (05...)',
+    city: 'City',
+    district: 'District',
+    address: 'Neighborhood, street, avenue, no...',
+    currentLocation: 'Use Current Location',
+    website: 'Website',
+    taxNumber: 'Tax Number (Required)',
+    servicePrice: 'Unit Price (Optional)',
+    vehicleSection: 'Vehicle Model and Photos',
+    addVehicle: 'Add Vehicle',
+    uploadPhoto: 'Upload Photo',
+    uploading: 'Uploading...',
+    edit: 'Edit',
+    complete: 'Done',
+    subTypeSelect: 'Select Sub Type',
+    useTr: 'TR',
+    useEn: 'EN',
+    alerts: {
+      locationUnsupported: 'Location services are not supported.',
+      locationFailed: 'Could not get current location.',
+      uploadFailed: 'Photo upload failed.',
+      businessRequired: 'Company name is required.',
+      phoneInvalid: 'Phone number must be 11 digits and start with 0.',
+      emailInvalid: 'Enter a valid email address.',
+      serviceRequired: 'Select at least one service type.',
+      addressRequired: 'City, district and address are required.',
+      taxRequired: 'Tax number is required.',
+      kvkkRequired: 'Privacy notice approval is required.',
+      contractRequired: 'Registration agreement approval is required.',
+      addressNotFound: 'Address could not be located on the map.',
+      submitFailed: 'Registration could not be completed.',
+      networkFailed: 'Network error.',
+    },
+  },
+} as const;
 
-const mapMainType = (subType: string) => {
-  const s = normalizeSubTypeForBackend(subType);
-  if (['oto_kurtarma', 'vinc', 'lastikci'].includes(s)) return 'KURTARICI';
-  if (['istasyon', 'seyyar_sarj'].includes(s)) return 'SARJ';
-  if (['minibus', 'otobus', 'midibus', 'vip_tasima', 'yolcu_tasima'].includes(s)) return 'YOLCU';
-  if (['yurt_disi_nakliye'].includes(s)) return 'YURT_DISI';
-  return 'NAKLIYE';
-};
+const SERVICE_LABELS = {
+  en: {
+    oto_kurtarma: 'Tow',
+    vinc: 'Crane',
+    lastikci: 'Tire',
+    tir: 'Trailer',
+    kamyon: 'Truck',
+    kamyonet: 'Van',
+    evden_eve: 'Moving',
+    istasyon_sarj: 'Station Charge',
+    gezici_sarj: 'Mobile Charge',
+    minibus: 'Minibus',
+    otobus: 'Bus',
+    midibus: 'Midibus',
+    vip_tasima: 'VIP Transfer',
+    yurt_disi_nakliye: 'International',
+    tenteli: 'Curtainsider',
+    frigorifik: 'Refrigerated',
+    lowbed: 'Lowbed',
+    konteyner: 'Container',
+    acik_kasa: 'Open Bed',
+    '6_teker': '6 Wheels',
+    '8_teker': '8 Wheels',
+    '10_teker': '10 Wheels',
+    '12_teker': '12 Wheels',
+    kirkayak: 'Heavy Truck',
+    panelvan: 'Panel Van',
+    kapali_kasa: 'Closed Box',
+  },
+} as const;
 
-export default function KurumKayitPage() {
+export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' } = {}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const lang = forcedLang || (pathname?.includes('=EN') ? 'en' : 'tr');
+  const tx = COPY[lang];
+  const getLabel = (id: string, fallback: string) => {
+    if (lang === 'tr') return fallback;
+    return SERVICE_LABELS.en[id as keyof typeof SERVICE_LABELS.en] || fallback;
+  };
 
   const [cityData, setCityData] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
@@ -180,6 +295,7 @@ export default function KurumKayitPage() {
         ...prev,
         serviceTypes: Array.from(new Set([...(prev.serviceTypes || []), id])),
       }));
+      if (option.subs.length > 0) setActiveFolder(id);
       return;
     }
 
@@ -244,7 +360,7 @@ export default function KurumKayitPage() {
 
   const useCurrentLocationForAddress = async () => {
     if (!navigator?.geolocation) {
-      alert('Konum servisi desteklenmiyor.');
+      alert(tx.alerts.locationUnsupported);
       return;
     }
 
@@ -271,7 +387,7 @@ export default function KurumKayitPage() {
         }));
       }
     } catch {
-      alert('Konum alinamadi.');
+      alert(tx.alerts.locationFailed);
     } finally {
       setAddressLocating(false);
     }
@@ -295,7 +411,7 @@ export default function KurumKayitPage() {
         ),
       }));
     } catch (e: any) {
-      alert(e?.message || 'Fotograf yukleme hatasi.');
+      alert(e?.message || tx.alerts.uploadFailed);
     } finally {
       setUploadingPhoto(null);
     }
@@ -316,14 +432,14 @@ export default function KurumKayitPage() {
   };
 
   const validate = () => {
-    if (!form.businessName.trim()) return 'Isletme adi zorunlu.';
-    if (!/^0\d{10}$/.test(form.phoneNumber)) return 'Telefon 0 ile baslayan 11 hane olmali.';
-    if (!form.email.trim() || !form.email.includes('@')) return 'Gecerli e-posta girin.';
-    if (form.serviceTypes.length === 0) return 'En az bir hizmet turu secin.';
-    if (!form.city || !form.district || !form.address.trim()) return 'Sehir, ilce ve adres zorunlu.';
-    if (!String(form.taxNumber || '').trim()) return 'Vergi numarasi zorunlu.';
-    if (!kvkkAccepted) return 'KVKK onayi gerekli.';
-    if (!contractAccepted) return 'Kurum kayit sozlesmesi onayi gerekli.';
+    if (!form.businessName.trim()) return tx.alerts.businessRequired;
+    if (!/^0\d{10}$/.test(form.phoneNumber)) return tx.alerts.phoneInvalid;
+    if (!form.email.trim() || !form.email.includes('@')) return tx.alerts.emailInvalid;
+    if (form.serviceTypes.length === 0) return tx.alerts.serviceRequired;
+    if (!form.city || !form.district || !form.address.trim()) return tx.alerts.addressRequired;
+    if (!String(form.taxNumber || '').trim()) return tx.alerts.taxRequired;
+    if (!kvkkAccepted) return tx.alerts.kvkkRequired;
+    if (!contractAccepted) return tx.alerts.contractRequired;
     return '';
   };
 
@@ -336,9 +452,9 @@ export default function KurumKayitPage() {
 
     setLoading(true);
     try {
-      const normalizedServiceTypes = (form.serviceTypes || []).map(normalizeSubTypeForBackend).filter(Boolean);
+      const normalizedServiceTypes = (form.serviceTypes || []).map(normalizeProviderServiceType).filter(Boolean);
       const selectedPrimary = normalizedServiceTypes[0];
-      const mappedMain = mapMainType(selectedPrimary);
+      const mappedMain = mapProviderMainType(selectedPrimary);
 
       const combined = `${form.address}, ${form.district}, ${form.city}, Turkiye`;
       const coords =
@@ -347,7 +463,7 @@ export default function KurumKayitPage() {
         (await getCoordinatesFromAddress(`${form.district}, ${form.city}, Turkiye`));
 
       if (!coords) {
-        alert('Adres haritada bulunamadi.');
+        alert(tx.alerts.addressNotFound);
         return;
       }
 
@@ -397,10 +513,10 @@ export default function KurumKayitPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || 'Kayit tamamlanamadi.');
+        throw new Error(err?.message || tx.alerts.submitFailed);
       }
 
-      setSuccessMessage('Kurum kayit talebiniz alindi. Ekibimiz en kisa surede inceleyecektir.');
+      setSuccessMessage(tx.sent);
       setForm({
         businessName: '',
         email: '',
@@ -420,7 +536,7 @@ export default function KurumKayitPage() {
       setContractAccepted(false);
       setActiveFolder(null);
     } catch (e: any) {
-      alert(e?.message || 'Baglanti hatasi.');
+      alert(e?.message || tx.alerts.networkFailed);
     } finally {
       setLoading(false);
     }
@@ -442,34 +558,52 @@ export default function KurumKayitPage() {
               </button>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Transport 245</p>
-                <h1 className="text-2xl font-black uppercase tracking-tight">Kurum Kayit Formu</h1>
+                <h1 className="text-2xl font-black uppercase tracking-tight">{tx.pageTitle}</h1>
               </div>
             </div>
-            <img src="/apple-icon.png" alt="Transport 245 Logo" className="h-12 w-12 rounded-2xl object-cover shadow-md" />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push('/companyregister=TR')}
+                  className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase ${lang === 'tr' ? 'bg-slate-900 text-white' : 'border border-white/70 bg-white/80 text-slate-700'}`}
+                >
+                  {tx.useTr}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push('/companyregister=EN')}
+                  className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase ${lang === 'en' ? 'bg-slate-900 text-white' : 'border border-white/70 bg-white/80 text-slate-700'}`}
+                >
+                  {tx.useEn}
+                </button>
+              </div>
+              <img src="/apple-icon.png" alt="Transport 245 Logo" className="h-12 w-12 rounded-2xl object-cover shadow-md" />
+            </div>
           </div>
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <section className="rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
-            <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">Kurum Bilgileri</h2>
+            <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">{tx.companyInfo}</h2>
             <div className="space-y-3">
               <input
                 value={form.businessName}
                 onChange={(e) => setForm((p) => ({ ...p, businessName: e.target.value }))}
-                placeholder="Isletme Adi"
+                placeholder={tx.businessName}
                 className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
               />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   value={form.email}
                   onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                  placeholder="E-posta"
+                  placeholder={tx.email}
                   className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
                 />
                 <input
                   value={form.phoneNumber}
                   onChange={(e) => setForm((p) => ({ ...p, phoneNumber: e.target.value }))}
-                  placeholder="Telefon (05xxxxxxxxx)"
+                  placeholder={tx.phone}
                   className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
                 />
               </div>
@@ -500,7 +634,7 @@ export default function KurumKayitPage() {
               <textarea
                 value={form.address}
                 onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-                placeholder="Mahalle, sokak, cadde, no"
+                placeholder={tx.address}
                 className="h-28 w-full resize-none rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-medium outline-none"
               />
               <button
@@ -510,25 +644,25 @@ export default function KurumKayitPage() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black uppercase text-white disabled:opacity-60"
               >
                 {addressLocating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
-                Mevcut Konumu Kullan
+                {tx.currentLocation}
               </button>
               <input
                 value={form.website}
                 onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
-                placeholder="Web Sitesi (Opsiyonel)"
+                placeholder={tx.website}
                 className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
               />
               <input
                 value={form.taxNumber}
                 onChange={(e) => setForm((p) => ({ ...p, taxNumber: e.target.value }))}
-                placeholder="Vergi Numarasi (Zorunlu)"
+                placeholder={tx.taxNumber}
                 className="w-full rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm font-bold outline-none"
               />
             </div>
           </section>
 
           <section className="rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
-            <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">Hizmet ve Arac Bilgileri</h2>
+            <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">{tx.serviceInfo}</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {SERVICE_OPTIONS.map((opt) => {
@@ -544,7 +678,7 @@ export default function KurumKayitPage() {
                         }`}
                       >
                         <Icon size={16} className="mx-auto mb-1" />
-                        <span className="text-[10px] font-black uppercase leading-tight">{opt.label}</span>
+                        <span className="text-[10px] font-black uppercase leading-tight">{getLabel(opt.id, opt.label)}</span>
                       </button>
                       {selected && opt.subs.length > 0 && (
                         <button
@@ -555,7 +689,7 @@ export default function KurumKayitPage() {
                           }}
                           className="absolute -bottom-2 right-2 rounded-xl bg-slate-900 px-2 py-1 text-[9px] font-black uppercase text-white shadow-lg hover:bg-black"
                         >
-                          Duzenle
+                          {tx.edit}
                         </button>
                       )}
                     </div>
@@ -564,7 +698,7 @@ export default function KurumKayitPage() {
               </div>
 
               <div className="rounded-2xl border border-white/70 bg-white/85 p-3">
-                <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Birim Fiyat (Opsiyonel)</label>
+                <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">{tx.servicePrice}</label>
                 <input
                   type="number"
                   value={form.pricePerUnit}
@@ -575,9 +709,9 @@ export default function KurumKayitPage() {
 
               <div className="rounded-2xl border border-white/70 bg-white/85 p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase text-slate-500">Arac Modeli ve Fotograf</p>
+                  <p className="text-[10px] font-black uppercase text-slate-500">{tx.vehicleSection}</p>
                   <button type="button" onClick={addVehicleRow} className="rounded-xl bg-slate-900 px-3 py-1 text-[10px] font-black uppercase text-white">
-                    Arac Ekle
+                    {tx.addVehicle}
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -592,7 +726,7 @@ export default function KurumKayitPage() {
                               vehicleItems: prev.vehicleItems.map((v, i) => (i === idx ? { ...v, name: e.target.value } : v)),
                             }))
                           }
-                          placeholder={`Arac modeli ${idx + 1}`}
+                          placeholder={`${tx.vehicleSection} ${idx + 1}`}
                           className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none"
                         />
                         <button type="button" onClick={() => removeVehicleRow(idx)} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600">
@@ -600,7 +734,7 @@ export default function KurumKayitPage() {
                         </button>
                       </div>
                       <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-600">
-                        <Upload size={12} /> Fotograf Yukle
+                        <Upload size={12} /> {tx.uploadPhoto}
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/jpg,image/webp"
@@ -613,7 +747,7 @@ export default function KurumKayitPage() {
                       </label>
                       {uploadingPhoto === idx && (
                         <p className="mt-2 inline-flex items-center gap-1 text-[10px] font-black text-slate-500">
-                          <Loader2 size={12} className="animate-spin" /> Yukleniyor...
+                          <Loader2 size={12} className="animate-spin" /> {tx.uploading}
                         </p>
                       )}
                     </div>
@@ -627,17 +761,17 @@ export default function KurumKayitPage() {
         <section className="mt-6 rounded-[2rem] border border-white/60 bg-white/65 p-5 shadow-xl backdrop-blur-xl">
           <div className="space-y-3">
             <button type="button" onClick={() => setShowKvkk(true)} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700">
-              <ShieldCheck size={14} /> KVKK Metnini Goruntule
+              <ShieldCheck size={14} /> {tx.kvkkView}
             </button>
 
             <label className="flex items-start gap-2 text-xs font-bold text-slate-700">
               <input type="checkbox" checked={kvkkAccepted} onChange={(e) => setKvkkAccepted(e.target.checked)} className="mt-0.5" />
-              KVKK Aydinlatma metnini okudum ve kabul ediyorum.
+              {tx.kvkkAccept}
             </label>
 
             <label className="flex items-start gap-2 text-xs font-bold text-slate-700">
               <input type="checkbox" checked={contractAccepted} onChange={(e) => setContractAccepted(e.target.checked)} className="mt-0.5" />
-              Kurum kayit basvuru sozlesmesini kabul ediyorum.
+              {tx.contractAccept}
             </label>
           </div>
 
@@ -648,7 +782,7 @@ export default function KurumKayitPage() {
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[1.5rem] bg-slate-900 px-5 py-4 text-sm font-black uppercase text-white shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-            Basvuruyu Gonder
+            {tx.submit}
             {!loading && <ArrowRight size={16} />}
           </button>
 
@@ -667,7 +801,7 @@ export default function KurumKayitPage() {
             </button>
             <div className="mb-6 flex items-center gap-3">
               <img src="/apple-icon.png" alt="Transport 245 Uygulama Ikonu" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
-              <h2 className="text-2xl font-black uppercase italic text-slate-900">{currentFolderConfig.label} Alt Tur Secimi</h2>
+              <h2 className="text-2xl font-black uppercase italic text-slate-900">{getLabel(currentFolderConfig.id, currentFolderConfig.label)} {tx.subTypeSelect}</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6 pr-2 custom-scrollbar">
               {currentFolderConfig.subs.map((sub) => (
@@ -681,12 +815,12 @@ export default function KurumKayitPage() {
                   }`}
                 >
                   <sub.icon size={24} strokeWidth={1.6} />
-                  <span className="text-[10px] font-black uppercase">{sub.label}</span>
+                  <span className="text-[10px] font-black uppercase">{getLabel(sub.id, sub.label)}</span>
                 </button>
               ))}
             </div>
             <button onClick={() => setActiveFolder(null)} className="w-full py-5 bg-slate-900 hover:bg-black text-white rounded-[1.5rem] font-black uppercase text-xs shadow-xl">
-              Tamamlandi
+              {tx.complete}
             </button>
           </div>
         </div>
@@ -695,4 +829,8 @@ export default function KurumKayitPage() {
       <KVKKModal isOpen={showKvkk} onClose={() => setShowKvkk(false)} />
     </main>
   );
+}
+
+export default function KurumKayitPage() {
+  return <CompanyRegisterPage />;
 }

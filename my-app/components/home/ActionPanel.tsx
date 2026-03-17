@@ -34,6 +34,7 @@ import ViewReportsModal from '../ViewReportsModal';
 import { AppLang, getPreferredLang, LANG_CHANGED_EVENT, LANG_STORAGE_KEY } from '../../utils/language';
 import { AMERICA_CITIES_RAW, EUROPE_CITIES_RAW } from '../../utils/city-groups';
 import { openSystemMap } from '../../lib/openSystemMap';
+import { extractProviderServiceTypes, providerCanShowPrice, providerMatchesActionType } from '../../utils/providerServices';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 const SERVICE_IMAGE_ICONS: Record<string, string> = {
@@ -189,18 +190,18 @@ const TAG_DETAILS_EN: Record<string, { tasima: string, kapasite: string }> = {
 };
 
 const PANEL_TEXT: Record<AppLang, Record<string, string>> = {
-  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Oto Kurtarma', vinc: 'Vinç', lastik: 'Lastik', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici Şarj', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat Almak İçin Tıkla ve Ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "MAPS'TE AÇ", call: 'ARA', message: 'MESAJ AT', site: 'SİTEYE GİT', listVehicles: 'Araçları Listele', viewPhotos: 'Araç Fotoğraflarını Görüntüle', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Puan', viewRatings: 'Değerlendirmeler', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme' },
-  en: { kurtarici: 'Recovery', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger', otoKurtarma: 'Roadside Recovery', vinc: 'Crane', domestic: 'Domestic', international: 'International', homeMoving: 'Home Moving', trailer: 'Trailer', truck: 'Truck', van: 'Van', station: 'Station', geziciSarj: 'Mobile Charge', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE', tapCall: 'Tap To Get Price And Call', verifiedPrice: 'Verified Price', mapsOpen: 'OPEN IN MAPS', call: 'CALL', message: 'MESSAGE', site: 'GO TO SITE', listVehicles: 'List Vehicles', viewPhotos: 'View Vehicle Photos', noVehicles: 'No registered vehicle info.', noPhotos: 'No registered photos.', reviewsAndReports: 'Reviews & Reports', noRating: 'Not rated yet', scoreText: 'Score', viewRatings: 'View Reviews', viewReports: 'View Reports', turkeyWide: 'Nationwide', transport: 'Transport', capacity: 'Capacity', close: 'Close', vehicle: 'Vehicle', photo: 'Photo', vehiclePhoto: 'Vehicle photo', previewPhoto: 'Large vehicle photo preview' },
-  de: { kurtarici: 'Bergung', nakliye: 'Transport', sarj: 'Laden', yolcu: 'Passagier', otoKurtarma: 'Pannenhilfe', vinc: 'Kran', domestic: 'Inland', international: 'International', homeMoving: 'Umzug', trailer: 'Auflieger', truck: 'LKW', van: 'Transporter', station: 'Station', geziciSarj: 'Mobiles Laden', loading: 'Lädt...', score: 'PUNKT', allTurkey: 'GANZE TÜRKEI', tapCall: 'Tippen für Preis und Anruf', verifiedPrice: 'Verifizierter Preis', mapsOpen: 'IN MAPS ÖFFNEN', call: 'ANRUFEN', message: 'NACHRICHT', site: 'ZUR WEBSEITE', listVehicles: 'Fahrzeuge anzeigen', viewPhotos: 'Fahrzeugfotos anzeigen', noVehicles: 'Keine Fahrzeugdaten vorhanden.', noPhotos: 'Keine Fotos vorhanden.', reviewsAndReports: 'Bewertungen & Beschwerden', noRating: 'Noch keine Bewertung', scoreText: 'Punkt', viewRatings: 'Bewertungen anzeigen', viewReports: 'Beschwerden anzeigen', turkeyWide: 'Landesweit', transport: 'Transport', capacity: 'Kapazität', close: 'Schließen', vehicle: 'Fahrzeug', photo: 'Foto', vehiclePhoto: 'Fahrzeugfoto', previewPhoto: 'Große Fahrzeugfoto-Vorschau' },
-  fr: { kurtarici: 'Dépannage', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passager', otoKurtarma: 'Assistance routière', vinc: 'Grue', domestic: 'National', international: 'International', homeMoving: 'Déménagement', trailer: 'Semi-remorque', truck: 'Camion', van: 'Fourgon', station: 'Station', geziciSarj: 'Charge mobile', loading: 'Chargement...', score: 'NOTE', allTurkey: 'TOUTE LA TURQUIE', tapCall: 'Touchez pour le prix et appeler', verifiedPrice: 'Prix vérifié', mapsOpen: 'OUVRIR DANS MAPS', call: 'APPELER', message: 'MESSAGE', site: 'ALLER AU SITE', listVehicles: 'Voir les véhicules', viewPhotos: 'Voir les photos du véhicule', noVehicles: 'Aucune information véhicule.', noPhotos: 'Aucune photo enregistrée.', reviewsAndReports: 'Avis & Réclamations', noRating: 'Pas encore évalué', scoreText: 'Note', viewRatings: 'Voir les avis', viewReports: 'Voir les réclamations', turkeyWide: 'Dans toute la Turquie', transport: 'Transport', capacity: 'Capacité', close: 'Fermer', vehicle: 'Véhicule', photo: 'Photo', vehiclePhoto: 'Photo du véhicule', previewPhoto: 'Aperçu photo grand format' },
-  it: { kurtarici: 'Soccorso', nakliye: 'Trasporto', sarj: 'Ricarica', yolcu: 'Passeggero', otoKurtarma: 'Soccorso stradale', vinc: 'Gru', domestic: 'Nazionale', international: 'Internazionale', homeMoving: 'Trasloco', trailer: 'Rimorchio', truck: 'Camion', van: 'Furgone', station: 'Stazione', geziciSarj: 'Ricarica mobile', loading: 'Caricamento...', score: 'PUNTEGGIO', allTurkey: 'TUTTA LA TURCHIA', tapCall: 'Tocca per prezzo e chiamata', verifiedPrice: 'Prezzo verificato', mapsOpen: 'APRI IN MAPS', call: 'CHIAMA', message: 'MESSAGGIO', site: 'VAI AL SITO', listVehicles: 'Mostra veicoli', viewPhotos: 'Mostra foto veicolo', noVehicles: 'Nessun veicolo registrato.', noPhotos: 'Nessuna foto registrata.', reviewsAndReports: 'Recensioni e Reclami', noRating: 'Non ancora valutato', scoreText: 'Punteggio', viewRatings: 'Mostra recensioni', viewReports: 'Mostra reclami', turkeyWide: 'In tutta la Turchia', transport: 'Trasporto', capacity: 'Capacità', close: 'Chiudi', vehicle: 'Veicolo', photo: 'Foto', vehiclePhoto: 'Foto veicolo', previewPhoto: 'Anteprima foto grande' },
-  es: { kurtarici: 'Rescate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Pasajero', otoKurtarma: 'Asistencia en carretera', vinc: 'Grúa', domestic: 'Nacional', international: 'Internacional', homeMoving: 'Mudanza', trailer: 'Tráiler', truck: 'Camión', van: 'Furgoneta', station: 'Estación', geziciSarj: 'Carga móvil', loading: 'Cargando...', score: 'PUNTAJE', allTurkey: 'TODA TURQUÍA', tapCall: 'Toca para precio y llamada', verifiedPrice: 'Precio verificado', mapsOpen: 'ABRIR EN MAPS', call: 'LLAMAR', message: 'MENSAJE', site: 'IR AL SITIO', listVehicles: 'Listar vehículos', viewPhotos: 'Ver fotos del vehículo', noVehicles: 'Sin información de vehículo.', noPhotos: 'No hay fotos registradas.', reviewsAndReports: 'Reseñas y Quejas', noRating: 'Aún sin valoración', scoreText: 'Puntaje', viewRatings: 'Ver reseñas', viewReports: 'Ver quejas', turkeyWide: 'En toda Turquía', transport: 'Transporte', capacity: 'Capacidad', close: 'Cerrar', vehicle: 'Vehículo', photo: 'Foto', vehiclePhoto: 'Foto del vehículo', previewPhoto: 'Vista previa grande de foto' },
-  pt: { kurtarici: 'Resgate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Passageiro', otoKurtarma: 'Socorro rodoviário', vinc: 'Guindaste', domestic: 'Nacional', international: 'Internacional', homeMoving: 'Mudança', trailer: 'Carreta', truck: 'Caminhão', van: 'Van', station: 'Estação', geziciSarj: 'Carga móvel', loading: 'Carregando...', score: 'PONTUAÇÃO', allTurkey: 'TODA A TURQUIA', tapCall: 'Toque para preço e ligação', verifiedPrice: 'Preço verificado', mapsOpen: 'ABRIR NO MAPS', call: 'LIGAR', message: 'MENSAGEM', site: 'IR PARA O SITE', listVehicles: 'Listar veículos', viewPhotos: 'Ver fotos do veículo', noVehicles: 'Sem informações de veículo.', noPhotos: 'Sem fotos cadastradas.', reviewsAndReports: 'Avaliações e Reclamações', noRating: 'Ainda sem avaliação', scoreText: 'Pontuação', viewRatings: 'Ver avaliações', viewReports: 'Ver reclamações', turkeyWide: 'Toda a Turquia', transport: 'Transporte', capacity: 'Capacidade', close: 'Fechar', vehicle: 'Veículo', photo: 'Foto', vehiclePhoto: 'Foto do veículo', previewPhoto: 'Prévia grande da foto' },
-  ru: { kurtarici: 'Эвакуация', nakliye: 'Перевозка', sarj: 'Зарядка', yolcu: 'Пассажир', otoKurtarma: 'Дорожная помощь', vinc: 'Кран', domestic: 'Внутри страны', international: 'Международно', homeMoving: 'Переезд', trailer: 'Фура', truck: 'Грузовик', van: 'Фургон', station: 'Станция', geziciSarj: 'Мобильная зарядка', loading: 'Загрузка...', score: 'ОЦЕНКА', allTurkey: 'ВСЯ ТУРЦИЯ', tapCall: 'Нажмите для цены и звонка', verifiedPrice: 'Подтвержденная цена', mapsOpen: 'ОТКРЫТЬ В MAPS', call: 'ПОЗВОНИТЬ', message: 'СООБЩЕНИЕ', site: 'ПЕРЕЙТИ НА САЙТ', listVehicles: 'Показать транспорт', viewPhotos: 'Показать фото транспорта', noVehicles: 'Нет данных о транспорте.', noPhotos: 'Нет загруженных фото.', reviewsAndReports: 'Отзывы и Жалобы', noRating: 'Пока нет оценок', scoreText: 'Оценка', viewRatings: 'Показать отзывы', viewReports: 'Показать жалобы', turkeyWide: 'По всей Турции', transport: 'Перевозка', capacity: 'Вместимость', close: 'Закрыть', vehicle: 'Транспорт', photo: 'Фото', vehiclePhoto: 'Фото транспорта', previewPhoto: 'Большой предпросмотр фото' },
-  zh: { kurtarici: '救援', nakliye: '运输', sarj: '充电', yolcu: '客运', otoKurtarma: '道路救援', vinc: '吊车', domestic: '国内', international: '国际', homeMoving: '搬家', trailer: '半挂车', truck: '卡车', van: '厢式车', station: '充电站', geziciSarj: '移动充电', loading: '加载中...', score: '评分', allTurkey: '全土耳其', tapCall: '点击查看价格并呼叫', verifiedPrice: '已验证价格', mapsOpen: '在 MAPS 打开', call: '呼叫', message: '消息', site: '访问网站', listVehicles: '查看车辆', viewPhotos: '查看车辆照片', noVehicles: '暂无车辆信息。', noPhotos: '暂无照片。', reviewsAndReports: '评价与投诉', noRating: '暂无评分', scoreText: '分', viewRatings: '查看评价', viewReports: '查看投诉', turkeyWide: '土耳其全境', transport: '运输', capacity: '载重', close: '关闭', vehicle: '车辆', photo: '照片', vehiclePhoto: '车辆照片', previewPhoto: '大图预览' },
-  ja: { kurtarici: '救援', nakliye: '輸送', sarj: '充電', yolcu: '旅客', otoKurtarma: 'ロードサービス', vinc: 'クレーン', domestic: '国内', international: '国際', homeMoving: '引っ越し', trailer: 'トレーラー', truck: 'トラック', van: 'バン', station: 'ステーション', geziciSarj: '移動充電', loading: '読み込み中...', score: '評価', allTurkey: 'トルコ全域', tapCall: 'タップして料金確認・電話', verifiedPrice: '確認済み価格', mapsOpen: 'MAPSで開く', call: '電話', message: 'メッセージ', site: 'サイトへ', listVehicles: '車両一覧', viewPhotos: '車両写真を見る', noVehicles: '登録された車両情報はありません。', noPhotos: '登録された写真はありません。', reviewsAndReports: '評価・苦情', noRating: 'まだ評価がありません', scoreText: '点', viewRatings: '評価を見る', viewReports: '苦情を見る', turkeyWide: 'トルコ全域', transport: '輸送', capacity: '容量', close: '閉じる', vehicle: '車両', photo: '写真', vehiclePhoto: '車両写真', previewPhoto: '写真の拡大プレビュー' },
-  ko: { kurtarici: '구난', nakliye: '운송', sarj: '충전', yolcu: '승객', otoKurtarma: '긴급 견인', vinc: '크레인', domestic: '국내', international: '국제', homeMoving: '이사', trailer: '트레일러', truck: '트럭', van: '밴', station: '스테이션', geziciSarj: '이동 충전', loading: '로딩 중...', score: '점수', allTurkey: '터키 전체', tapCall: '가격 확인 후 전화하려면 탭', verifiedPrice: '검증된 가격', mapsOpen: 'MAPS에서 열기', call: '전화', message: '메시지', site: '사이트 이동', listVehicles: '차량 목록', viewPhotos: '차량 사진 보기', noVehicles: '등록된 차량 정보가 없습니다.', noPhotos: '등록된 사진이 없습니다.', reviewsAndReports: '평가 및 신고', noRating: '아직 평가 없음', scoreText: '점', viewRatings: '평가 보기', viewReports: '신고 보기', turkeyWide: '터키 전역', transport: '운송', capacity: '적재량', close: '닫기', vehicle: '차량', photo: '사진', vehiclePhoto: '차량 사진', previewPhoto: '큰 사진 미리보기' },
-  ar: { kurtarici: 'إنقاذ', nakliye: 'نقل', sarj: 'شحن', yolcu: 'ركاب', otoKurtarma: 'مساعدة طريق', vinc: 'رافعة', domestic: 'محلي', international: 'دولي', homeMoving: 'نقل منزلي', trailer: 'مقطورة', truck: 'شاحنة', van: 'فان', station: 'محطة', geziciSarj: 'شحن متنقل', loading: 'جارٍ التحميل...', score: 'التقييم', allTurkey: 'كل تركيا', tapCall: 'اضغط لمعرفة السعر والاتصال', verifiedPrice: 'سعر موثّق', mapsOpen: 'افتح في MAPS', call: 'اتصال', message: 'رسالة', site: 'الذهاب للموقع', listVehicles: 'عرض المركبات', viewPhotos: 'عرض صور المركبات', noVehicles: 'لا توجد معلومات مركبة.', noPhotos: 'لا توجد صور مسجلة.', reviewsAndReports: 'التقييمات والشكاوى', noRating: 'لا يوجد تقييم بعد', scoreText: 'نقطة', viewRatings: 'عرض التقييمات', viewReports: 'عرض الشكاوى', turkeyWide: 'جميع أنحاء تركيا', transport: 'نقل', capacity: 'السعة', close: 'إغلاق', vehicle: 'مركبة', photo: 'صورة', vehiclePhoto: 'صورة المركبة', previewPhoto: 'معاينة صورة كبيرة' }
+  tr: { kurtarici: 'Kurtarıcı', nakliye: 'Nakliye', sarj: 'Şarj', yolcu: 'Yolcu', otoKurtarma: 'Çekici', vinc: 'Vinç', lastik: 'Lastikçi', domestic: 'Yurt İçi', international: 'Yurt Dışı', homeMoving: 'Evden Eve', trailer: 'Tır', truck: 'Kamyon', van: 'Kamyonet', station: 'İstasyon', geziciSarj: 'Gezici', loading: 'Yükleniyor...', score: 'PUAN', allTurkey: 'TÜM TÜRKİYE', tapCall: 'Fiyat için firmayı ara', verifiedPrice: 'Doğrulanmış Fiyat', mapsOpen: "MAPS'TE AÇ", call: 'ARA', message: 'MESAJ', site: 'SİTE', listVehicles: 'Araçlar', viewPhotos: 'Fotoğraflar', noVehicles: 'Kayıtlı araç bilgisi yok.', noPhotos: 'Kayıtlı fotoğraf yok.', reviewsAndReports: 'Değerlendirmeler & Şikayetler', noRating: 'Henüz değerlendirilmedi', scoreText: 'Firma', viewRatings: 'Yorumlar', viewReports: 'Şikayetler', turkeyWide: 'Türkiye Geneli', transport: 'Taşıma', capacity: 'Kapasite', close: 'Kapat', vehicle: 'Araç', photo: 'Fotoğraf', vehiclePhoto: 'Araç fotoğrafı', previewPhoto: 'Araç fotoğrafı büyük önizleme', provider: 'Firma' },
+  en: { kurtarici: 'Tow', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passenger', otoKurtarma: 'Tow', vinc: 'Crane', lastik: 'Tire', domestic: 'Domestic', international: 'Global', homeMoving: 'Moving', trailer: 'Trailer', truck: 'Truck', van: 'Van', station: 'Station', geziciSarj: 'Mobile', loading: 'Loading...', score: 'SCORE', allTurkey: 'ALL TURKIYE', tapCall: 'Call provider for price', verifiedPrice: 'Verified Price', mapsOpen: 'OPEN MAPS', call: 'CALL', message: 'TEXT', site: 'SITE', listVehicles: 'Vehicles', viewPhotos: 'Photos', noVehicles: 'No registered vehicle info.', noPhotos: 'No registered photos.', reviewsAndReports: 'Reviews & Reports', noRating: 'Not rated yet', scoreText: 'Score', viewRatings: 'Reviews', viewReports: 'Reports', turkeyWide: 'Nationwide', transport: 'Transport', capacity: 'Capacity', close: 'Close', vehicle: 'Vehicle', photo: 'Photo', vehiclePhoto: 'Vehicle photo', previewPhoto: 'Large vehicle photo preview', provider: 'Provider' },
+  de: { kurtarici: 'Panne', nakliye: 'Transport', sarj: 'Laden', yolcu: 'Passagier', otoKurtarma: 'Abschlepp', vinc: 'Kran', lastik: 'Reifen', domestic: 'Inland', international: 'Global', homeMoving: 'Umzug', trailer: 'Auflieger', truck: 'LKW', van: 'Transporter', station: 'Station', geziciSarj: 'Mobil', loading: 'Lädt...', score: 'PUNKT', allTurkey: 'GANZE TÜRKEI', tapCall: 'Tippen für Preis und Anruf', verifiedPrice: 'Verifizierter Preis', mapsOpen: 'MAPS', call: 'ANRUF', message: 'TEXT', site: 'WEB', listVehicles: 'Fahrzeuge', viewPhotos: 'Fotos', noVehicles: 'Keine Fahrzeugdaten vorhanden.', noPhotos: 'Keine Fotos vorhanden.', reviewsAndReports: 'Bewertungen & Beschwerden', noRating: 'Noch keine Bewertung', scoreText: 'Punkt', viewRatings: 'Bewertungen', viewReports: 'Beschwerden', turkeyWide: 'Landesweit', transport: 'Transport', capacity: 'Kapazität', close: 'Schließen', vehicle: 'Fahrzeug', photo: 'Foto', vehiclePhoto: 'Fahrzeugfoto', previewPhoto: 'Große Fahrzeugfoto-Vorschau', provider: 'Anbieter' },
+  fr: { kurtarici: 'Dépannage', nakliye: 'Transport', sarj: 'Charge', yolcu: 'Passager', otoKurtarma: 'Remorque', vinc: 'Grue', lastik: 'Pneu', domestic: 'National', international: 'Global', homeMoving: 'Déménag.', trailer: 'Semi', truck: 'Camion', van: 'Fourgon', station: 'Station', geziciSarj: 'Mobile', loading: 'Chargement...', score: 'NOTE', allTurkey: 'TOUTE LA TURQUIE', tapCall: 'Touchez pour le prix et appeler', verifiedPrice: 'Prix vérifié', mapsOpen: 'MAPS', call: 'APPELER', message: 'MESSAGE', site: 'SITE', listVehicles: 'Véhicules', viewPhotos: 'Photos', noVehicles: 'Aucune information véhicule.', noPhotos: 'Aucune photo enregistrée.', reviewsAndReports: 'Avis & Réclamations', noRating: 'Pas encore évalué', scoreText: 'Note', viewRatings: 'Avis', viewReports: 'Plaintes', turkeyWide: 'Dans toute la Turquie', transport: 'Transport', capacity: 'Capacité', close: 'Fermer', vehicle: 'Véhicule', photo: 'Photo', vehiclePhoto: 'Photo du véhicule', previewPhoto: 'Aperçu photo grand format', provider: 'Prestataire' },
+  it: { kurtarici: 'Soccorso', nakliye: 'Trasporto', sarj: 'Ricarica', yolcu: 'Passeggero', otoKurtarma: 'Traino', vinc: 'Gru', lastik: 'Gomme', domestic: 'Nazionale', international: 'Globale', homeMoving: 'Trasloco', trailer: 'Rimorchio', truck: 'Camion', van: 'Furgone', station: 'Stazione', geziciSarj: 'Mobile', loading: 'Caricamento...', score: 'PUNTEGGIO', allTurkey: 'TUTTA LA TURCHIA', tapCall: 'Tocca per prezzo e chiamata', verifiedPrice: 'Prezzo verificato', mapsOpen: 'MAPS', call: 'CHIAMA', message: 'MESSAGGIO', site: 'SITO', listVehicles: 'Veicoli', viewPhotos: 'Foto', noVehicles: 'Nessun veicolo registrato.', noPhotos: 'Nessuna foto registrata.', reviewsAndReports: 'Recensioni e Reclami', noRating: 'Non ancora valutato', scoreText: 'Punteggio', viewRatings: 'Recensioni', viewReports: 'Reclami', turkeyWide: 'In tutta la Turchia', transport: 'Trasporto', capacity: 'Capacità', close: 'Chiudi', vehicle: 'Veicolo', photo: 'Foto', vehiclePhoto: 'Foto veicolo', previewPhoto: 'Anteprima foto grande', provider: 'Provider' },
+  es: { kurtarici: 'Rescate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Pasajero', otoKurtarma: 'Grúa', vinc: 'Grúa', lastik: 'Llantas', domestic: 'Nacional', international: 'Global', homeMoving: 'Mudanza', trailer: 'Tráiler', truck: 'Camión', van: 'Furgoneta', station: 'Estación', geziciSarj: 'Móvil', loading: 'Cargando...', score: 'PUNTAJE', allTurkey: 'TODA TURQUÍA', tapCall: 'Toca para precio y llamada', verifiedPrice: 'Precio verificado', mapsOpen: 'MAPS', call: 'LLAMAR', message: 'MENSAJE', site: 'SITIO', listVehicles: 'Vehículos', viewPhotos: 'Fotos', noVehicles: 'Sin información de vehículo.', noPhotos: 'No hay fotos registradas.', reviewsAndReports: 'Reseñas y Quejas', noRating: 'Aún sin valoración', scoreText: 'Puntaje', viewRatings: 'Reseñas', viewReports: 'Quejas', turkeyWide: 'En toda Turquía', transport: 'Transporte', capacity: 'Capacidad', close: 'Cerrar', vehicle: 'Vehículo', photo: 'Foto', vehiclePhoto: 'Foto del vehículo', previewPhoto: 'Vista previa grande de foto', provider: 'Proveedor' },
+  pt: { kurtarici: 'Resgate', nakliye: 'Transporte', sarj: 'Carga', yolcu: 'Passageiro', otoKurtarma: 'Reboque', vinc: 'Guindaste', lastik: 'Pneu', domestic: 'Nacional', international: 'Global', homeMoving: 'Mudança', trailer: 'Carreta', truck: 'Caminhão', van: 'Van', station: 'Estação', geziciSarj: 'Móvel', loading: 'Carregando...', score: 'PONTUAÇÃO', allTurkey: 'TODA A TURQUIA', tapCall: 'Toque para preço e ligação', verifiedPrice: 'Preço verificado', mapsOpen: 'MAPS', call: 'LIGAR', message: 'MENSAGEM', site: 'SITE', listVehicles: 'Veículos', viewPhotos: 'Fotos', noVehicles: 'Sem informações de veículo.', noPhotos: 'Sem fotos cadastradas.', reviewsAndReports: 'Avaliações e Reclamações', noRating: 'Ainda sem avaliação', scoreText: 'Pontuação', viewRatings: 'Avaliações', viewReports: 'Reclamações', turkeyWide: 'Toda a Turquia', transport: 'Transporte', capacity: 'Capacidade', close: 'Fechar', vehicle: 'Veículo', photo: 'Foto', vehiclePhoto: 'Foto do veículo', previewPhoto: 'Prévia grande da foto', provider: 'Fornecedor' },
+  ru: { kurtarici: 'Эвакуация', nakliye: 'Перевозка', sarj: 'Зарядка', yolcu: 'Пассажир', otoKurtarma: 'Эвакуатор', vinc: 'Кран', lastik: 'Шины', domestic: 'Внутри', international: 'Мир', homeMoving: 'Переезд', trailer: 'Фура', truck: 'Грузовик', van: 'Фургон', station: 'Станция', geziciSarj: 'Мобильная', loading: 'Загрузка...', score: 'ОЦЕНКА', allTurkey: 'ВСЯ ТУРЦИЯ', tapCall: 'Нажмите для цены и звонка', verifiedPrice: 'Подтвержденная цена', mapsOpen: 'MAPS', call: 'ЗВОНОК', message: 'СМС', site: 'САЙТ', listVehicles: 'Транспорт', viewPhotos: 'Фото', noVehicles: 'Нет данных о транспорте.', noPhotos: 'Нет загруженных фото.', reviewsAndReports: 'Отзывы и Жалобы', noRating: 'Пока нет оценок', scoreText: 'Оценка', viewRatings: 'Отзывы', viewReports: 'Жалобы', turkeyWide: 'По всей Турции', transport: 'Перевозка', capacity: 'Вместимость', close: 'Закрыть', vehicle: 'Транспорт', photo: 'Фото', vehiclePhoto: 'Фото транспорта', previewPhoto: 'Большой предпросмотр фото', provider: 'Поставщик' },
+  zh: { kurtarici: '救援', nakliye: '运输', sarj: '充电', yolcu: '客运', otoKurtarma: '拖车', vinc: '吊车', lastik: '轮胎', domestic: '国内', international: '国际', homeMoving: '搬家', trailer: '半挂车', truck: '卡车', van: '厢式车', station: '充电站', geziciSarj: '移动', loading: '加载中...', score: '评分', allTurkey: '全土耳其', tapCall: '点击查看价格并呼叫', verifiedPrice: '已验证价格', mapsOpen: 'MAPS', call: '呼叫', message: '消息', site: '网站', listVehicles: '车辆', viewPhotos: '照片', noVehicles: '暂无车辆信息。', noPhotos: '暂无照片。', reviewsAndReports: '评价与投诉', noRating: '暂无评分', scoreText: '评分', viewRatings: '评价', viewReports: '投诉', turkeyWide: '土耳其全境', transport: '运输', capacity: '载重', close: '关闭', vehicle: '车辆', photo: '照片', vehiclePhoto: '车辆照片', previewPhoto: '大图预览', provider: '商家' },
+  ja: { kurtarici: '救援', nakliye: '輸送', sarj: '充電', yolcu: '旅客', otoKurtarma: 'レッカー', vinc: 'クレーン', lastik: 'タイヤ', domestic: '国内', international: '国際', homeMoving: '引っ越し', trailer: 'トレーラー', truck: 'トラック', van: 'バン', station: 'ステーション', geziciSarj: '移動', loading: '読み込み中...', score: '評価', allTurkey: 'トルコ全域', tapCall: 'タップして料金確認・電話', verifiedPrice: '確認済み価格', mapsOpen: 'MAPS', call: '電話', message: 'メッセージ', site: 'サイト', listVehicles: '車両', viewPhotos: '写真', noVehicles: '登録された車両情報はありません。', noPhotos: '登録された写真はありません。', reviewsAndReports: '評価・苦情', noRating: 'まだ評価がありません', scoreText: '評価', viewRatings: '評価', viewReports: '苦情', turkeyWide: 'トルコ全域', transport: '輸送', capacity: '容量', close: '閉じる', vehicle: '車両', photo: '写真', vehiclePhoto: '車両写真', previewPhoto: '写真の拡大プレビュー', provider: '事業者' },
+  ko: { kurtarici: '구난', nakliye: '운송', sarj: '충전', yolcu: '승객', otoKurtarma: '견인', vinc: '크레인', lastik: '타이어', domestic: '국내', international: '국제', homeMoving: '이사', trailer: '트레일러', truck: '트럭', van: '밴', station: '스테이션', geziciSarj: '이동', loading: '로딩 중...', score: '점수', allTurkey: '터키 전체', tapCall: '가격 확인 후 전화하려면 탭', verifiedPrice: '검증된 가격', mapsOpen: 'MAPS', call: '전화', message: '메시지', site: '사이트', listVehicles: '차량', viewPhotos: '사진', noVehicles: '등록된 차량 정보가 없습니다.', noPhotos: '등록된 사진이 없습니다.', reviewsAndReports: '평가 및 신고', noRating: '아직 평가 없음', scoreText: '점수', viewRatings: '평가', viewReports: '신고', turkeyWide: '터키 전역', transport: '운송', capacity: '적재량', close: '닫기', vehicle: '차량', photo: '사진', vehiclePhoto: '차량 사진', previewPhoto: '큰 사진 미리보기', provider: '업체' },
+  ar: { kurtarici: 'إنقاذ', nakliye: 'نقل', sarj: 'شحن', yolcu: 'ركاب', otoKurtarma: 'سحب', vinc: 'رافعة', lastik: 'إطارات', domestic: 'محلي', international: 'دولي', homeMoving: 'منزلي', trailer: 'مقطورة', truck: 'شاحنة', van: 'فان', station: 'محطة', geziciSarj: 'متنقل', loading: 'جارٍ التحميل...', score: 'التقييم', allTurkey: 'كل تركيا', tapCall: 'اضغط لمعرفة السعر والاتصال', verifiedPrice: 'سعر موثّق', mapsOpen: 'MAPS', call: 'اتصال', message: 'رسالة', site: 'الموقع', listVehicles: 'المركبات', viewPhotos: 'الصور', noVehicles: 'لا توجد معلومات مركبة.', noPhotos: 'لا توجد صور مسجلة.', reviewsAndReports: 'التقييمات والشكاوى', noRating: 'لا يوجد تقييم بعد', scoreText: 'تقييم', viewRatings: 'التقييمات', viewReports: 'الشكاوى', turkeyWide: 'جميع أنحاء تركيا', transport: 'نقل', capacity: 'السعة', close: 'إغلاق', vehicle: 'مركبة', photo: 'صورة', vehiclePhoto: 'صورة المركبة', previewPhoto: 'معاينة صورة كبيرة', provider: 'مزود' }
 };
 
 // TİP TANIMLAMASI
@@ -219,6 +220,8 @@ interface ActionPanelProps {
   loading: boolean;
   activeDriverId: string | null;
   onSelectDriver: (id: string | null, driver?: any) => void;
+  onViewVehicles?: (driver: any) => void;
+  onViewPhotos?: (driver: any) => void;
   activeTags: string[];
   onTagsChange: (tags: string[] | ((prev: string[]) => string[])) => void;
   isSidebarOpen: boolean;
@@ -232,7 +235,7 @@ interface ActionPanelProps {
 
 function ActionPanel({
   onSearchLocation, currentCoords, onFilterApply, onStartOrder, actionType, onActionChange,
-  drivers, loading, activeDriverId, onSelectDriver, activeTags, onTagsChange, isSidebarOpen,
+  drivers, loading, activeDriverId, onSelectDriver, onViewVehicles, onViewPhotos, activeTags, onTagsChange, isSidebarOpen,
   collapseRequestToken,
   favoritesExternal,
   isFavoriteExternal,
@@ -266,9 +269,6 @@ function ActionPanel({
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [modalDriverId, setModalDriverId] = useState<string | null>(null);
   const [modalDriverName, setModalDriverName] = useState<string>('');
-  const [activeVehicleCardId, setActiveVehicleCardId] = useState<string | null>(null);
-  const [activePhotoCardId, setActivePhotoCardId] = useState<string | null>(null);
-  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
@@ -650,25 +650,11 @@ function ActionPanel({
   const matchesCurrentActionType = useCallback((driver: any) => {
     const service = driver?.service;
     if (!service) return false;
-    const mainType = String(service.mainType || '').toLocaleUpperCase('tr');
-    const subType = String(service.subType || '').toLocaleLowerCase('tr');
-    const norm = (v: string) =>
-      String(v || '')
-        .toLocaleLowerCase('tr')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '');
-    const subNorm = norm(subType);
-    const hasAny = (tokens: string[]) => tokens.some((token) => subNorm.includes(norm(token)));
-
-    let match = false;
-    if (actionType === 'seyyar_sarj') match = hasAny(['seyyar_sarj', 'mobil_unit', 'mobile_unit']);
-    else if (actionType === 'sarj') match = mainType.includes('SARJ') || hasAny(['istasyon', 'seyyar_sarj', 'mobil_unit', 'sarj']);
-    else if (actionType === 'kurtarici') match = mainType.includes('KURTARICI') || hasAny(['oto_kurtarma', 'kurtar', 'cekici', 'vinc', 'lastik']);
-    else if (actionType === 'nakliye') match = mainType.includes('NAKLIYE') || hasAny(['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet', 'nakliye']);
-    else if (actionType === 'yolcu') match = mainType.includes('YOLCU') || hasAny(['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima']);
-    else if (SUB_FILTERS[actionType]) match = hasAny([actionType, ...SUB_FILTERS[actionType].map((s) => s.id)]);
-    else match = subNorm.includes(norm(actionType));
+    let match = providerMatchesActionType(service, driver?.serviceType, actionType);
+    if (!match && SUB_FILTERS[actionType]) {
+      match = [actionType, ...SUB_FILTERS[actionType].map((s) => s.id)]
+        .some((type) => providerMatchesActionType(service, driver?.serviceType, type));
+    }
     if (!match) return false;
     if (activeTags.length > 0) {
       const tags = Array.isArray(service.tags) ? service.tags : [];
@@ -690,7 +676,10 @@ function ActionPanel({
 
     if (activeTransportFilter && SUB_FILTERS[activeTransportFilter]) {
         const allowedSubTypes = [activeTransportFilter, ...SUB_FILTERS[activeTransportFilter].map(s => s.id)];
-        list = list.filter(d => allowedSubTypes.includes(d.service?.subType));
+        list = list.filter((d) => {
+          const types = extractProviderServiceTypes(d?.service, d?.serviceType);
+          return allowedSubTypes.some((type) => types.includes(type));
+        });
     }
 
     const turkeyMode = selectedCityScope !== 'eu' && selectedCityScope !== 'us';
@@ -1052,45 +1041,45 @@ function ActionPanel({
       <div onClick={(e) => e.stopPropagation()} className={`px-4 pb-1 flex flex-col h-full overflow-hidden relative ${panelState === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100 transition-opacity duration-300'}`}>
         <div className="flex gap-2 shrink-0 mb-2">
           <button onClick={() => handleMainCategoryClick('kurtarici')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${actionType.includes('kurtarici') || showTowRow ? 'bg-red-600 text-white shadow-red-500/30' : 'bg-white/80 text-red-600 border border-white/40'}`}>
-            <Wrench size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.kurtarici}</span>
+            <Wrench size={24} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.kurtarici}</span>
           </button>
           <button onClick={() => handleMainCategoryClick('nakliye')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('nakliye') || actionType === 'yurt_disi_nakliye' || actionType === 'evden_eve' || showDomesticRow) ? 'bg-purple-700 text-white shadow-purple-500/30' : 'bg-white/80 text-purple-700 border border-white/40'}`}>
-            <Truck size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.nakliye}</span>
+            <Truck size={24} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.nakliye}</span>
           </button>
           <button onClick={() => handleMainCategoryClick('sarj')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('sarj') || actionType === 'seyyar_sarj' || actionType === 'istasyon' || showChargeRow) ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white/80 text-blue-600 border border-white/40'}`}>
-            <Zap size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.sarj}</span>
+            <Zap size={24} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.sarj}</span>
           </button>
           <button onClick={() => handleMainCategoryClick('yolcu')} className={`flex-1 py-2 rounded-[1.5rem] flex flex-col items-center justify-center transition-colors shadow-lg ${(actionType.includes('yolcu') || showPassengerRow) ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/80 text-emerald-600 border border-white/40'}`}>
-            <Users size={24} className="mb-1" /> <span className="text-[8px] font-black uppercase leading-none">{tx.yolcu}</span>
+            <Users size={24} className="mb-1" /> <span className="text-[10px] font-black uppercase leading-none">{tx.yolcu}</span>
           </button>
         </div>
 
         <div className="space-y-2 shrink-0 mb-1">
           {panelState > 1 && showTowRow && (
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={15}/> {tx.otoKurtarma}</button>
-              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-800 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}>{renderServiceIcon('vinc', 'w-[18px] h-[18px]', actionType === 'vinc', 'Vinc')} {tx.vinc}</button>
-              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}>{renderServiceIcon('lastik', 'w-[18px] h-[18px]', actionType === 'lastik', 'Lastik')} {tx.lastik}</button>
+              <button onClick={() => { onFilterApply('oto_kurtarma'); onActionChange('oto_kurtarma'); }} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'oto_kurtarma' ? 'bg-red-800 text-white' : 'bg-red-50 text-red-600 border border-red-100'}`}><CarFront size={15}/> {tx.otoKurtarma}</button>
+              <button onClick={() => { onFilterApply('vinc'); onActionChange('vinc'); }} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'vinc' ? 'bg-red-800 text-white' : 'bg-red-100 text-red-800 border border-red-200'}`}>{renderServiceIcon('vinc', 'w-[18px] h-[18px]', actionType === 'vinc', 'Vinc')} {tx.vinc}</button>
+              <button onClick={() => { onFilterApply('lastik'); onActionChange('lastik'); }} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-1 transition-colors ${actionType === 'lastik' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}>{renderServiceIcon('lastik', 'w-[18px] h-[18px]', actionType === 'lastik', 'Lastik')} {tx.lastik}</button>
             </div>
           )}
           {panelState > 1 && (showDomesticRow || actionType === 'yurt_disi_nakliye' || ['evden_eve','tir','kamyon','kamyonet'].includes(actionType)) && (
              <div className="flex gap-2">
-                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{tx.domestic}</button>
-                <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={10} className="inline mr-1"/> {tx.international}</button>
+                <button onClick={() => { setShowDomesticRow(true); onFilterApply('nakliye'); setActiveTransportFilter(null); onActionChange('nakliye'); }} className={`flex-1 py-2 rounded-2xl text-[10px] font-black uppercase shadow-md ${(actionType !== 'yurt_disi_nakliye' && actionType !== 'evden_eve') ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>{tx.domestic}</button>
+                <button onClick={() => { setShowDomesticRow(false); onFilterApply('yurt_disi_nakliye'); setActiveTransportFilter(null); onActionChange('yurt_disi_nakliye'); }} className={`flex-1 py-2 rounded-2xl text-[10px] font-black uppercase shadow-md ${actionType === 'yurt_disi_nakliye' ? 'bg-indigo-800 text-white' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}><Globe size={12} className="inline mr-1"/> {tx.international}</button>
              </div>
           )}
           {panelState > 1 && showDomesticRow && actionType !== 'yurt_disi_nakliye' && (
             <div className="grid grid-cols-4 gap-2">
-               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> {tx.homeMoving}</button>
-               <button onClick={() => handleTransportTypeClick('tir')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}>{renderServiceIcon('tir', 'w-[18px] h-[18px]', activeTransportFilter === 'tir', 'TIR')} {tx.trailer}</button>
-               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> {tx.truck}</button>
-               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}>{renderServiceIcon('kamyonet', 'w-[18px] h-[18px]', activeTransportFilter === 'kamyonet', 'Kamyonet')} {tx.van}</button>
+               <button onClick={() => { onFilterApply('evden_eve'); setActiveTransportFilter(null); onActionChange('evden_eve'); }} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${actionType === 'evden_eve' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-700'}`}><Home size={14}/> {tx.homeMoving}</button>
+               <button onClick={() => handleTransportTypeClick('tir')} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'tir' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}>{renderServiceIcon('tir', 'w-[18px] h-[18px]', activeTransportFilter === 'tir', 'TIR')} {tx.trailer}</button>
+               <button onClick={() => handleTransportTypeClick('kamyon')} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyon' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}><Truck size={14}/> {tx.truck}</button>
+               <button onClick={() => handleTransportTypeClick('kamyonet')} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 ${activeTransportFilter === 'kamyonet' ? 'bg-purple-700 text-white scale-105' : 'bg-purple-50 text-purple-700'}`}>{renderServiceIcon('kamyonet', 'w-[18px] h-[18px]', activeTransportFilter === 'kamyonet', 'Kamyonet')} {tx.van}</button>
             </div>
           )}
           {panelState > 1 && activeTransportFilter && SUB_FILTERS[activeTransportFilter] && (
              <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${SUB_FILTERS[activeTransportFilter].length}, minmax(0, 1fr))` }}>
                 {SUB_FILTERS[activeTransportFilter].map((sub) => (
-                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`${(sub.id === '8_teker' || sub.id === '10_teker') ? 'py-1 text-[6px]' : 'py-1.5 text-[9px]'} rounded-2xl font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
+                    <button key={sub.id} onClick={() => onTagsChange(activeTags.includes(sub.id) ? activeTags.filter((t:any) => t !== sub.id) : [...activeTags, sub.id])} className={`${(sub.id === '8_teker' || sub.id === '10_teker') ? 'py-2 text-[10px]' : 'py-2 text-[10px]'} rounded-2xl font-black uppercase shadow-sm flex items-center justify-center gap-1 transition-colors ${activeTags.includes(sub.id) ? 'bg-purple-700 text-white' : 'bg-white/40 text-gray-700'}`}>
                         {activeTags.includes(sub.id) && <Check size={13} strokeWidth={4} />} {lang === 'tr' ? sub.label : (SUB_LABEL_EN[sub.id] || sub.label)}
                     </button>
                 ))}
@@ -1098,8 +1087,8 @@ function ActionPanel({
           )}
           {panelState > 1 && showChargeRow && (
             <div className="flex gap-2">
-              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={15}/> {tx.station}</button>
-              <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-1.5 rounded-2xl text-[7px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
+              <button onClick={() => { onFilterApply('istasyon'); onActionChange('istasyon'); }} className={`flex-1 py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'istasyon' ? 'bg-blue-800 text-white' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}><Zap size={15}/> {tx.station}</button>
+              <button onClick={() => { onFilterApply('seyyar_sarj'); onActionChange('seyyar_sarj'); }} className={`flex-1 py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-1.5 transition-colors ${actionType === 'seyyar_sarj' ? 'bg-cyan-600 text-white' : 'bg-cyan-50 text-cyan-600 border border-cyan-100'}`}>
                 {renderServiceIcon('seyyar_sarj', 'w-[21px] h-[21px]', actionType === 'seyyar_sarj', 'Gezici Sarj')} {tx.geziciSarj}
               </button>
             </div>
@@ -1107,7 +1096,7 @@ function ActionPanel({
           {panelState > 1 && showPassengerRow && (
             <div className="grid grid-cols-4 gap-2">
                {SUB_FILTERS.yolcu.map((sub) => (
-                  <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-1 rounded-2xl text-[6px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-0.5 transition-colors ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                  <button key={sub.id} onClick={() => { onFilterApply(sub.id); onActionChange(sub.id); }} className={`py-2 rounded-2xl text-[10px] font-black uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-colors ${actionType === sub.id ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
                     {sub.id === 'minibus' && <Bus size={14}/>}
                     {sub.id === 'otobus' && (renderServiceIcon('otobus', 'w-[21px] h-[21px]', actionType === 'otobus', 'Otobus') || <Bus size={14}/>)}
                     {sub.id === 'midibus' && (renderServiceIcon('midibus', 'w-[21px] h-[21px]', actionType === 'midibus', 'Midibus') || <Bus size={14}/>)}
@@ -1125,7 +1114,7 @@ function ActionPanel({
                 <select
                   value={selectedCity && selectedCityScope ? `${selectedCityScope}::${selectedCity}` : ''}
                   onChange={handleCityChange}
-                  className={`w-full appearance-none ${activeThemeColor} text-white pl-2.5 pr-7 py-1.5 rounded-xl text-[7px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
+                  className={`w-full appearance-none ${activeThemeColor} text-white pl-2.5 pr-7 py-2 rounded-xl text-[10px] font-black uppercase focus:outline-none border border-white/10 truncate transition-colors duration-300`}
                 >
                   <option value="">{cityOptionText.allWorld}</option>
                   <optgroup label={cityOptionText.turkey}>
@@ -1148,7 +1137,7 @@ function ActionPanel({
               </div>
 
               <div className="flex bg-white/80 p-0.5 rounded-xl shrink-0 border border-white/40 shadow-sm gap-0.5">
-                <button onClick={() => setSortMode(m => m === 'rating' ? 'distance' : 'rating')} className={`px-2 py-1.5 rounded-lg text-[7px] font-black uppercase transition-colors flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500`}`}><ThumbsUp size={10}/> {tx.score}</button>
+                <button onClick={() => setSortMode(m => m === 'rating' ? 'distance' : 'rating')} className={`px-2.5 py-2 rounded-lg text-[10px] font-black uppercase transition-colors flex items-center gap-1 ${sortMode === 'rating' ? `${activeThemeColor} text-white shadow-md` : `text-gray-500`}`}><ThumbsUp size={12}/> {tx.score}</button>
               </div>
 
               <div className="ml-auto flex items-center gap-1.5">
@@ -1266,12 +1255,6 @@ function ActionPanel({
                 const photoCountFromVehicles = vehicleItems.reduce((sum, v) => sum + (Array.isArray(v.photoUrls) ? v.photoUrls.length : 0), 0);
                 const legacyPhotoCount = (driver.vehiclePhotos?.length || 0) + (driver.photoUrl ? 1 : 0);
                 const photoCount = photoCountFromVehicles > 0 ? photoCountFromVehicles : legacyPhotoCount;
-                const allPhotoUrls = [
-                  ...(Array.isArray(driver.vehiclePhotos) ? driver.vehiclePhotos : []),
-                  ...(driver.photoUrl ? [driver.photoUrl] : []),
-                  ...vehicleItems.flatMap((v) => (Array.isArray(v.photoUrls) ? v.photoUrls : [])),
-                ].filter(Boolean) as string[];
-                const uniquePhotoUrls = Array.from(new Set(allPhotoUrls));
                 const hintColorClass = sub === 'vinc'
                   ? 'text-red-800'
                   : sub === 'lastik'
@@ -1389,11 +1372,7 @@ function ActionPanel({
                             ring: 'border-purple-400 ring-purple-300/30',
                           };
                 const favoriteFilled = isFavorite(driver._id);
-                const tags = Array.isArray(driver?.service?.tags) ? driver.service.tags.map((t: any) => String(t || '').trim()) : [];
-                const canShowVerifiedPrice =
-                  driver.isVerified &&
-                  Number(driver?.pricing?.pricePerUnit) > 0 &&
-                  (tags.includes('source:manual') || Boolean(String(driver?.taxNumber || '').trim()));
+                const canShowVerifiedPrice = providerCanShowPrice(driver);
 
                 return (
                 <div
@@ -1415,7 +1394,7 @@ function ActionPanel({
                     {canShowVerifiedPrice && (
                       <div className="absolute top-4 right-4 text-right">
                         <div
-                          className="px-2.5 py-1 rounded-xl backdrop-blur-md text-white text-[8px] font-black uppercase tracking-wide shadow-sm"
+                          className="px-3 py-1.5 rounded-xl backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wide shadow-sm"
                           style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                         >
                           {tx.verifiedPrice}
@@ -1423,7 +1402,7 @@ function ActionPanel({
                         <div className={`mt-1 text-[11px] font-black ${theme.text}`}>
                           ₺{Number(driver.pricing.pricePerUnit).toFixed(0)} / {['istasyon', 'seyyar_sarj'].includes(driver.service?.subType) ? 'kW' : 'km'}
                         </div>
-                        <div className={`text-[8px] font-bold uppercase ${theme.text}`}>
+                        <div className={`text-[10px] font-bold uppercase ${theme.text}`}>
                           {new Date(driver.updatedAt || Date.now()).toLocaleDateString('tr-TR', { month: '2-digit', year: 'numeric' })}
                         </div>
                       </div>
@@ -1450,25 +1429,27 @@ function ActionPanel({
                                          : <DisplayIcon size={18} strokeWidth={2.5} />}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <h4 className="font-black text-[10px] sm:text-[11px] uppercase truncate leading-tight w-full" title={driver.businessName}>
+                                <h4 className="font-black text-[13px] sm:text-[14px] uppercase truncate leading-tight w-full" title={driver.businessName}>
                                     {formatTitle(driver.businessName)}
                                 </h4>
-                                <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                    {[1,2,3,4,5].map(s => <Star key={s} size={9} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <span className={`text-[10px] font-black uppercase ${theme.text}`}>{tx.scoreText}</span>
+                                    {[1,2,3,4,5].map(s => <Star key={s} size={11} className={s <= (driver.rating || 0) ? theme.star : theme.starOff}/>)}
+                                    <span className={`text-[11px] font-black ${theme.text}`}>{Number(driver.rating || 0).toFixed(1)}/5</span>
 
                                     {!isSpecialCategory && Number.isFinite(computeDistanceMeters(driver)) && computeDistanceMeters(driver) < Number.POSITIVE_INFINITY && (
-                                      <span className="text-[8px] text-gray-400 font-bold ml-1 shrink-0">
+                                      <span className="text-[10px] text-gray-400 font-bold ml-1 shrink-0">
                                         {(computeDistanceMeters(driver) / 1000).toFixed(1)} km
                                       </span>
                                     )}
 
                                     {(!isMobileCharge && driver.address?.fullText) && (
-                                        <span className="text-[8px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
+                                        <span className="text-[10px] text-gray-500 opacity-70 font-bold ml-2 pl-2 border-l border-gray-300 leading-tight inline-block align-middle whitespace-normal break-words">
                                             {driver.address.fullText}
                                         </span>
                                     )}
 
-                                    {showTurkeyWideBadge && <span className={`text-[9px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : isStation ? 'text-blue-600' : 'text-cyan-600'}`}>{tx.turkeyWide}</span>}
+                                    {showTurkeyWideBadge && <span className={`text-[10px] font-black ml-1 uppercase shrink-0 opacity-80 ${isPassenger ? 'text-emerald-600' : isStation ? 'text-blue-600' : 'text-cyan-600'}`}>{tx.turkeyWide}</span>}
                                 </div>
 
                                 {driver.service?.tags?.length > 0 && (
@@ -1477,7 +1458,7 @@ function ActionPanel({
                                       const details = (lang === 'tr' ? TAG_DETAILS : TAG_DETAILS_EN)[tag];
                                       if (!details) return null;
                                       return (
-                                        <div key={tag} className="text-[8px] text-gray-500 flex flex-col leading-tight bg-gray-50 p-1.5 rounded-lg border border-gray-100">
+                                        <div key={tag} className="text-[10px] text-gray-500 flex flex-col leading-tight bg-gray-50 p-2 rounded-lg border border-gray-100">
                                           <span className="font-black uppercase text-gray-700">{tag.replace('_', ' ')}</span>
                                           <span><span className="font-bold">{tx.transport}:</span> {details.tasima}</span>
                                           <span><span className="font-bold">{tx.capacity}:</span> {details.kapasite}</span>
@@ -1488,7 +1469,7 @@ function ActionPanel({
                                 )}
 
                                 {!isSelected && !isSpecialCategory && (
-                                  <p className={`mt-2 text-[8px] font-black uppercase tracking-wide ${hintColorClass}`}>
+                                  <p className={`mt-2 text-[10px] font-black uppercase tracking-wide ${hintColorClass}`}>
                                     {tx.tapCall}
                                   </p>
                                 )}
@@ -1507,14 +1488,14 @@ function ActionPanel({
                                 openSystemMap(Number(lat), Number(lng), driver.businessName || 'Destination');
                               }
                             }}
-                            className="py-2 rounded-xl text-[8px] font-black uppercase text-white border border-white/40 flex items-center justify-center"
+                            className="py-2.5 rounded-xl text-[10px] font-black uppercase text-white border border-white/40 flex items-center justify-center"
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           >
                             {tx.mapsOpen}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(driver); }}
-                            className={`py-2 rounded-xl text-[8px] font-black uppercase border flex items-center justify-center ${
+                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase border flex items-center justify-center ${
                               favoriteFilled ? 'text-white border-white/40' : `${theme.text} border-slate-200 bg-white`
                             }`}
                             style={favoriteFilled ? { background: `linear-gradient(135deg, ${theme.darkStart}, ${theme.darkEnd})` } : undefined}
@@ -1528,10 +1509,10 @@ function ActionPanel({
                               setModalDriverName(driver.businessName || '');
                               setShowRatingsModal(true);
                             }}
-                            className={`py-2 rounded-xl text-[8px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
+                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
                             style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                           >
-                            YORUMLARI GORUNTULE
+                            {tx.viewRatings}
                           </button>
                           <button
                             onClick={(e) => {
@@ -1540,17 +1521,17 @@ function ActionPanel({
                               setModalDriverName(driver.businessName || '');
                               setShowReportsModal(true);
                             }}
-                            className={`py-2 rounded-xl text-[8px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
+                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/50 ${theme.text} flex items-center justify-center`}
                             style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                           >
-                            SIKAYETLERI GORUNTULE
+                            {tx.viewReports}
                           </button>
                         </div>
 
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'call'); window.location.href=`tel:${driver.phoneNumber}`; }}
-                            className={`${isStation ? 'w-full' : 'flex-1'} py-3 rounded-[1.2rem] font-black text-[9px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40`}
+                            className={`${isStation ? 'w-full' : 'flex-1'} py-3 rounded-[1.2rem] font-black text-[11px] shadow-lg uppercase flex items-center justify-center gap-2 text-white border border-white/40`}
                             style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                           ><Phone size={14}/> {tx.call}</button>
 
@@ -1558,26 +1539,26 @@ function ActionPanel({
                             (isMobileCharge || isPassenger) ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); if (driver.website) window.open(driver.website, '_blank'); }}
-                                className="flex-1 text-white py-3 rounded-[1.2rem] font-black text-[9px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
+                                className="flex-1 text-white py-3 rounded-[1.2rem] font-black text-[11px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
                                 style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                               ><Globe size={14}/> {tx.site}</button>
                             ) : (
                               <button
                                 onClick={(e) => { e.stopPropagation(); onStartOrder(driver, 'message'); window.location.href=`sms:${driver.phoneNumber}`; }}
-                                className="flex-1 text-white py-3 rounded-[1.2rem] font-black text-[9px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
+                                className="flex-1 text-white py-3 rounded-[1.2rem] font-black text-[11px] shadow-lg uppercase flex items-center justify-center gap-2 border border-white/40"
                                 style={{ background: `linear-gradient(135deg, ${theme.start}, ${theme.end})` }}
                               ><MessageCircle size={14}/> {tx.message}</button>
                             )
                           )}
                         </div>
 
-                        {!isStation && driver.isVerified && (vehicleCount > 0 || photoCount > 0) && (
+                        {!isStation && (vehicleCount > 0 || photoCount > 0) && (
                           <div className="flex gap-2">
                             {vehicleCount > 0 && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveVehicleCardId(prev => prev === driver._id ? null : driver._id);
+                                  onViewVehicles?.(driver);
                                 }}
                                 className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} transition-colors`}
                                 style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
@@ -1589,45 +1570,13 @@ function ActionPanel({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActivePhotoCardId(prev => prev === driver._id ? null : driver._id);
+                                  onViewPhotos?.(driver);
                                 }}
                                 className={`flex-1 py-3 border border-white/50 rounded-2xl text-[10px] font-black uppercase ${theme.text} transition-colors`}
                                 style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}
                               >
                                 {tx.viewPhotos} ({photoCount})
                               </button>
-                            )}
-                          </div>
-                        )}
-
-                        {!isStation && activeVehicleCardId === driver._id && (
-                          <div className="border border-white/60 rounded-2xl p-3 space-y-2" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
-                            {vehicleItems.length === 0 && <div className="text-[10px] font-bold text-gray-500">{tx.noVehicles}</div>}
-                            {vehicleItems.map((vehicle, vIdx) => (
-                              <div key={`${driver._id}-vehicle-${vIdx}`} className="text-[10px] text-gray-700">
-                                <div className="font-black uppercase">{vehicle.name || `${tx.vehicle} ${vIdx + 1}`}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {!isStation && activePhotoCardId === driver._id && (
-                          <div className="border border-white/60 rounded-2xl p-3" style={{ background: `linear-gradient(135deg, ${theme.softStart}, ${theme.softEnd})` }}>
-                            {uniquePhotoUrls.length === 0 && <div className="text-[10px] font-bold text-gray-500">{tx.noPhotos}</div>}
-                            {uniquePhotoUrls.length > 0 && (
-                              <div className="grid grid-cols-3 gap-2">
-                                {uniquePhotoUrls.map((url, idx) => (
-                                  <button
-                                    key={`${driver._id}-inline-photo-${idx}`}
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(url); }}
-                                    className="h-48 w-full rounded-lg overflow-hidden bg-transparent border border-white/20"
-                                    title={`${tx.photo} ${idx + 1}`}
-                                  >
-                                    <img src={url} alt={`${tx.vehiclePhoto} ${idx + 1}`} className="w-full h-full object-contain" loading="lazy" />
-                                  </button>
-                                ))}
-                              </div>
                             )}
                           </div>
                         )}
@@ -1661,24 +1610,6 @@ function ActionPanel({
       driverId={modalDriverId}
       driverName={modalDriverName}
     />
-    {previewPhotoUrl && (
-      <div
-        className="fixed inset-0 z-[100005] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4"
-        onClick={() => setPreviewPhotoUrl(null)}
-      >
-        <div className="relative max-w-[92vw] max-h-[82vh]">
-          <img src={previewPhotoUrl} alt={tx.previewPhoto} className="max-w-[92vw] max-h-[82vh] rounded-2xl object-contain border border-white/30 shadow-2xl" />
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setPreviewPhotoUrl(null); }}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-gray-800 font-black text-xs"
-            aria-label={tx.close}
-          >
-            X
-          </button>
-        </div>
-      </div>
-    )}
     </>
   );
 }

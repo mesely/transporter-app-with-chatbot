@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "813224261180",
+    "project_id": "transport-245",
+    "storage_bucket": "transport-245.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:813224261180:android:ccd101887c33c7ff4bf539",
+        "android_client_info": {
+          "package_name": "com.trasport245.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "813224261180-ner9n3hfsah9km0iei69me5i8lb5hd1k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trasport245.app",
+            "certificate_hash": "474b8177ba943caec0fc910fb3bda50f2d178b72"
+          }
+        },
+        {
+          "client_id": "813224261180-sslqqeq42nnl8cuqekjc9psu6gfqcdrs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trasport245.app",
+            "certificate_hash": "d195f253f48d1aac9e3eb1dfe63fa8c81821c036"
+          }
+        },
+        {
+          "client_id": "813224261180-amlbeuek6971rg4ldqsr1fg5v9dfr770.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9bLA1wO26nYtRI3_z9sj2_sWQyqKl3vY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "813224261180-amlbeuek6971rg4ldqsr1fg5v9dfr770.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "813224261180-dmk4gshjcc7g4gikisf6f1katsbu4hi3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mesely.transporter"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

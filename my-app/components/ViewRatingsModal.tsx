@@ -50,7 +50,7 @@ export default function ViewRatingsModal({ isOpen, onClose, driverId, driverName
             </div>
             <div className="min-w-0">
               <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">Değerlendirmeler</h3>
-              <p className="text-white/70 text-[11px] font-bold uppercase mt-1 truncate">{driverName}</p>
+              <p className="text-white/80 text-sm font-bold uppercase mt-1 truncate">{driverName}</p>
             </div>
           </div>
           {avgRating > 0 ? (
@@ -61,7 +61,7 @@ export default function ViewRatingsModal({ isOpen, onClose, driverId, driverName
                 ))}
               </div>
               <span className="text-white font-black text-sm ml-0.5">{avgRating.toFixed(1)}</span>
-              <span className="text-white/60 font-bold text-[10px] uppercase">Ortalama</span>
+              <span className="text-white/75 font-bold text-xs uppercase">Firma puanı ortalaması</span>
             </div>
           ) : (
             <div className="bg-white/20 rounded-2xl px-4 py-2.5 w-fit">
@@ -91,10 +91,10 @@ export default function ViewRatingsModal({ isOpen, onClose, driverId, driverName
                     {[1,2,3,4,5].map(s => (
                       <Star key={s} size={13} className={s <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
                     ))}
-                    <span className="text-[9px] font-black text-slate-500 ml-1">{r.rating}/5</span>
+                    <span className="text-[11px] font-black text-slate-500 ml-1">{r.rating}/5</span>
                   </div>
                   {r.createdAt && (
-                    <span className="text-[8px] text-slate-400 font-bold uppercase">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">
                       {new Date(r.createdAt).toLocaleDateString('tr-TR')}
                     </span>
                   )}
@@ -102,12 +102,12 @@ export default function ViewRatingsModal({ isOpen, onClose, driverId, driverName
                 {r.tags && r.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {r.tags.map((tag: string, j: number) => (
-                      <span key={j} className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg">{tag}</span>
+                      <span key={j} className="px-2.5 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase rounded-lg">{tag}</span>
                     ))}
                   </div>
                 )}
                 {r.comment && (
-                  <p className="text-[11px] text-slate-600 font-medium leading-relaxed">{r.comment}</p>
+                  <p className="text-sm text-slate-600 font-medium leading-relaxed">{r.comment}</p>
                 )}
               </div>
             ))

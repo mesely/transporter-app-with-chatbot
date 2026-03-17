@@ -13,9 +13,11 @@ import { useRouter } from 'next/navigation';
 
 import TopControls from '../../components/home/TopControls';
 import ActionPanel from '../../components/home/ActionPanel';
+import ProviderAssetsModal from '../../components/ProviderAssetsModal';
 import ViewRatingsModal from '../../components/ViewRatingsModal';
 import ViewReportsModal from '../../components/ViewReportsModal';
 import ProfileModal from '../../components/ProfileModal';
+import { providerMatchesActionType } from '../../utils/providerServices';
 
 const Map = dynamic(() => import('../../components/Map'), {
   ssr: false,
@@ -70,31 +72,10 @@ function normalizeText(v: string) {
     .trim();
 }
 
-function normalizeServiceToken(v: string) {
-  return (v || '')
-    .toLocaleLowerCase('tr')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
-
-function serviceMatchesType(service: any, type: string) {
-  if (!service) return false;
-  const mainType = String(service.mainType || '').toLocaleUpperCase('tr');
-  const subTypeRaw = String(service.subType || '').toLocaleLowerCase('tr');
-  const sub = normalizeServiceToken(subTypeRaw);
-  const wanted = normalizeServiceToken(type);
-
-  const hasAny = (tokens: string[]) => tokens.some((token) => sub.includes(normalizeServiceToken(token)));
-
-  if (type === 'seyyar_sarj') return hasAny(['seyyar_sarj', 'mobil_unit', 'mobile_unit']);
-  if (type === 'sarj') return mainType.includes('SARJ') || hasAny(['istasyon', 'seyyar_sarj', 'mobil_unit', 'sarj']);
-  if (type === 'kurtarici') return mainType.includes('KURTARICI') || hasAny(['oto_kurtarma', 'kurtar', 'cekici', 'vinc', 'lastik']);
-  if (type === 'nakliye') return mainType.includes('NAKLIYE') || hasAny(['yurt_disi_nakliye', 'evden_eve', 'tir', 'kamyon', 'kamyonet', 'nakliye']);
-  if (type === 'yolcu') return mainType.includes('YOLCU') || hasAny(['yolcu_tasima', 'minibus', 'otobus', 'midibus', 'vip_tasima']);
-  if (CATEGORY_MAP[type]) return hasAny([type, ...CATEGORY_MAP[type]]);
-  if (wanted) return sub.includes(wanted);
-  return false;
+function serviceMatchesType(service: any, type: string, legacyServiceType?: string) {
+  if (providerMatchesActionType(service, legacyServiceType, type)) return true;
+  if (!CATEGORY_MAP[type]) return false;
+  return CATEGORY_MAP[type].some((subType) => providerMatchesActionType(service, legacyServiceType, subType));
 }
 
 function readManualLocation(): { lat: number; lng: number; city?: string; district?: string } | null {
@@ -200,6 +181,19 @@ export default function Home() {
   const [modalDriverId, setModalDriverId] = useState<string | null>(null);
   const [modalDriverName, setModalDriverName] = useState<string>('');
   const [selectedDriverGhost, setSelectedDriverGhost] = useState<any | null>(null);
+  const [assetsModal, setAssetsModal] = useState<{
+    isOpen: boolean;
+    mode: 'vehicles' | 'photos';
+    driverName: string;
+    vehicleItems: Array<{ name: string; photoUrls: string[] }>;
+    photoUrls: string[];
+  }>({
+    isOpen: false,
+    mode: 'vehicles',
+    driverName: '',
+    vehicleItems: [],
+    photoUrls: [],
+  });
   const [homeStateReady, setHomeStateReady] = useState(false);
   const actionTypeRef = useRef(actionType);
   const activeTagsRef = useRef(activeTags);
@@ -456,7 +450,6 @@ export default function Home() {
       const params = new URLSearchParams({
         lat: String(lat),
         lng: String(lng),
-        type: effectiveType,
         zoom: String(Math.round((opts?.zoom ?? 9) * 10) / 10),
       });
       if (opts?.limit && Number.isFinite(opts.limit)) {
@@ -472,23 +465,10 @@ export default function Home() {
       const res = await fetch(url, { signal: controller.signal });
       const data = await res.json();
       if (requestSeq !== seqRef.current) return;
-      const normalizedData = Array.isArray(data) ? data : [];
-
-      if (
-        normalizedData.length === 0 &&
-        effectiveType &&
-        opts?.typeFallback !== false
-      ) {
-        await fetchDrivers(lat, lng, type, {
-          ...opts,
-          requestType: '',
-          force: true,
-          append: opts?.append,
-          countryFallback: false,
-          typeFallback: false,
-        });
-        return;
-      }
+      const baseData = Array.isArray(data) ? data : [];
+      const normalizedData = effectiveType
+        ? baseData.filter((row: any) => serviceMatchesType(row?.service, effectiveType, row?.serviceType))
+        : baseData;
 
       if (
         normalizedData.length === 0 &&
@@ -720,7 +700,7 @@ export default function Home() {
   const matchesActiveFilters = useCallback((d: any) => {
       const s = d.service;
       if (!s) return false;
-      const match = serviceMatchesType(s, actionType);
+      const match = serviceMatchesType(s, actionType, d?.serviceType);
       if (!match) return false;
       if (activeTags.length > 0) return activeTags.some((t) => (s.tags || []).includes(t));
       return true;
@@ -749,6 +729,50 @@ export default function Home() {
     if (exists) return filteredMapDrivers;
     return [...filteredMapDrivers, selectedDriverForFocus];
   }, [filteredMapDrivers, selectedDriverForFocus]);
+
+  const panelRenderDrivers = useMemo(() => {
+    if (!selectedDriverForFocus) return filteredDrivers;
+    const exists = filteredDrivers.some((d: any) => d?._id === selectedDriverForFocus._id);
+    if (exists) return filteredDrivers;
+    return [selectedDriverForFocus, ...filteredDrivers];
+  }, [filteredDrivers, selectedDriverForFocus]);
+
+  const extractDriverAssets = useCallback((driver: any) => {
+    const vehicleItems: Array<{ name: string; photoUrls: string[] }> =
+      Array.isArray(driver?.vehicleItems) && driver.vehicleItems.length > 0
+        ? driver.vehicleItems
+        : (driver?.vehicleInfo
+            ? [{ name: driver.vehicleInfo, photoUrls: driver.vehiclePhotos || (driver.photoUrl ? [driver.photoUrl] : []) }]
+            : []);
+    const photoUrls = Array.from(new Set([
+      ...(Array.isArray(driver?.vehiclePhotos) ? driver.vehiclePhotos : []),
+      ...(driver?.photoUrl ? [driver.photoUrl] : []),
+      ...vehicleItems.flatMap((vehicle) => (Array.isArray(vehicle.photoUrls) ? vehicle.photoUrls : [])),
+    ].filter(Boolean))) as string[];
+    return { vehicleItems, photoUrls };
+  }, []);
+
+  const openVehiclesModal = useCallback((driver: any) => {
+    const { vehicleItems, photoUrls } = extractDriverAssets(driver);
+    setAssetsModal({
+      isOpen: true,
+      mode: 'vehicles',
+      driverName: driver?.businessName || '',
+      vehicleItems,
+      photoUrls,
+    });
+  }, [extractDriverAssets]);
+
+  const openPhotosModal = useCallback((driver: any) => {
+    const { vehicleItems, photoUrls } = extractDriverAssets(driver);
+    setAssetsModal({
+      isOpen: true,
+      mode: 'photos',
+      driverName: driver?.businessName || '',
+      vehicleItems,
+      photoUrls,
+    });
+  }, [extractDriverAssets]);
 
   const handleCreateOrder = useCallback(async (driver: any, method: 'call' | 'message') => {
     try {
@@ -881,7 +905,7 @@ export default function Home() {
     } else {
       const merged = [...(driversRef.current || []), ...(mapDriversRef.current || [])];
       const warm = merged.filter((d: any) => {
-        return serviceMatchesType(d?.service, type);
+        return serviceMatchesType(d?.service, type, d?.serviceType);
       });
       if (warm.length > 0) setDrivers(prioritizePanelDrivers(warm));
     }
@@ -1250,6 +1274,8 @@ export default function Home() {
           onToggleFavorite={handleToggleFavorite}
           onViewRatings={handleOpenRatings}
           onViewReports={handleOpenReports}
+          onViewVehicles={openVehiclesModal}
+          onViewPhotos={openPhotosModal}
           onMapInteract={() => setPanelCollapseToken((v) => v + 1)}
           onMapMove={handleMapMove}
           onMapClick={() => {
@@ -1269,10 +1295,12 @@ export default function Home() {
         onActionChange={setActionType}
         activeTags={activeTags}
         onTagsChange={setActiveTags}
-        drivers={filteredDrivers}
+        drivers={panelRenderDrivers}
         loading={loading}
         activeDriverId={activeDriverId}
         onSelectDriver={(id, driver) => handleSelectDriver(id, false, driver)}
+        onViewVehicles={openVehiclesModal}
+        onViewPhotos={openPhotosModal}
         onStartOrder={handleCreateOrder}
         isSidebarOpen={false}
         collapseRequestToken={panelCollapseToken}
@@ -1294,6 +1322,14 @@ export default function Home() {
         onClose={() => setShowReportsModal(false)}
         driverId={modalDriverId}
         driverName={modalDriverName}
+      />
+      <ProviderAssetsModal
+        isOpen={assetsModal.isOpen}
+        mode={assetsModal.mode}
+        driverName={assetsModal.driverName}
+        vehicleItems={assetsModal.vehicleItems}
+        photoUrls={assetsModal.photoUrls}
+        onClose={() => setAssetsModal((prev) => ({ ...prev, isOpen: false }))}
       />
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
 

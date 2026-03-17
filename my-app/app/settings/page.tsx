@@ -122,7 +122,6 @@ function getSettingsText(lang: AppLang) {
       score: 'Puan',
       myComplaints: 'Yaptığım Şikayetler',
       noComplaints: 'Henüz şikayet yok.',
-      donationNote: "Net gelirin %10'una kadar yardım kuruluşlarına bağışlanır.",
       statusCompleted: 'Tamamlandı',
       statusClosed: 'Kapandı',
       statusPending: 'Bekliyor',
@@ -170,7 +169,6 @@ function getSettingsText(lang: AppLang) {
       score: 'Note',
       myComplaints: 'Mes réclamations',
       noComplaints: 'Aucune réclamation.',
-      donationNote: "Jusqu'à 10 % du revenu net est reversé à des associations.",
       statusCompleted: 'Terminé',
       statusClosed: 'Fermé',
       statusPending: 'En attente',
@@ -217,7 +215,6 @@ function getSettingsText(lang: AppLang) {
     score: 'Score',
     myComplaints: 'My Complaints',
     noComplaints: 'No complaints yet.',
-    donationNote: 'Up to 10% of net revenue is donated to charities.',
     statusCompleted: 'Completed',
     statusClosed: 'Closed',
     statusPending: 'Pending',
@@ -795,11 +792,6 @@ export default function SettingsPage() {
         </>
         )}
 
-        <footer className="rounded-[2rem] border border-white/60 bg-white/45 p-4 text-center shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
-          <p className="text-xs font-black uppercase tracking-wider text-slate-500">
-            {uiText.donationNote}
-          </p>
-        </footer>
       </div>
 
       <KVKKModal isOpen={showKvkkModal} onClose={() => setShowKvkkModal(false)} readOnly />

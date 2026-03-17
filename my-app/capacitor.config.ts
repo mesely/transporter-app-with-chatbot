@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mesely.transporter',
+  appId: 'com.trasport245.app',
   appName: 'Transport 245',
   webDir: 'out',
   server: {

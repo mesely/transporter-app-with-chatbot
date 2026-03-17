@@ -2,6 +2,7 @@
 
 import { Bus, CarFront, Circle, Search, Settings, Truck, User, Wrench, X, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { extractProviderServiceTypes } from '../../utils/providerServices';
 
 interface TopControlsProps {
   topOffset: string;
@@ -23,43 +24,16 @@ export default function TopControls({
   const router = useRouter();
 
   const getServiceType = (driver: any) => {
-    const subType = String(driver?.service?.subType || '').toLocaleLowerCase('tr');
+    const types = extractProviderServiceTypes(driver?.service, driver?.serviceType);
     const mainType = String(driver?.service?.mainType || '').toLocaleLowerCase('tr');
-    const merged = `${subType} ${mainType}`;
+    const merged = `${types.join(' ')} ${mainType}`;
 
-    if (subType === 'vinc' || merged.includes('vinc')) return 'vinc';
-    if (subType === 'lastik' || merged.includes('lastik')) return 'lastik';
-    if (
-      subType === 'seyyar_sarj' ||
-      subType === 'istasyon' ||
-      merged.includes('sarj') ||
-      merged.includes('istasyon') ||
-      merged.includes('seyyar_sarj')
-    ) return 'sarj';
-    if (
-      subType === 'nakliye' ||
-      subType === 'tir' ||
-      subType === 'kamyon' ||
-      subType === 'kamyonet' ||
-      subType === 'yurt_disi_nakliye' ||
-      subType === 'evden_eve' ||
-      merged.includes('nakliye') ||
-      merged.includes('tir') ||
-      merged.includes('kamyon') ||
-      merged.includes('evden_eve')
-    ) return 'nakliye';
-    if (
-      subType === 'yolcu' ||
-      subType === 'minibus' ||
-      subType === 'otobus' ||
-      subType === 'midibus' ||
-      subType === 'vip_tasima' ||
-      merged.includes('yolcu') ||
-      merged.includes('otobus') ||
-      merged.includes('minibus') ||
-      merged.includes('vip')
-    ) return 'yolcu';
-    if (subType === 'oto_kurtarma' || merged.includes('kurtar')) return 'kurtarici';
+    if (types.includes('vinc') || merged.includes('vinc')) return 'vinc';
+    if (types.includes('lastikci') || merged.includes('lastik')) return 'lastik';
+    if (types.includes('seyyar_sarj') || types.includes('istasyon') || merged.includes('sarj') || merged.includes('istasyon')) return 'sarj';
+    if (types.some((type) => ['tir', 'kamyon', 'kamyonet', 'yurt_disi_nakliye', 'evden_eve', 'nakliye'].includes(type)) || merged.includes('nakliye')) return 'nakliye';
+    if (types.some((type) => ['yolcu', 'minibus', 'otobus', 'midibus', 'vip_tasima'].includes(type)) || merged.includes('yolcu') || merged.includes('vip')) return 'yolcu';
+    if (types.includes('oto_kurtarma') || merged.includes('kurtar')) return 'kurtarici';
     return 'kurtarici';
   };
 

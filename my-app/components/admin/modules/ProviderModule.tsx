@@ -17,6 +17,7 @@ import {
   Snowflake, Layers, Archive, Box, Check, Users, Bus, Crown,
   ArrowRight, LocateFixed
 } from 'lucide-react';
+import { mapProviderMainType, normalizeProviderServiceType, providerMatchesActionType } from '../../../utils/providerServices';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://transporter-app-with-chatbot.onrender.com';
 
@@ -115,15 +116,6 @@ export default function ProviderModule() {
 
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  const normalizeSubType = (value: string) => {
-    const s = String(value || '').toLocaleLowerCase('tr').trim();
-    if (s === 'lastikçi') return 'lastikci';
-    if (s === 'lastik') return 'lastikci';
-    if (s === 'istasyon_sarj' || s === 'sarj_istasyonu') return 'istasyon';
-    if (s === 'gezici_sarj') return 'seyyar_sarj';
-    return s;
-  };
-
   useEffect(() => {
     fetch('/il_ilce.csv').then(res => res.text()).then(text => {
       const dataMap: any = {};
@@ -147,10 +139,14 @@ export default function ProviderModule() {
     try {
       const query = new URLSearchParams();
       if (filterCity !== 'Tümü') query.append('city', filterCity);
-      if (filterType !== 'Tümü') query.append('type', filterType);
       const res = await fetch(`${API_URL}/users/all?${query.toString()}`);
       const data = await res.json();
-      setProviders(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setProviders(
+        filterType === 'Tümü'
+          ? list
+          : list.filter((provider) => providerMatchesActionType(provider?.service, provider?.serviceType, filterType))
+      );
     } catch (err) { setProviders([]); } finally { setLoading(false); }
   };
 
@@ -287,10 +283,10 @@ export default function ProviderModule() {
         const tags: string[] = Array.isArray(p.service?.tags) ? p.service.tags : [];
         const fromTags = tags
           .filter((t) => String(t).startsWith('type:'))
-          .map((t) => normalizeSubType(String(t).replace(/^type:/, '')))
+          .map((t) => normalizeProviderServiceType(String(t).replace(/^type:/, '')))
           .filter(Boolean);
         if (fromTags.length > 0) return Array.from(new Set(fromTags));
-        const fallback = normalizeSubType(p.service?.subType || p.serviceType || '');
+        const fallback = normalizeProviderServiceType(p.service?.subType || p.serviceType || '');
         return fallback ? [fallback] : [];
       })(),
       pricePerUnit: p.pricing?.pricePerUnit || 40,
@@ -332,14 +328,9 @@ export default function ProviderModule() {
 
     setLoading(true);
     try {
-      const normalizedServiceTypes = (formData.serviceTypes || []).map((s: string) => normalizeSubType(s)).filter(Boolean);
+      const normalizedServiceTypes = (formData.serviceTypes || []).map((s: string) => normalizeProviderServiceType(s)).filter(Boolean);
       const selected = normalizedServiceTypes[0];
-      let mappedMain = 'NAKLIYE';
-      if (['oto_kurtarma', 'vinc', 'lastikci'].includes(selected)) mappedMain = 'KURTARICI';
-      else if (['istasyon', 'seyyar_sarj'].includes(selected)) mappedMain = 'SARJ';
-      else if (['yolcu', 'minibus', 'otobus', 'midibus', 'vip_tasima'].includes(selected)) mappedMain = 'YOLCU';
-      else if (['yurt_disi_nakliye'].includes(selected)) mappedMain = 'YURT_DISI';
-      else if (['kamyon', 'tir', 'kamyonet', 'evden_eve'].includes(selected)) mappedMain = 'NAKLIYE';
+      const mappedMain = mapProviderMainType(selected);
 
       const combined = `${formData.address}, ${formData.district}, ${formData.city}, Türkiye`;
       let coords = selectedCoords || await getCoordinatesFromAddress(combined) || await getCoordinatesFromAddress(`${formData.district}, ${formData.city}, Türkiye`);
@@ -364,10 +355,13 @@ export default function ProviderModule() {
             photoUrls: Array.isArray(v.photoUrls) ? v.photoUrls.filter(Boolean) : []
           }))
           .filter((v: VehicleEntry) => v.name || v.photoUrls.length > 0),
-        isVerified: false,
+        isVerified: finalMethod === 'PUT' ? undefined : false,
         location: { type: "Point", coordinates: [coords.lng, coords.lat] },
         lat: coords.lat, lng: coords.lng
       };
+      if (finalMethod === 'PUT') {
+        delete payload.isVerified;
+      }
       const cleanVehicleItems = payload.vehicleItems as VehicleEntry[];
       const flatPhotos = cleanVehicleItems.flatMap(v => v.photoUrls);
       payload.vehicleInfo = cleanVehicleItems.map(v => v.name).filter(Boolean).join(', ');

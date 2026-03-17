@@ -36,6 +36,7 @@ function AppleLogo() {
 
 function mapAuthErrorMessage(err: any) {
   const code = String(err?.code || '');
+  const message = String(err?.message || '');
   if (code.includes('popup-closed-by-user')) return 'Giriş penceresi kapatıldı. Tekrar deneyin.';
   if (code.includes('popup-blocked')) return 'Tarayıcı popup engelledi. Popup izni verip tekrar deneyin.';
   if (code.includes('cancelled-popup-request')) return 'Açık giriş penceresi kapatıldı. Tekrar deneyin.';
@@ -43,7 +44,22 @@ function mapAuthErrorMessage(err: any) {
   if (code.includes('network-request-failed')) return 'Ağ hatası oluştu. İnternet bağlantısını kontrol edin.';
   if (code.includes('too-many-requests')) return 'Çok fazla deneme yapıldı. Biraz sonra tekrar deneyin.';
   if (code.includes('operation-not-allowed')) return `Bu giriş yöntemi Firebase'de aktif değil (code: ${code || 'operation-not-allowed'}).`;
-  return `${err?.message || 'Kimlik doğrulama başarısız.'}${code ? ` (code: ${code})` : ''}`;
+  if (/(^|\\D)10(?::|\\D|$)/.test(`${code} ${message}`)) {
+    return 'Android Google girişi yapılandırması eşleşmiyor. Güncel build ile tekrar deneyin.';
+  }
+  return `${message || 'Kimlik doğrulama başarısız.'}${code ? ` (code: ${code})` : ''}`;
+}
+
+function shouldRetryAndroidGoogleSignIn(err: any) {
+  const raw = `${String(err?.code || '')} ${String(err?.message || '')}`.toLowerCase();
+  return (
+    raw.includes('credential manager') ||
+    raw.includes('getcredentialunsupportedexception') ||
+    raw.includes('no credential') ||
+    raw.includes('no credentials available') ||
+    raw.includes('cannot find a matching credential') ||
+    raw.includes('not available')
+  );
 }
 
 function persistLocalUser(user: any) {
@@ -154,11 +170,17 @@ export default function AuthPage() {
         if (provider === 'google') {
           let nativeResult: any;
           if (platform === 'android') {
-            // Legacy Google flow for broad Android compatibility.
-            nativeResult = await withTimeout(
-              FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
-              20000,
-            );
+            try {
+              nativeResult = await withTimeout(FirebaseAuthentication.signInWithGoogle(), 20000);
+            } catch (credentialManagerError) {
+              if (!shouldRetryAndroidGoogleSignIn(credentialManagerError)) {
+                throw credentialManagerError;
+              }
+              nativeResult = await withTimeout(
+                FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false }),
+                20000,
+              );
+            }
           } else {
             nativeResult = await withTimeout(
               FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true }),

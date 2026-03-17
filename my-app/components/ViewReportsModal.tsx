@@ -46,12 +46,12 @@ export default function ViewReportsModal({ isOpen, onClose, driverId, driverName
             </div>
             <div className="min-w-0">
               <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">Şikayetler</h3>
-              <p className="text-white/70 text-[11px] font-bold uppercase mt-1 truncate">{driverName}</p>
+              <p className="text-white/80 text-sm font-bold uppercase mt-1 truncate">{driverName}</p>
             </div>
           </div>
           <div className="bg-white/20 rounded-2xl px-4 py-2.5 w-fit">
             <span className="text-white font-black text-sm">{reports.length}</span>
-            <span className="text-white/70 font-bold text-[11px] uppercase ml-1.5">Şikayet</span>
+            <span className="text-white/80 font-bold text-xs uppercase ml-1.5">Toplam Şikayet</span>
           </div>
         </div>
 
@@ -73,12 +73,12 @@ export default function ViewReportsModal({ isOpen, onClose, driverId, driverName
               <div key={i} className="bg-red-50/60 rounded-2xl p-4 border border-red-100">
                 <div className="flex items-center justify-between mb-2">
                   {r.reportCategory && (
-                    <span className="text-[8px] font-black uppercase text-red-600 bg-red-100 px-2 py-1 rounded-lg">
+                    <span className="text-[10px] font-black uppercase text-red-600 bg-red-100 px-2.5 py-1 rounded-lg">
                       {r.reportCategory === 'driver' ? 'Sürücü / Firma' : 'Uygulama'}
                     </span>
                   )}
                   {r.createdAt && (
-                    <span className="text-[8px] text-slate-400 font-bold uppercase ml-auto">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase ml-auto">
                       {new Date(r.createdAt).toLocaleDateString('tr-TR')}
                     </span>
                   )}
@@ -86,14 +86,14 @@ export default function ViewReportsModal({ isOpen, onClose, driverId, driverName
                 {r.reasons && r.reasons.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2 mb-2">
                     {r.reasons.map((reason: string, j: number) => (
-                      <span key={j} className="px-2 py-0.5 bg-white text-red-700 text-[8px] font-black uppercase rounded-lg border border-red-200">
+                      <span key={j} className="px-2.5 py-1 bg-white text-red-700 text-[10px] font-black uppercase rounded-lg border border-red-200">
                         {reason}
                       </span>
                     ))}
                   </div>
                 )}
                 {r.details && (
-                  <p className="text-[11px] text-slate-600 font-medium leading-relaxed mt-1">{r.details}</p>
+                  <p className="text-sm text-slate-600 font-medium leading-relaxed mt-1">{r.details}</p>
                 )}
               </div>
             ))

@@ -5,6 +5,7 @@ import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AppLang, getPreferredLang, LANG_CHANGED_EVENT, LANG_STORAGE_KEY } from '../utils/language';
 import { openSystemMap } from '../lib/openSystemMap';
+import { extractProviderServiceTypes, getProviderPrimaryServiceType, normalizeProviderServiceType } from '../utils/providerServices';
 
 interface Driver {
   _id: string;
@@ -20,6 +21,10 @@ interface Driver {
   address?: { city?: string; district?: string };
   service?: { mainType: string; subType: string; tags: string[] };
   pricing?: { openingFee: number; pricePerUnit: number };
+  vehicleItems?: Array<{ name: string; photoUrls: string[] }>;
+  vehicleInfo?: string;
+  vehiclePhotos?: string[];
+  photoUrl?: string;
 }
 
 interface MapProps {
@@ -38,6 +43,8 @@ interface MapProps {
   onToggleFavorite?: (driver: Driver) => void;
   onViewRatings?: (driverId: string, driverName?: string) => void;
   onViewReports?: (driverId: string, driverName?: string) => void;
+  onViewVehicles?: (driver: Driver) => void;
+  onViewPhotos?: (driver: Driver) => void;
   onMapInteract?: () => void;
   onMapMove?: (lat: number, lng: number, zoom: number, bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }) => void;
   onMapClick?: () => void;
@@ -47,6 +54,7 @@ const SERVICE_COLORS: Record<string, string> = {
   oto_kurtarma: '#dc2626',
   vinc: '#b91c1c',
   lastik: '#881337',
+  lastikci: '#881337',
   kurtarici: '#dc2626',
   nakliye: '#7e22ce',
   evden_eve: '#7e22ce',
@@ -68,6 +76,7 @@ const SERVICE_ICONS: Record<string, string> = {
   oto_kurtarma: '🚗',
   vinc: '🚧',
   lastik: '○',
+  lastikci: '○',
   kurtarici: '🚨',
   nakliye: '🚚',
   evden_eve: '🏠',
@@ -90,10 +99,11 @@ const FOCUS_PADDING_BASE = { top: 72, right: 36, left: 36 };
 const MARKER_SCALE = 0.75;
 
 const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
-  oto_kurtarma: { tr: 'Oto Kurtarma', en: 'Roadside Recovery', de: 'Abschleppdienst', fr: 'Depannage', it: 'Soccorso stradale', es: 'Auxilio vial', pt: 'Reboque', ru: 'Ewakuator', zh: '道路救援', ja: 'ロードサービス', ko: '긴급 견인', ar: 'سحب مركبات' },
+  oto_kurtarma: { tr: 'Çekici', en: 'Tow', de: 'Abschlepp', fr: 'Remorque', it: 'Traino', es: 'Grua', pt: 'Reboque', ru: 'Ewakuator', zh: '拖车', ja: 'レッカー', ko: '견인', ar: 'سحب' },
   vinc: { tr: 'Vinc', en: 'Crane', de: 'Kran', fr: 'Grue', it: 'Gru', es: 'Grua', pt: 'Guindaste', ru: 'Kran', zh: '吊车', ja: 'クレーン', ko: '크레인', ar: 'رافعة' },
-  lastik: { tr: 'Lastik', en: 'Tire Service', de: 'Reifenservice', fr: 'Service pneus', it: 'Servizio gomme', es: 'Servicio de neumaticos', pt: 'Servico de pneus', ru: 'Shinomontazh', zh: '轮胎服务', ja: 'タイヤサービス', ko: '타이어 서비스', ar: 'خدمة إطارات' },
-  kurtarici: { tr: 'Kurtarici', en: 'Recovery', de: 'Bergung', fr: 'Remorquage', it: 'Recupero', es: 'Rescate', pt: 'Resgate', ru: 'Evakuaciya', zh: '救援', ja: '救援', ko: '구난', ar: 'إنقاذ' },
+  lastik: { tr: 'Lastikçi', en: 'Tire', de: 'Reifen', fr: 'Pneu', it: 'Gomme', es: 'Llantas', pt: 'Pneu', ru: 'Shiny', zh: '轮胎', ja: 'タイヤ', ko: '타이어', ar: 'إطارات' },
+  lastikci: { tr: 'Lastikçi', en: 'Tire', de: 'Reifen', fr: 'Pneu', it: 'Gomme', es: 'Llantas', pt: 'Pneu', ru: 'Shiny', zh: '轮胎', ja: 'タイヤ', ko: '타이어', ar: 'إطارات' },
+  kurtarici: { tr: 'Kurtarici', en: 'Tow', de: 'Bergung', fr: 'Remorquage', it: 'Recupero', es: 'Rescate', pt: 'Resgate', ru: 'Evakuaciya', zh: '救援', ja: '救援', ko: '구난', ar: 'إنقاذ' },
   nakliye: { tr: 'Nakliye', en: 'Transport', de: 'Transport', fr: 'Transport', it: 'Trasporto', es: 'Transporte', pt: 'Transporte', ru: 'Perevozka', zh: '运输', ja: '輸送', ko: '운송', ar: 'نقل' },
   evden_eve: { tr: 'Evden Eve', en: 'Home Moving', de: 'Umzug', fr: 'Demenagement', it: 'Trasloco', es: 'Mudanza', pt: 'Mudanca', ru: 'Pereezd', zh: '搬家', ja: '引っ越し', ko: '이사', ar: 'نقل منزلي' },
   tir: { tr: 'TIR', en: 'Trailer Truck', de: 'Sattelzug', fr: 'Semi-remorque', it: 'Autoarticolato', es: 'Trailer', pt: 'Carreta', ru: 'Fura', zh: '半挂车', ja: 'トレーラー', ko: '트레일러', ar: 'شاحنة مقطورة' },
@@ -110,19 +120,19 @@ const SERVICE_LABELS: Record<string, Record<AppLang, string>> = {
   other: { tr: 'Hizmet', en: 'Service', de: 'Dienst', fr: 'Service', it: 'Servizio', es: 'Servicio', pt: 'Servico', ru: 'Servis', zh: '服务', ja: 'サービス', ko: '서비스', ar: 'خدمة' },
 };
 
-const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; showMap: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string }> = {
-  tr: { call: 'ARA', message: 'MESAJ AT', showMap: "MAPS'TE GORUNTULE", favoriteAdd: 'FAVORIYE EKLE', favoriteRemove: 'FAVORIDEN CIKAR', viewRatings: 'YORUMLARI GORUNTULE', viewReports: 'SIKAYETLERI GORUNTULE' },
-  en: { call: 'CALL', message: 'MESSAGE', showMap: 'MAPS', favoriteAdd: 'FAVORITE', favoriteRemove: 'UNFAVORITE', viewRatings: 'REVIEWS', viewReports: 'REPORTS' },
-  de: { call: 'ANRUF', message: 'NACHRICHT', showMap: 'MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE' },
-  fr: { call: 'APPELER', message: 'MESSAGE', showMap: 'MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES' },
-  it: { call: 'CHIAMA', message: 'MESSAGGIO', showMap: 'MAPS', favoriteAdd: 'PREFERITI', favoriteRemove: 'RIMUOVI', viewRatings: 'RECENSIONI', viewReports: 'RECLAMI' },
-  es: { call: 'LLAMAR', message: 'MENSAJE', showMap: 'MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'QUITAR', viewRatings: 'RESENAS', viewReports: 'QUEJAS' },
-  pt: { call: 'LIGAR', message: 'MENSAGEM', showMap: 'MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'REMOVER', viewRatings: 'AVALIACOES', viewReports: 'RECLAMACOES' },
-  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', showMap: 'MAPS', favoriteAdd: 'IZBRANNOE', favoriteRemove: 'UBRAT', viewRatings: 'OTZYVY', viewReports: 'ZHALOBY' },
-  zh: { call: '拨打', message: '消息', showMap: 'MAPS', favoriteAdd: '收藏', favoriteRemove: '取消', viewRatings: '评价', viewReports: '投诉' },
-  ja: { call: '電話', message: 'メッセージ', showMap: 'MAPS', favoriteAdd: 'お気に入り', favoriteRemove: '解除', viewRatings: '評価', viewReports: '苦情' },
-  ko: { call: '전화', message: '메시지', showMap: 'MAPS', favoriteAdd: '즐겨찾기', favoriteRemove: '해제', viewRatings: '리뷰', viewReports: '신고' },
-  ar: { call: 'اتصال', message: 'رسالة', showMap: 'MAPS', favoriteAdd: 'مفضلة', favoriteRemove: 'إزالة', viewRatings: 'تقييمات', viewReports: 'شكاوى' },
+const MAP_UI_TEXT: Record<AppLang, { call: string; message: string; showMap: string; favoriteAdd: string; favoriteRemove: string; viewRatings: string; viewReports: string; viewVehicles: string; viewPhotos: string; scoreLabel: string }> = {
+  tr: { call: 'ARA', message: 'MESAJ', showMap: "MAPS", favoriteAdd: 'FAVORI', favoriteRemove: 'CIKAR', viewRatings: 'YORUMLAR', viewReports: 'SIKAYETLER', viewVehicles: 'ARACLAR', viewPhotos: 'FOTOGRAFLAR', scoreLabel: 'Firma' },
+  en: { call: 'CALL', message: 'TEXT', showMap: 'MAPS', favoriteAdd: 'SAVE', favoriteRemove: 'REMOVE', viewRatings: 'REVIEWS', viewReports: 'REPORTS', viewVehicles: 'VEHICLES', viewPhotos: 'PHOTOS', scoreLabel: 'Score' },
+  de: { call: 'ANRUF', message: 'NACHRICHT', showMap: 'MAPS', favoriteAdd: 'FAVORIT', favoriteRemove: 'ENTFERNEN', viewRatings: 'BEWERTUNG', viewReports: 'BESCHWERDE', viewVehicles: 'FAHRZEUGE', viewPhotos: 'FOTOS', scoreLabel: 'Bewertung' },
+  fr: { call: 'APPELER', message: 'MESSAGE', showMap: 'MAPS', favoriteAdd: 'FAVORI', favoriteRemove: 'SUPPRIMER', viewRatings: 'AVIS', viewReports: 'PLAINTES', viewVehicles: 'VEHICULES', viewPhotos: 'PHOTOS', scoreLabel: 'Note' },
+  it: { call: 'CHIAMA', message: 'MESSAGGIO', showMap: 'MAPS', favoriteAdd: 'PREFERITI', favoriteRemove: 'RIMUOVI', viewRatings: 'RECENSIONI', viewReports: 'RECLAMI', viewVehicles: 'VEICOLI', viewPhotos: 'FOTO', scoreLabel: 'Punteggio' },
+  es: { call: 'LLAMAR', message: 'MENSAJE', showMap: 'MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'QUITAR', viewRatings: 'RESENAS', viewReports: 'QUEJAS', viewVehicles: 'VEHICULOS', viewPhotos: 'FOTOS', scoreLabel: 'Puntaje' },
+  pt: { call: 'LIGAR', message: 'MENSAGEM', showMap: 'MAPS', favoriteAdd: 'FAVORITO', favoriteRemove: 'REMOVER', viewRatings: 'AVALIACOES', viewReports: 'RECLAMACOES', viewVehicles: 'VEICULOS', viewPhotos: 'FOTOS', scoreLabel: 'Pontuacao' },
+  ru: { call: 'POZVONIT', message: 'SOOBSHCHENIE', showMap: 'MAPS', favoriteAdd: 'IZBRANNOE', favoriteRemove: 'UBRAT', viewRatings: 'OTZYVY', viewReports: 'ZHALOBY', viewVehicles: 'TRANSPORT', viewPhotos: 'FOTO', scoreLabel: 'Ocenka' },
+  zh: { call: '拨打', message: '消息', showMap: 'MAPS', favoriteAdd: '收藏', favoriteRemove: '取消', viewRatings: '评价', viewReports: '投诉', viewVehicles: '车辆', viewPhotos: '照片', scoreLabel: '评分' },
+  ja: { call: '電話', message: 'メッセージ', showMap: 'MAPS', favoriteAdd: 'お気に入り', favoriteRemove: '解除', viewRatings: '評価', viewReports: '苦情', viewVehicles: '車両', viewPhotos: '写真', scoreLabel: '評価' },
+  ko: { call: '전화', message: '메시지', showMap: 'MAPS', favoriteAdd: '즐겨찾기', favoriteRemove: '해제', viewRatings: '리뷰', viewReports: '신고', viewVehicles: '차량', viewPhotos: '사진', scoreLabel: '평점' },
+  ar: { call: 'اتصال', message: 'رسالة', showMap: 'MAPS', favoriteAdd: 'مفضلة', favoriteRemove: 'إزالة', viewRatings: 'تقييمات', viewReports: 'شكاوى', viewVehicles: 'المركبات', viewPhotos: 'الصور', scoreLabel: 'التقييم' },
 };
 
 const BASE_STYLE = {
@@ -142,12 +152,16 @@ const HIDDEN_CATEGORIES = new Set<string>();
 const INITIAL_CENTER: [number, number] = [35.2433, 38.9637];
 
 function getServiceColor(subType: string) {
-  return SERVICE_COLORS[subType] || SERVICE_COLORS.other;
+  const normalized = normalizeProviderServiceType(subType);
+  const key = normalized === 'lastikci' ? 'lastikci' : normalized;
+  return SERVICE_COLORS[key] || SERVICE_COLORS.other;
 }
 
 function normalizeServiceType(subType: string | undefined) {
   if (!subType) return 'other';
-  return SERVICE_COLORS[subType] ? subType : 'other';
+  const normalized = normalizeProviderServiceType(subType);
+  if (normalized === 'lastikci') return 'lastikci';
+  return SERVICE_COLORS[normalized] ? normalized : 'other';
 }
 
 function createEmptyFeatureCollection() {
@@ -166,44 +180,49 @@ function createDriversGeoJsonByType(drivers: Driver[], zoomLevel = 12) {
 
   for (const d of drivers) {
     if (!Array.isArray(d.location?.coordinates)) continue;
-    const subType = normalizeServiceType(d.service?.subType);
-    if (HIDDEN_CATEGORIES.has(subType)) continue;
+    const renderTypes = extractProviderServiceTypes(d.service, (d as any)?.serviceType)
+      .map((type) => normalizeServiceType(type))
+      .filter((type, index, all) => Boolean(type) && type !== 'other' && all.indexOf(type) === index);
+    const serviceTypes = renderTypes.length > 0 ? renderTypes : [normalizeServiceType(getProviderPrimaryServiceType(d.service, (d as any)?.serviceType))];
 
-    if (lowZoomAggregation) {
-      const lng = d.location.coordinates[0];
-      const lat = d.location.coordinates[1];
-      const gridLng = Math.round(lng / cellSize) * cellSize;
-      const gridLat = Math.round(lat / cellSize) * cellSize;
-      const bucketKey = `${subType}:${gridLng.toFixed(3)}:${gridLat.toFixed(3)}`;
-      const existing = buckets.get(bucketKey);
-      if (existing) {
-        existing.count += 1;
-        existing.sumLng += lng;
-        existing.sumLat += lat;
-      } else {
-        buckets.set(bucketKey, { count: 1, sumLng: lng, sumLat: lat, driver: d, subType });
+    for (const subType of serviceTypes) {
+      if (HIDDEN_CATEGORIES.has(subType)) continue;
+      if (lowZoomAggregation) {
+        const lng = d.location.coordinates[0];
+        const lat = d.location.coordinates[1];
+        const gridLng = Math.round(lng / cellSize) * cellSize;
+        const gridLat = Math.round(lat / cellSize) * cellSize;
+        const bucketKey = `${subType}:${gridLng.toFixed(3)}:${gridLat.toFixed(3)}`;
+        const existing = buckets.get(bucketKey);
+        if (existing) {
+          existing.count += 1;
+          existing.sumLng += lng;
+          existing.sumLat += lat;
+        } else {
+          buckets.set(bucketKey, { count: 1, sumLng: lng, sumLat: lat, driver: d, subType });
+        }
+        continue;
       }
-      continue;
-    }
 
-    grouped[subType].features.push({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: d.location.coordinates,
-      },
-      properties: {
-        driverId: d._id,
-        businessName: d.businessName || 'Isimsiz Isletme',
-        distance: Number(d.distance || 0),
-        phoneNumber: d.phoneNumber || '',
-        rating: Number(d.rating || 5),
-        website: d.website || d.link || '',
-        subType,
-        color: getServiceColor(subType),
-        icon: SERVICE_ICONS[subType] || SERVICE_ICONS.other,
-      },
-    });
+      grouped[subType].features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: d.location.coordinates,
+        },
+        properties: {
+          driverId: d._id,
+          businessName: d.businessName || 'Isimsiz Isletme',
+          distance: Number(d.distance || 0),
+          phoneNumber: d.phoneNumber || '',
+          rating: Number(d.rating || 5),
+          website: d.website || d.link || '',
+          subType,
+          color: getServiceColor(subType),
+          icon: SERVICE_ICONS[subType] || SERVICE_ICONS.other,
+        },
+      });
+    }
   }
 
   if (lowZoomAggregation) {
@@ -330,7 +349,9 @@ function buildPopup(
   isFavorite: boolean,
   onToggleFavorite?: (driver: Driver) => void,
   onViewRatings?: (driverId: string, driverName?: string) => void,
-  onViewReports?: (driverId: string, driverName?: string) => void
+  onViewReports?: (driverId: string, driverName?: string) => void,
+  onViewVehicles?: (driver: Driver) => void,
+  onViewPhotos?: (driver: Driver) => void
 ) {
   const subType = driver.service?.subType || 'other';
   const color = getServiceColor(normalizeServiceType(subType));
@@ -339,8 +360,8 @@ function buildPopup(
 
   const wrap = document.createElement('div');
   wrap.className = 'p-0 text-gray-900';
-  wrap.style.minWidth = '360px';
-  wrap.style.width = 'min(360px, calc(100vw - 48px))';
+  wrap.style.minWidth = '380px';
+  wrap.style.width = 'min(380px, calc(100vw - 40px))';
   wrap.style.maxWidth = '100%';
   wrap.style.boxSizing = 'border-box';
 
@@ -348,23 +369,44 @@ function buildPopup(
   const ratingValue = Number(driver.rating || 0);
   const filledStars = Math.max(0, Math.min(5, Math.round(ratingValue)));
   const emptyStars = 5 - filledStars;
+  const vehicleItems: Array<{ name: string; photoUrls: string[] }> =
+    Array.isArray(driver.vehicleItems) && driver.vehicleItems.length > 0
+      ? driver.vehicleItems
+      : (driver.vehicleInfo
+          ? [{ name: driver.vehicleInfo, photoUrls: driver.vehiclePhotos || (driver.photoUrl ? [driver.photoUrl] : []) }]
+          : []);
+  const vehicleCount = vehicleItems.length;
+  const photoCount = Array.from(new Set([
+    ...(Array.isArray(driver.vehiclePhotos) ? driver.vehiclePhotos : []),
+    ...(driver.photoUrl ? [driver.photoUrl] : []),
+    ...vehicleItems.flatMap((v) => (Array.isArray(v.photoUrls) ? v.photoUrls : [])),
+  ].filter(Boolean))).length;
   wrap.innerHTML = `
     <div style="font-family:ui-sans-serif,system-ui;background:rgba(255,255,255,0.92);backdrop-filter:blur(10px) saturate(130%);-webkit-backdrop-filter:blur(10px) saturate(130%);box-shadow:0 10px 22px rgba(15,23,42,0.12);border-radius:16px;padding:10px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:7px;">
         <span style="font-size:10px;font-weight:900;color:white;padding:5px 8px;border-radius:10px;background:${color};text-transform:uppercase;">${label}</span>
         <button data-action="favorite" style="border:1px solid #fecaca;border-radius:999px;width:28px;height:28px;color:${isFavorite ? '#ffffff' : '#dc2626'};background:${isFavorite ? color : '#ffffff'};font-size:14px;font-weight:900;cursor:pointer;line-height:1;transition:all .18s ease;">♡</button>
       </div>
-      <h4 style="font-size:13px;font-weight:900;margin:0 0 5px 0;line-height:1.2;text-transform:uppercase;">${driver.businessName || ''}</h4>
-      ${distance ? `<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:7px;display:flex;align-items:center;gap:6px;"><span>${distance}</span><span style="color:#dc2626;letter-spacing:1px;">${'★'.repeat(filledStars)}${'☆'.repeat(emptyStars)}</span></div>` : '<div style="margin-bottom:7px;"></div>'}
+      <h4 style="font-size:15px;font-weight:900;margin:0 0 6px 0;line-height:1.25;text-transform:uppercase;">${driver.businessName || ''}</h4>
+      <div style="font-size:11px;font-weight:800;color:#475569;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${distance ? `<span>${distance}</span>` : ''}
+        <span style="padding:3px 8px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;">${uiText.scoreLabel}: ${ratingValue.toFixed(1)}/5</span>
+        <span style="color:#dc2626;letter-spacing:1px;">${'★'.repeat(filledStars)}${'☆'.repeat(emptyStars)}</span>
+      </div>
       <div style="display:flex;gap:7px;">
-        <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.call}</button>
-        <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.message}</button>
+        <button data-action="call" style="flex:1;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.call}</button>
+        <button data-action="message" style="flex:1;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.message}</button>
       </div>
-      <button data-action="show" style="margin-top:7px;width:100%;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.showMap}</button>
+      <button data-action="show" style="margin-top:7px;width:100%;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.showMap}</button>
       <div style="display:flex;gap:7px;margin-top:7px;">
-        <button data-action="ratings" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewRatings}</button>
-        <button data-action="reports" style="flex:1;border:0;border-radius:10px;padding:8px 6px;color:white;background:${color};font-size:9px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewReports}</button>
+        <button data-action="ratings" style="flex:1;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewRatings}</button>
+        <button data-action="reports" style="flex:1;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewReports}</button>
       </div>
+      ${(vehicleCount > 0 || photoCount > 0) ? `
+      <div style="display:flex;gap:7px;margin-top:7px;">
+        ${vehicleCount > 0 ? `<button data-action="vehicles" style="flex:1;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewVehicles} (${vehicleCount})</button>` : ''}
+        ${photoCount > 0 ? `<button data-action="photos" style="flex:1;border:0;border-radius:10px;padding:10px 8px;color:white;background:${color};font-size:11px;font-weight:900;cursor:pointer;transition:transform .18s ease,filter .18s ease;">${uiText.viewPhotos} (${photoCount})</button>` : ''}
+      </div>` : ''}
     </div>
   `;
 
@@ -374,6 +416,8 @@ function buildPopup(
   const favoriteBtn = wrap.querySelector('[data-action="favorite"]') as HTMLButtonElement | null;
   const ratingsBtn = wrap.querySelector('[data-action="ratings"]') as HTMLButtonElement | null;
   const reportsBtn = wrap.querySelector('[data-action="reports"]') as HTMLButtonElement | null;
+  const vehiclesBtn = wrap.querySelector('[data-action="vehicles"]') as HTMLButtonElement | null;
+  const photosBtn = wrap.querySelector('[data-action="photos"]') as HTMLButtonElement | null;
   callBtn?.addEventListener('click', () => {
     onStartOrder(driver, 'call');
     if (driver.phoneNumber) window.location.href = `tel:${driver.phoneNumber}`;
@@ -385,6 +429,8 @@ function buildPopup(
   favoriteBtn?.addEventListener('click', () => onToggleFavorite?.(driver));
   ratingsBtn?.addEventListener('click', () => onViewRatings?.(driver._id, driver.businessName));
   reportsBtn?.addEventListener('click', () => onViewReports?.(driver._id, driver.businessName));
+  vehiclesBtn?.addEventListener('click', () => onViewVehicles?.(driver));
+  photosBtn?.addEventListener('click', () => onViewPhotos?.(driver));
   showBtn?.addEventListener('click', () => {
     const lat = driver.location?.coordinates?.[1];
     const lng = driver.location?.coordinates?.[0];
@@ -412,6 +458,8 @@ function MapView({
   onToggleFavorite,
   onViewRatings,
   onViewReports,
+  onViewVehicles,
+  onViewPhotos,
   onMapInteract,
   onMapMove,
   onMapClick,
@@ -807,7 +855,9 @@ function MapView({
       !!isFavorite?.(driver._id),
       onToggleFavorite,
       onViewRatings,
-      onViewReports
+      onViewReports,
+      onViewVehicles,
+      onViewPhotos
     );
     const popup = new maplibregl.Popup({
       closeButton: false,
@@ -824,7 +874,7 @@ function MapView({
     popupContentRef.current = popupNode;
     applyPopupScale(popupContentRef.current, map.getZoom());
     popupRef.current = popup;
-  }, [driverById, isFavorite, lang, onStartOrder, onToggleFavorite, onViewRatings, onViewReports, popupDriverId]);
+  }, [driverById, isFavorite, lang, onStartOrder, onToggleFavorite, onViewRatings, onViewReports, onViewVehicles, onViewPhotos, popupDriverId]);
 
   return <div ref={mapNodeRef} className="absolute inset-0 h-full w-full bg-[#f0f4f8]" />;
 }

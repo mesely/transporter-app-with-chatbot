@@ -94,15 +94,7 @@ export default function UserAgreementModal({ isOpen, onClose, readOnly = false }
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black uppercase tracking-wide text-gray-900">6. Bagis Politikasi</h3>
-            <p>
-              Platform, elde edilen gelirlerin %10'una kadar olan kismini sosyal sorumluluk kapsaminda belirlenen yardim
-              kuruluslarina bagislamayi hedefleyebilir. Bagis orani ve yontemi Platform'un takdirindedir.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h3 className="font-black uppercase tracking-wide text-gray-900">7. Gizlilik ve Kisisel Verilerin Korunmasi</h3>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">6. Gizlilik ve Kisisel Verilerin Korunmasi</h3>
             <p>
               Kullaniciya ait kisisel veriler, yururlukteki veri koruma mevzuatlarina uygun sekilde islenir ve korunur.
               Kisisel verilerin islenmesine iliskin detayli bilgiler Gizlilik Politikasi icerisinde yer almaktadir.
@@ -110,7 +102,7 @@ export default function UserAgreementModal({ isOpen, onClose, readOnly = false }
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-black uppercase tracking-wide text-gray-900">8. Hesap Silme ve Sona Erme</h3>
+            <h3 className="font-black uppercase tracking-wide text-gray-900">7. Hesap Silme ve Sona Erme</h3>
             <p>
               Kullanici, diledigi zaman uygulama icerisinden hesabini kalici olarak silebilir. Mevzuat geregi
               saklanmasi zorunlu olan veriler haricindeki tum kisisel veriler silinir, yok edilir veya anonim hale
