@@ -69,15 +69,14 @@ export default function TariffModule() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in bg-[8ccde6] duration-700">
-      {/* Üst Bilgi Kartı */}
-      <div className="bg-white/60 backdrop-blur-xl p-10 rounded-[3rem] border border-white/50 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6">
+    <div className="space-y-8 duration-700">
+      <div className="flex flex-col items-center justify-between gap-6 rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm md:flex-row">
         <div className="text-center md:text-left">
-          <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none drop-shadow-sm">Global Tarifeler</h2>
-          <p className="text-[11px] text-[#49b5c2] font-bold uppercase tracking-[0.3em] mt-3">Transport 245 Birim Maliyet Yönetimi</p>
+          <h2 className="text-4xl font-black uppercase leading-none tracking-tight text-gray-900">Global Tarifeler</h2>
+          <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">Transport 245 Birim Maliyet Yönetimi</p>
         </div>
-        <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm px-6 py-3 rounded-2xl border border-white/40 shadow-sm">
-          <Info size={18} strokeWidth={1.5} className="text-[#49b5c2]" />
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3">
+          <Info size={18} strokeWidth={1.5} className="text-slate-600" />
           <span className="text-[10px] font-black text-gray-700 uppercase">Fiyatlar anlık senkronize edilir</span>
         </div>
       </div>
@@ -86,7 +85,7 @@ export default function TariffModule() {
         {SERVICE_TYPES.map((service) => {
           const dbTariff = tariffs.find(t => t.serviceType === service.id);
           return (
-            <div key={service.id} className="group relative bg-white/60 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-500 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div key={service.id} className="group relative flex flex-col items-center justify-between gap-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm transition-all duration-300 lg:flex-row">
               
               <div className="flex items-center gap-6 w-full lg:w-auto">
                 <div className={`w-20 h-20 ${service.color} ${service.shadow} text-white rounded-3xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-500`}>
@@ -98,7 +97,7 @@ export default function TariffModule() {
                 </div>
                 <div>
                   <h3 className="font-black text-gray-900 uppercase tracking-tighter text-xl sm:text-2xl">{service.label}</h3>
-                  <span className="text-[10px] font-bold text-[#49b5c2] uppercase tracking-widest">Sistem ID: {service.id}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Sistem ID: {service.id}</span>
                 </div>
               </div>
 
@@ -109,7 +108,7 @@ export default function TariffModule() {
                     id={`open-${service.id}`}
                     type="number" 
                     defaultValue={dbTariff?.openingFee || 250} 
-                    className="w-32 sm:w-36 bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 text-lg font-black text-gray-900 text-center focus:bg-white/80 outline-none transition-colors shadow-sm" 
+                    className="w-32 sm:w-36 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center text-lg font-black text-gray-900 outline-none transition-colors"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -118,7 +117,7 @@ export default function TariffModule() {
                     id={`unit-${service.id}`}
                     type="number" 
                     defaultValue={dbTariff?.pricePerUnit || 30} 
-                    className="w-32 sm:w-36 bg-white/50 backdrop-blur-sm border border-white/40 rounded-2xl p-5 text-lg font-black text-gray-900 text-center focus:bg-white/80 outline-none transition-colors shadow-sm" 
+                    className="w-32 sm:w-36 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center text-lg font-black text-gray-900 outline-none transition-colors"
                   />
                 </div>
                 <button 

@@ -51,6 +51,12 @@ export class UsersController {
     return this.usersService.findByPhone(phone);
   }
 
+  @Get('by-email')
+  async findByEmail(@Query('email') email: string): Promise<any> {
+    if (!email) throw new BadRequestException('email query parametresi gerekli');
+    return this.usersService.findByEmail(email);
+  }
+
   // --- 4. YÖNETİM PANELİ & FİLTRELEME ---
   @Get('all')
   async findAllFiltered(@Query('city') city?: string, @Query('type') type?: string) {

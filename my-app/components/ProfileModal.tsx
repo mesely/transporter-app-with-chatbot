@@ -126,21 +126,21 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-slate-700/30 p-4 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-md rounded-[2.2rem] border border-white/70 bg-white/85 p-6 shadow-2xl backdrop-blur-2xl">
-        <button onClick={onClose} className="absolute right-5 top-5 rounded-full bg-slate-50 p-2 text-slate-500 transition-all hover:bg-slate-100">
+    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/35 p-4 animate-in fade-in">
+      <div className="relative w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <button onClick={onClose} className="absolute right-5 top-5 rounded-full border border-slate-200 bg-white p-2 text-slate-500 transition-all hover:bg-slate-50">
           <X size={20} strokeWidth={2.5} />
         </button>
 
         <div className="mb-5 text-center">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-white bg-slate-100 shadow-lg">
-            <UserCircle2 size={34} className="text-cyan-700" />
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+            <UserCircle2 size={34} className="text-slate-700" />
           </div>
           <h3 className="text-2xl font-black uppercase tracking-wide text-slate-900">{copy.title}</h3>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-          <UserCircle2 size={16} className="text-cyan-700" />
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <UserCircle2 size={16} className="text-slate-700" />
           <div className="flex-1">
             <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">{copy.fullName}</label>
             <input
@@ -153,7 +153,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           </div>
         </div>
 
-        <button onClick={handleSave} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 py-3 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all active:scale-95">
+        <button onClick={handleSave} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-3 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95">
           <Save size={16} /> {copy.save}
         </button>
         {saved && <p className="mt-2 text-center text-xs font-bold text-emerald-700">{copy.saved}</p>}
@@ -166,7 +166,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
         <div className="mt-5">
           <div className="mb-2 flex items-center gap-2">
-            <Heart size={16} className="text-rose-600" />
+            <Heart size={16} className="text-slate-700" />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{copy.favorites}</p>
           </div>
           <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
@@ -176,7 +176,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               </p>
             ) : (
               favorites.map((fav) => (
-                <div key={fav._id} className="rounded-xl border border-rose-100 bg-rose-50/70 p-3">
+                <div key={fav._id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs font-black uppercase text-slate-800">{fav.businessName || copy.defaultCompany}</p>
                   <p className="mt-1 text-[11px] font-semibold text-slate-600">
                     {(fav.address?.district || '-') + ' / ' + (fav.address?.city || '-')}

@@ -7,7 +7,7 @@ import {
   signInWithCredential,
   signInWithPopup,
 } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import Image from 'next/image';
@@ -89,6 +89,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs = 20000): Promise<T
 
 export default function AuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [logoSrc, setLogoSrc] = useState('/favicon.ico');
@@ -108,6 +109,12 @@ export default function AuthPage() {
 
   const showGoogleButton = !isNative || platform === 'android';
   const showAppleButton = !isNative || platform === 'ios';
+  const redirectTarget = useMemo(() => {
+    const raw = String(searchParams?.get('redirect') || '').trim();
+    if (!raw.startsWith('/')) return '/app';
+    if (raw.startsWith('//')) return '/app';
+    return raw;
+  }, [searchParams]);
 
   const continueAsGuest = () => {
     setError('');
@@ -117,7 +124,7 @@ export default function AuthPage() {
     localStorage.removeItem('Transport_user_email');
     localStorage.removeItem('Transport_user_phone');
     localStorage.removeItem('Transport_user_name');
-    router.replace('/app');
+    router.replace(redirectTarget);
   };
 
   useEffect(() => {
@@ -132,7 +139,7 @@ export default function AuthPage() {
         if (!active) return;
         if (result?.user) {
           persistLocalUser(result.user);
-          router.replace('/app');
+          router.replace(redirectTarget);
           return;
         }
         setLoading(false);
@@ -151,7 +158,7 @@ export default function AuthPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [redirectTarget, router]);
 
   const socialLogin = async (provider: 'google' | 'apple') => {
     if (loading) return;
@@ -196,7 +203,7 @@ export default function AuthPage() {
               const jsResult = await withTimeout(signInWithCredential(auth, googleCred), 20000);
               if (jsResult?.user) {
                 persistLocalUser(jsResult.user);
-                router.replace('/app');
+                router.replace(redirectTarget);
                 return;
               }
             }
@@ -204,7 +211,7 @@ export default function AuthPage() {
 
           if (nativeResult?.user) {
             persistLocalUser(nativeResult.user);
-            router.replace('/app');
+            router.replace(redirectTarget);
             return;
           }
           throw new Error('Hesap girişi tamamlanamadı.');
@@ -217,7 +224,7 @@ export default function AuthPage() {
         const appleResult: any = await withTimeout(nativeAuth.signInWithApple(), 20000);
         if (appleResult?.user) {
           persistLocalUser(appleResult.user);
-          router.replace('/app');
+          router.replace(redirectTarget);
           return;
         }
         throw new Error('Apple giriş tamamlanamadı.');
@@ -232,7 +239,7 @@ export default function AuthPage() {
       const cred = await signInWithPopup(auth, selectedProvider);
       if (cred?.user) {
         persistLocalUser(cred.user);
-        router.replace('/app');
+        router.replace(redirectTarget);
         return;
       }
       throw new Error(provider === 'google' ? 'Hesap girişi tamamlanamadı.' : 'Apple giriş tamamlanamadı.');
@@ -282,7 +289,7 @@ export default function AuthPage() {
               disabled={loading}
               className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-black uppercase tracking-wide text-slate-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Hesap ile Giriş'}
+              <GoogleLogo /> {loading ? 'İşleniyor...' : 'Google ile Giriş'}
             </button>
           )}
 

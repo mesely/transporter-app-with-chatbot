@@ -68,16 +68,16 @@ export default function ComplaintModule() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-center gap-4 rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-lg backdrop-blur-xl">
-        <div className="flex items-center gap-3 rounded-xl bg-rose-50 px-4 py-2 text-xs font-black uppercase text-rose-700">
+      <div className="flex flex-wrap items-center gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black uppercase text-slate-700">
           <ShieldAlert size={16} /> Bekleyen Şikayet: {reportQueue.length}
         </div>
-        <div className="flex items-center gap-3 rounded-xl bg-amber-50 px-4 py-2 text-xs font-black uppercase text-amber-700">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black uppercase text-slate-700">
           <Star size={16} /> Bekleyen Değerlendirme: {pendingRatings.length}
         </div>
       </div>
 
-      <section className="rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-lg backdrop-blur-xl">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Şikayet Moderasyonu</h3>
         {loading ? (
           <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
@@ -86,7 +86,7 @@ export default function ComplaintModule() {
         ) : (
           <div className="space-y-3">
             {reportQueue.map((r) => (
-              <div key={r._id} className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+              <div key={r._id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-xs font-black uppercase text-slate-800">{r.reason || 'Şikayet'}</p>
                   <span className="rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase text-slate-500">
@@ -98,7 +98,7 @@ export default function ComplaintModule() {
                   <button
                     onClick={() => moderateReport(r._id, 'approve')}
                     disabled={!!busyKey}
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
                   >
                     <CheckCircle2 size={14} /> Onayla & Yayınla
                   </button>
@@ -116,7 +116,7 @@ export default function ComplaintModule() {
         )}
       </section>
 
-      <section className="rounded-[2rem] border border-white/60 bg-white/65 p-6 shadow-lg backdrop-blur-xl">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-700">Değerlendirme Moderasyonu</h3>
         {loading ? (
           <p className="text-xs font-bold text-slate-500">Yükleniyor...</p>
@@ -125,10 +125,10 @@ export default function ComplaintModule() {
         ) : (
           <div className="space-y-3">
             {pendingRatings.map((item) => (
-              <div key={`${item.providerId}-${item.entryId}`} className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <div key={`${item.providerId}-${item.entryId}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-xs font-black uppercase text-slate-800">{item.providerName}</p>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase text-amber-700">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase text-slate-700">
                     <Clock3 size={12} /> {item.rating}/5
                   </span>
                 </div>
@@ -146,7 +146,7 @@ export default function ComplaintModule() {
                   <button
                     onClick={() => moderateRating(item.providerId, item.entryId, 'approve')}
                     disabled={!!busyKey}
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-60"
                   >
                     <CheckCircle2 size={14} /> Onayla & Yayınla
                   </button>

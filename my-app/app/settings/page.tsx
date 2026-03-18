@@ -519,9 +519,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_12%_14%,rgba(59,130,246,0.16),transparent_36%),radial-gradient(circle_at_85%_88%,rgba(15,23,42,0.10),transparent_38%),linear-gradient(145deg,#e7edf8,#f3f6fb)] px-5 pb-10 pt-10 md:px-10">
+    <main className="min-h-screen bg-white px-5 pb-10 pt-10 md:px-10">
       <div className="mx-auto max-w-4xl space-y-6">
-        <header className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <header className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
@@ -536,7 +536,7 @@ export default function SettingsPage() {
             </button>
             <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">{uiText.settingsTitle}</h1>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-white/55 p-1.5 backdrop-blur-md border border-white/70">
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
             <button
               onClick={() => setActiveTab('general')}
               className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide ${
@@ -558,31 +558,31 @@ export default function SettingsPage() {
 
         {activeTab === 'general' && (
         <>
-        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
-            <UserCircle2 className="text-cyan-700" size={20} />
+            <UserCircle2 className="text-slate-700" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.accountInfo}</p>
           </div>
           {isGuest && (
-            <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-xs font-black uppercase text-blue-700">{uiText.guestMode}</p>
-              <p className="mt-1 text-xs font-semibold text-blue-700">
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase text-slate-700">{uiText.guestMode}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-600">
                 {uiText.guestHint}
               </p>
               <button
                 onClick={() => router.push('/auth')}
-                className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
+                className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-wider text-white"
               >
                 {uiText.login}
               </button>
             </div>
           )}
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[10px] font-black uppercase text-slate-400">{uiText.fullName}</p>
               <p className="mt-1 text-sm font-black text-slate-900">{name || '-'}</p>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-[10px] font-black uppercase text-slate-400">{uiText.email}</p>
               <p className="mt-1 text-sm font-black text-slate-900 break-all">{email || '-'}</p>
             </div>
@@ -603,13 +603,13 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <BookText className="text-indigo-600" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.contractsAndContact}</p>
           </div>
           <div className="mt-4">
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md md:max-w-sm">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:max-w-sm">
               <div className="flex items-center gap-2">
                 <Globe2 className="text-sky-600" size={16} />
                 <p className="text-[10px] font-black uppercase text-slate-400">{uiText.language}</p>
@@ -637,19 +637,19 @@ export default function SettingsPage() {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <button
               onClick={() => setShowAgreementModal(true)}
-              className="rounded-2xl border border-white/70 bg-white/70 p-4 text-left backdrop-blur-md"
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left"
             >
               <p className="text-[10px] font-black uppercase text-slate-400">{uiText.userAgreement}</p>
             </button>
 
             <button
               onClick={() => setShowKvkkModal(true)}
-              className="rounded-2xl border border-white/70 bg-white/70 p-4 text-left backdrop-blur-md"
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left"
             >
               <p className="text-[10px] font-black uppercase text-slate-400">{uiText.kvkk}</p>
             </button>
           </div>
-          <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-[10px] font-black uppercase text-slate-400">{uiText.contact}</p>
             <a href="mailto:iletisimtransporter@gmail.com" className="mt-1 block text-sm font-black text-slate-900 break-all">
               iletisimtransporter@gmail.com
@@ -661,9 +661,9 @@ export default function SettingsPage() {
 
         {activeTab === 'history' && (
         <>
-        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
-            <Phone className="text-blue-600" size={20} />
+            <Phone className="text-slate-700" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.orders}</p>
           </div>
           <div className="mt-4 space-y-2">
@@ -679,7 +679,7 @@ export default function SettingsPage() {
                   : '-';
 
                 return (
-                  <div key={order._id} className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                  <div key={order._id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-black uppercase text-slate-800">
                         {order.driver?.businessName || '-'}
@@ -696,7 +696,7 @@ export default function SettingsPage() {
                     <div className="mt-2 flex gap-2">
                       <button
                         onClick={() => handleOpenRating(order)}
-                        className="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-[10px] font-black uppercase text-white"
+                        className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-[10px] font-black uppercase text-white"
                       >
                         {uiText.rating}
                       </button>
@@ -714,9 +714,9 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
-            <Heart className="text-rose-600" size={20} />
+            <Heart className="text-slate-700" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.favorites}</p>
           </div>
           <div className="mt-4 space-y-2">
@@ -724,7 +724,7 @@ export default function SettingsPage() {
               <p className="text-xs font-bold text-slate-500">{uiText.noFavorites}</p>
             ) : (
               favorites.map((fav) => (
-                <div key={fav._id} className="rounded-xl border border-rose-100 bg-rose-50/70 p-3">
+                <div key={fav._id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs font-black uppercase text-slate-800">{fav.businessName || '-'}</p>
                   <p className="mt-1 text-[11px] font-semibold text-slate-600">
                     {(fav.address?.district || '-') + ' / ' + (fav.address?.city || '-')}
@@ -735,9 +735,9 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
-            <Star className="text-amber-500" size={20} />
+            <Star className="text-slate-700" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.myRatings}</p>
           </div>
           <div className="mt-4 space-y-2">
@@ -749,7 +749,7 @@ export default function SettingsPage() {
               myRatings.map((item) => {
                 const chip = getStatusChip(item.status);
                 return (
-                  <div key={`${item.providerId}-${item.entryId}`} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                  <div key={`${item.providerId}-${item.entryId}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-black uppercase text-slate-800">{item.providerName || '-'}</p>
                       <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase ${chip.className}`}>{chip.label}</span>
@@ -763,7 +763,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-white/60 bg-white/45 p-5 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <AlertTriangle className="text-red-500" size={20} />
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">{uiText.myComplaints}</p>

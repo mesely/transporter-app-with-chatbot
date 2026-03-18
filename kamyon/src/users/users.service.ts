@@ -457,6 +457,22 @@ export class UsersService implements OnModuleInit {
     return this.providerModel.findOne({ phoneNumber: cleanPhone }).exec();
   }
 
+  async findByEmail(email: string): Promise<any> {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail) return null;
+
+    const user = await this.userModel.findOne({ email: cleanEmail }).select('_id email').lean().exec();
+    if (!user?._id) return null;
+
+    const provider = await this.providerModel.findOne({ user: user._id }).lean().exec();
+    if (!provider) return null;
+
+    return {
+      ...provider,
+      email: user.email,
+    };
+  }
+
   // --- 6. DELETE SELF (Aracımı Listeden Kaldır) ---
   async deleteSelfProvider(id: string) {
     return this.providerModel.findByIdAndDelete(id).exec();

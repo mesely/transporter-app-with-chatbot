@@ -124,6 +124,12 @@ const COPY = {
     subTypeSelect: 'Alt Tur Secimi',
     useTr: 'TR',
     useEn: 'EN',
+    loadingSession: 'Oturum kontrol ediliyor...',
+    redirectingAuth: 'Devam etmek için önce giriş yapın.',
+    existingRecord: 'Kayıtlı kurum bilgileri yüklendi',
+    existingHint: 'Bu hesap için mevcut kurum kaydınız bulundu. Formu düzenleyip güncelleyebilirsiniz.',
+    authEmailHint: 'Bu alan giriş yaptığınız hesap e-postası ile eşitlendi.',
+    update: 'Kaydı Güncelle',
     alerts: {
       locationUnsupported: 'Konum servisi desteklenmiyor.',
       locationFailed: 'Konum alinamadi.',
@@ -169,6 +175,12 @@ const COPY = {
     subTypeSelect: 'Select Sub Type',
     useTr: 'TR',
     useEn: 'EN',
+    loadingSession: 'Checking session...',
+    redirectingAuth: 'Please sign in first to continue.',
+    existingRecord: 'Registered company details loaded',
+    existingHint: 'An existing company record was found for this account. You can edit and update it.',
+    authEmailHint: 'This field is synced with the signed-in account email.',
+    update: 'Update Record',
     alerts: {
       locationUnsupported: 'Location services are not supported.',
       locationFailed: 'Could not get current location.',
@@ -239,6 +251,11 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
   const [contractAccepted, setContractAccepted] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [accountEmail, setAccountEmail] = useState('');
+  const [providerId, setProviderId] = useState('');
+  const [hasExistingRecord, setHasExistingRecord] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
 
   const [form, setForm] = useState({
     businessName: '',
@@ -276,6 +293,90 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
       })
       .catch(() => setCityData({}));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const email = String(localStorage.getItem('Transport_user_email') || '').trim();
+    const guestMode = localStorage.getItem('Transport_guest_mode') === '1';
+    if (!email || guestMode) {
+      router.replace(`/auth?redirect=${encodeURIComponent(pathname || '/companyregister=TR')}`);
+      return;
+    }
+
+    setAccountEmail(email);
+    setForm((prev) => ({ ...prev, email }));
+    setSessionReady(true);
+  }, [pathname, router]);
+
+  useEffect(() => {
+    if (!sessionReady || !accountEmail) return;
+
+    let ignore = false;
+    const loadExistingProvider = async () => {
+      setPrefillLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/users/by-email?email=${encodeURIComponent(accountEmail)}`);
+        if (!res.ok) return;
+        const provider = await res.json();
+        if (!provider?._id || ignore) return;
+
+        const tags: string[] = Array.isArray(provider?.service?.tags) ? provider.service.tags : [];
+        const existingType = normalizeProviderServiceType(
+          tags.find((tag) => String(tag).startsWith('type:'))?.replace(/^type:/, '') ||
+            provider?.service?.subType ||
+            provider?.serviceType ||
+            '',
+        );
+        const cleanVehicleItems =
+          Array.isArray(provider?.vehicleItems) && provider.vehicleItems.length > 0
+            ? provider.vehicleItems
+            : [
+                {
+                  name: String(provider?.vehicleInfo || '').trim(),
+                  photoUrls: Array.isArray(provider?.vehiclePhotos)
+                    ? provider.vehiclePhotos.filter(Boolean)
+                    : provider?.photoUrl
+                      ? [provider.photoUrl]
+                      : [],
+                },
+              ];
+
+        setProviderId(String(provider._id));
+        setHasExistingRecord(true);
+        setSelectedCoords(
+          Array.isArray(provider?.location?.coordinates) && provider.location.coordinates.length === 2
+            ? { lng: Number(provider.location.coordinates[0]), lat: Number(provider.location.coordinates[1]) }
+            : null,
+        );
+        setKvkkAccepted(true);
+        setContractAccepted(true);
+        setForm({
+          businessName: String(provider?.businessName || '').trim(),
+          email: accountEmail,
+          phoneNumber: String(provider?.phoneNumber || '').trim(),
+          city: String(provider?.address?.city || 'Istanbul').trim() || 'Istanbul',
+          district: String(provider?.address?.district || '').trim(),
+          address: String(provider?.address?.fullText || '').split(',').slice(0, 1).join(',').trim(),
+          website: String(provider?.website || provider?.link || '').trim(),
+          taxNumber: String(provider?.taxNumber || '').trim(),
+          serviceTypes: existingType ? [existingType] : [],
+          filterTags: tags.filter((tag) => !String(tag).startsWith('type:')),
+          pricePerUnit: String(provider?.pricing?.pricePerUnit ?? 40),
+          vehicleItems: cleanVehicleItems,
+        });
+      } catch {
+        // Existing provider is optional.
+      } finally {
+        if (!ignore) setPrefillLoading(false);
+      }
+    };
+
+    void loadExistingProvider();
+    return () => {
+      ignore = true;
+    };
+  }, [accountEmail, sessionReady]);
 
   const availableDistricts = useMemo(() => cityData[form.city] || [], [cityData, form.city]);
 
@@ -436,7 +537,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
   const validate = () => {
     if (!form.businessName.trim()) return tx.alerts.businessRequired;
     if (!/^0\d{10}$/.test(form.phoneNumber)) return tx.alerts.phoneInvalid;
-    if (!form.email.trim() || !form.email.includes('@')) return tx.alerts.emailInvalid;
+    if (!accountEmail.trim() || !accountEmail.includes('@')) return tx.alerts.emailInvalid;
     if (form.serviceTypes.length === 0) return tx.alerts.serviceRequired;
     if (!form.city || !form.district || !form.address.trim()) return tx.alerts.addressRequired;
     if (!String(form.taxNumber || '').trim()) return tx.alerts.taxRequired;
@@ -481,7 +582,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
       const payload = {
         firstName: form.businessName,
         businessName: form.businessName,
-        email: form.email,
+        email: accountEmail,
         phoneNumber: form.phoneNumber,
         mainType: mappedMain,
         serviceType: selectedPrimary,
@@ -507,8 +608,10 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
         lng: coords.lng,
       };
 
-      const res = await fetch(`${API_URL}/users`, {
-        method: 'POST',
+      const method = providerId ? 'PUT' : 'POST';
+      const endpoint = providerId ? `${API_URL}/users/${providerId}` : `${API_URL}/users`;
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -518,24 +621,12 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
         throw new Error(err?.message || tx.alerts.submitFailed);
       }
 
-      setSuccessMessage(tx.sent);
-      setForm({
-        businessName: '',
-        email: '',
-        phoneNumber: '',
-        city: 'Istanbul',
-        district: cityData['Istanbul']?.[0] || '',
-        address: '',
-        website: '',
-        taxNumber: '',
-        serviceTypes: [],
-        filterTags: [],
-        pricePerUnit: '40',
-        vehicleItems: [{ name: '', photoUrls: [] }],
-      });
-      setSelectedCoords(null);
-      setKvkkAccepted(false);
-      setContractAccepted(false);
+      const saved = await res.json().catch(() => null);
+      if (saved?._id && !providerId) {
+        setProviderId(String(saved._id));
+        setHasExistingRecord(true);
+      }
+      setSuccessMessage(providerId ? tx.existingRecord : tx.sent);
       setActiveFolder(null);
     } catch (e: any) {
       alert(e?.message || tx.alerts.networkFailed);
@@ -545,6 +636,22 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
   };
 
   const currentFolderConfig = SERVICE_OPTIONS.find((s) => s.id === activeFolder);
+
+  if (!sessionReady) {
+    return (
+      <main className="min-h-screen bg-white px-4 py-6 text-slate-900 md:px-8 md:py-8">
+        <div className="mx-auto max-w-5xl">
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{tx.redirectingAuth}</p>
+            <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <Loader2 size={16} className="animate-spin" />
+              {tx.loadingSession}
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 text-slate-900 md:px-8 md:py-8">
@@ -568,14 +675,14 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 <button
                   type="button"
                   onClick={() => router.push('/companyregister=TR')}
-                  className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase ${lang === 'tr' ? 'bg-cyan-700 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                  className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase ${lang === 'tr' ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
                 >
                   {tx.useTr}
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push('/companyregister=EN')}
-                  className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase ${lang === 'en' ? 'bg-cyan-700 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                  className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase ${lang === 'en' ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
                 >
                   {tx.useEn}
                 </button>
@@ -584,6 +691,22 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
             </div>
           </div>
         </header>
+
+        {prefillLoading && (
+          <section className="mb-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <Loader2 size={16} className="animate-spin" />
+              {tx.loadingSession}
+            </div>
+          </section>
+        )}
+
+        {hasExistingRecord && !prefillLoading && (
+          <section className="mb-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{tx.existingRecord}</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700">{tx.existingHint}</p>
+          </section>
+        )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
@@ -598,9 +721,9 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   value={form.email}
-                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  readOnly
                   placeholder={tx.email}
-                  className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
+                  className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold text-slate-500 outline-none"
                 />
                 <input
                   value={form.phoneNumber}
@@ -660,6 +783,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 placeholder={tx.taxNumber}
                 className="w-full border-b border-slate-300 px-1 py-3 text-sm font-bold outline-none"
               />
+              <p className="text-[11px] font-semibold text-slate-500">{tx.authEmailHint}</p>
             </div>
           </section>
 
@@ -762,7 +886,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
 
         <section className="mt-6 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="space-y-3">
-            <button type="button" onClick={() => setShowKvkk(true)} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase text-emerald-700">
+            <button type="button" onClick={() => setShowKvkk(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase text-slate-700">
               <ShieldCheck size={14} /> {tx.kvkkView}
             </button>
 
@@ -781,10 +905,10 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
             type="button"
             onClick={() => void submit()}
             disabled={loading}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-5 py-4 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-4 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-            {tx.submit}
+            {providerId ? tx.update : tx.submit}
             {!loading && <ArrowRight size={16} />}
           </button>
 
@@ -803,7 +927,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
             </button>
             <div className="mb-6 flex items-center gap-3">
               <img src="/apple-icon.png" alt="Transport 245 Uygulama Ikonu" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
-              <h2 className="text-2xl font-black uppercase italic text-slate-900">{getLabel(currentFolderConfig.id, currentFolderConfig.label)} {tx.subTypeSelect}</h2>
+              <h2 className="text-2xl font-black uppercase text-slate-900">{getLabel(currentFolderConfig.id, currentFolderConfig.label)} {tx.subTypeSelect}</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 mb-6 pr-2 custom-scrollbar">
               {currentFolderConfig.subs.map((sub) => (
@@ -821,7 +945,7 @@ export function CompanyRegisterPage({ forcedLang }: { forcedLang?: 'tr' | 'en' }
                 </button>
               ))}
             </div>
-            <button onClick={() => setActiveFolder(null)} className="w-full rounded-xl bg-cyan-700 py-4 font-black uppercase text-xs text-white">
+            <button onClick={() => setActiveFolder(null)} className="w-full rounded-xl bg-slate-900 py-4 font-black uppercase text-xs text-white">
               {tx.complete}
             </button>
           </div>

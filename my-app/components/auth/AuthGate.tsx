@@ -123,13 +123,18 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     const currentPath = pathname || '/';
+    const currentSearch =
+      typeof window !== 'undefined'
+        ? String(window.location.search || '').replace(/^\?/, '')
+        : '';
+    const redirectTarget = currentSearch ? `${currentPath}?${currentSearch}` : currentPath;
     const sessionExists = isNative ? hasGuestSession() : hasStoredSession();
     if (!loggedIn && sessionExists) {
       setLoggedIn(true);
       return;
     }
     if (!loggedIn && !sessionExists && !PUBLIC_PATHS.has(currentPath)) {
-      router.replace('/auth');
+      router.replace(`/auth?redirect=${encodeURIComponent(redirectTarget)}`);
       return;
     }
     if ((loggedIn || sessionExists) && currentPath === '/auth') {

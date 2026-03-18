@@ -440,15 +440,15 @@ export default function ProviderModule() {
     <div className="w-full min-h-screen bg-white p-6 text-gray-900">
       <header className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full bg-cyan-700 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white">
+          <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white">
             <img src="/apple-icon.png" alt="Transport 245" className="w-4 h-4 rounded-md object-cover" />
             Transport 245 Admin
           </div>
-          <h1 className="text-4xl font-black uppercase text-gray-900">Hizmet Ağı <span className="text-cyan-700">Yönetimi</span></h1>
+          <h1 className="text-4xl font-black uppercase text-gray-900">Hizmet Ağı <span className="text-slate-500">Yönetimi</span></h1>
         </div>
         <div className="flex gap-3">
           {selectedProviders.length > 0 && <button onClick={handleBulkDelete} className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-xs font-black uppercase text-white hover:bg-red-700"><Trash2 size={18}/> Sil ({selectedProviders.length})</button>}
-          <button onClick={() => { setIsEditing(false); setSelectedCoords(null); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:'', taxNumber: '', vehicleItems: [{ name: '', photoUrls: [] }]}); setShowModal(true); }} className="flex items-center gap-2 rounded-xl bg-cyan-700 px-8 py-3 text-xs font-black uppercase text-white hover:bg-cyan-800"><Plus size={20}/> Yeni Kurum</button>
+          <button onClick={() => { setIsEditing(false); setSelectedCoords(null); setFormData({_id:'', businessName:'', email:'', phoneNumber:'', city:'İstanbul', district:'Tuzla', address:'', serviceTypes:[], pricePerUnit:40, filterTags:[], website:'', taxNumber: '', vehicleItems: [{ name: '', photoUrls: [] }]}); setShowModal(true); }} className="flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-3 text-xs font-black uppercase text-white hover:bg-black"><Plus size={20}/> Yeni Kurum</button>
         </div>
       </header>
 
@@ -459,7 +459,7 @@ export default function ProviderModule() {
       </div>
 
       <div ref={listContainerRef} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-        {loading ? <div className="col-span-full py-20 text-center"><Loader2 className="inline animate-spin text-cyan-700" size={48}/></div> : 
+        {loading ? <div className="col-span-full py-20 text-center"><Loader2 className="inline animate-spin text-slate-700" size={48}/></div> :
           providers.filter(p=>(p.businessName||p.firstName||'').toLowerCase().includes(searchTerm.toLowerCase())).map(p=>{
             let ui = SERVICE_OPTIONS.find(o=>o.id === p.service?.subType || o.id === p.serviceType);
             if(!ui) { for(const opt of SERVICE_OPTIONS){ const m = opt.subs.find(s=>s.id===(p.service?.subType || p.serviceType)); if(m){ ui=opt; break; } } }
@@ -473,15 +473,15 @@ export default function ProviderModule() {
               : `${ui.color} text-white`;
 
             return(
-              <div key={p._id} onClick={()=>toggleProviderSelection(p._id)} className={`cursor-pointer rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md ${isSel ? 'ring-2 ring-cyan-300' : ''}`}>
+              <div key={p._id} onClick={()=>toggleProviderSelection(p._id)} className={`cursor-pointer rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md ${isSel ? 'ring-2 ring-slate-300' : ''}`}>
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex gap-4 items-center">
                     <div className={`w-14 h-14 ${iconContainerClass} rounded-2xl flex items-center justify-center shadow-lg shrink-0`}>
                       {listIcon || (p.service?.subType === 'minibus' ? <Users size={28} strokeWidth={1}/> : p.service?.subType === 'otobus' ? <Bus size={28} strokeWidth={1.5}/> : <ui.icon size={28} strokeWidth={1.5}/>)}
                     </div>
-                    <div className="overflow-hidden"><h3 className="font-black text-slate-900 text-sm uppercase truncate">{p.businessName || p.firstName}</h3><span className="text-[8px] font-black text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType || 'Genel'}</span></div>
+                    <div className="overflow-hidden"><h3 className="font-black text-slate-900 text-sm uppercase truncate">{p.businessName || p.firstName}</h3><span className="text-[8px] font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded uppercase">{p.service?.subType || p.serviceType || 'Genel'}</span></div>
                   </div>
-                  <div className="ml-2 flex shrink-0 flex-col gap-2" onClick={e=>e.stopPropagation()}><button onClick={()=>openEdit(p)} className="rounded-xl border border-slate-200 p-2 text-slate-500 transition-colors hover:text-cyan-700"><Edit size={16}/></button><button onClick={e=>handleDelete(e,p._id)} className="rounded-xl border border-slate-200 p-2 text-red-400 transition-colors hover:text-red-600"><Trash2 size={16}/></button></div>
+                  <div className="ml-2 flex shrink-0 flex-col gap-2" onClick={e=>e.stopPropagation()}><button onClick={()=>openEdit(p)} className="rounded-xl border border-slate-200 p-2 text-slate-500 transition-colors hover:text-slate-900"><Edit size={16}/></button><button onClick={e=>handleDelete(e,p._id)} className="rounded-xl border border-slate-200 p-2 text-red-400 transition-colors hover:text-red-600"><Trash2 size={16}/></button></div>
                 </div>
                 <div className="space-y-2"><div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-[10px] font-bold text-slate-700"><Phone size={14} className="text-green-600"/> {p.phoneNumber}</div><div className="flex items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 text-[10px] font-bold text-slate-700"><MapPin size={14} className="shrink-0 text-red-500"/><span className="truncate">{addr}</span></div></div>
               </div>
@@ -608,7 +608,7 @@ export default function ProviderModule() {
                 <div className="flex min-h-[60px] flex-wrap gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4">{formData.filterTags.map((t:any)=>(<span key={t} className="flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-1.5 text-[9px] font-black uppercase text-white">{t.replace('_',' ')} <X size={12} className="cursor-pointer transition-colors hover:text-red-400" onClick={()=>setFormData({...formData, filterTags: formData.filterTags.filter((tag:any)=>tag!==t)})}/></span>))}</div>
               </div>
             </div>
-            <button onClick={handleSave} disabled={loading} className="mt-10 flex w-full items-center justify-center gap-3 rounded-xl bg-cyan-700 py-5 text-sm font-black uppercase text-white transition-all hover:bg-cyan-800 disabled:cursor-not-allowed disabled:bg-slate-400">{loading ? <Loader2 className="animate-spin" size={24}/> : <>{isEditing ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
+            <button onClick={handleSave} disabled={loading} className="mt-10 flex w-full items-center justify-center gap-3 rounded-xl bg-slate-900 py-5 text-sm font-black uppercase text-white transition-all hover:bg-black disabled:cursor-not-allowed disabled:bg-slate-400">{loading ? <Loader2 className="animate-spin" size={24}/> : <>{isEditing ? 'GÜNCELLEMEYİ TAMAMLA' : 'KAYDI TAMAMLA'} <ArrowRight size={20}/></>}</button>
           </div>
         </div>
       )}
@@ -628,7 +628,7 @@ export default function ProviderModule() {
                 <button key={sub.id} onClick={() => toggleSubOption(sub.id)} className={`flex flex-col items-center gap-2 rounded-3xl border p-6 shadow-sm transition-all ${formData.filterTags.includes(sub.id) ? `${currentFolderConfig.color} scale-[1.02] border-transparent text-white shadow-md` : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}><sub.icon size={28} strokeWidth={1.5}/><span className="text-[10px] font-black uppercase">{sub.label}</span></button>
               ))}
             </div>
-            <button onClick={()=>setActiveFolder(null)} className="w-full rounded-xl bg-cyan-700 py-4 text-xs font-black uppercase text-white hover:bg-cyan-800">TAMAMLANDI</button>
+            <button onClick={()=>setActiveFolder(null)} className="w-full rounded-xl bg-slate-900 py-4 text-xs font-black uppercase text-white hover:bg-black">TAMAMLANDI</button>
           </div>
         </div>
       )}
